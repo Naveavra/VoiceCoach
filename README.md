@@ -1,6 +1,3 @@
-Certainly! Below is an updated version of the README file with an explanation of how to connect to pgAdmin and register a server.
-
----
 
 # Project Name
 
