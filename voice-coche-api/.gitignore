@@ -5,7 +5,7 @@
 # Distribution / packaging
 docker_exports
 
-# ADDED BY TAL
+# ADDED BY ZIV
 !**/migrations/
 !*/migrations/
 package-lock.json
