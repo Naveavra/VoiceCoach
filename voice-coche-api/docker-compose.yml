@@ -1,0 +1,44 @@
+version: '3.9'
+
+# creating a volume to be able to persist data between Postgres container restarts
+volumes:
+  voice-vol:
+
+services:
+  backend:
+    build: .
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    env_file:
+      - ./app/.env
+    container_name: voice_server
+    expose:
+      - "5000"
+    links:
+      - db
+    volumes:
+      - ./app:/usr/src/app
+
+  db:
+    image: postgres:latest
+    container_name: voice_db
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./app/docker_env/db.env.dev
+    volumes:
+      - voice-vol:/var/lib/postgresql/data
+    
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: voice_pgadmin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    environment:
+      PGADMIN_DEFAULT_EMAIL: bigboss@email.com
+      PGADMIN_DEFAULT_PASSWORD: Adminos2022
+    
