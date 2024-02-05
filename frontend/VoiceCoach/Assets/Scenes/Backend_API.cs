@@ -98,15 +98,18 @@ public class Backend_API : MonoBehaviour
 
     public static Backend_API instance;
 
+    /*
     //temp
     public AudioSource player;
     public Image img;
+    */
 
     private void Awake()
     {
         if (instance == null)
         {
             DontDestroyOnLoad(gameObject);
+            this.users = new List<User>();
             instance = this;
         }
     }
@@ -125,15 +128,6 @@ public class Backend_API : MonoBehaviour
                 return true;
         //now if we not found the user he may be in the backend so we send a request to find him, for now we do nothing
         return false;
-    }
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        users = new List<User>();
-        StartCoroutine(GetRequest("http://127.0.0.1:5000/"));
-        StartCoroutine(GetAudioRequest("http://127.0.0.1:5000/song"));
-        StartCoroutine(GetImageRequest("http://127.0.0.1:5000/image"));
     }
 
 
@@ -158,16 +152,16 @@ public class Backend_API : MonoBehaviour
     }
 
     //getting an .wav audio file from backend
-    public IEnumerator GetAudioRequest(string url)
+    public IEnumerator GetAudioRequest(AudioClip clip, string url)
     {
         using (UnityWebRequest webRequest = UnityWebRequestMultimedia.GetAudioClip(url, AudioType.WAV))
         {
             yield return webRequest.SendWebRequest();
             if (webRequest.result == UnityWebRequest.Result.Success)
             {
-                AudioClip clip = DownloadHandlerAudioClip.GetContent(webRequest);
+                clip = DownloadHandlerAudioClip.GetContent(webRequest);
                 UnityEngine.Debug.Log("length: " + clip.length);
-                player.PlayOneShot(clip);
+                //player.PlayOneShot(clip);
             }
             else
             {
@@ -177,7 +171,7 @@ public class Backend_API : MonoBehaviour
     }
 
     //getting image from backend
-    public IEnumerator GetImageRequest(string url)
+    public IEnumerator GetImageRequest(Image img, string url)
     {
         using (UnityWebRequest webRequest = UnityWebRequestTexture.GetTexture(url))
         {
