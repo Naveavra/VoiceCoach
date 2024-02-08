@@ -28,13 +28,13 @@ public class project_script : MonoBehaviour
         updateSentivity = 0.5f;
         visualizerSimples = 1024;
 
+        startVis();
         addMicForRecording();
 
     }
 
-    private void addMicForRecording()
+    private void startVis()
     {
-
         float x = -2.7f;
         while (x <= 2.7f)
         {
@@ -43,8 +43,10 @@ public class project_script : MonoBehaviour
             visRecordingArray.Add(visClone);
             x = x + 0.3f;
         }
+    }
 
-
+    private void addMicForRecording()
+    {
         audioSource.clip = Microphone.Start(string.Empty, audioSource.loop, 10, 44100);
         audioSource.loop = true;
         while (!(Microphone.GetPosition(null) > 0)) { }

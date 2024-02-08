@@ -28,6 +28,7 @@ public class login_script : MonoBehaviour
     {
         if (Backend_API.instance.isUser(username, password))
         {
+            Backend_API.instance.currUser = username;
             SceneManager.LoadScene("main_manu_page");
         }
         else

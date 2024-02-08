@@ -14,11 +14,13 @@ public class Backend_API : MonoBehaviour
     {
         public string email;
         public string password;
+        public List<Project> projects;
 
         public User(string email, string password)
         {
             this.email = email;
             this.password = password;
+            this.projects = new List<Project>();
         }
 
         public bool compare(User other)
@@ -36,6 +38,27 @@ public class Backend_API : MonoBehaviour
                 return false;
             return true;
         }
+
+        public string addProject(string title, string description)
+        {
+            foreach (Project project in projects)
+                if (project.title == title)
+                    return "the project name is already taken";
+
+            projects.Add(new Project(title, description));
+            return "";
+
+        }
+
+        public void removeProject(string title)
+        {
+            foreach (Project p in projects)
+            {
+                if(p.title.Equals(title))
+                    projects.Remove(p);
+            }
+        }
+
     }
 
 
@@ -55,8 +78,10 @@ public class Backend_API : MonoBehaviour
             userSample = null;
         }
 
-        public void addSample()
+        public void addSample(AudioClip sample)
         {
+            this.sample = sample;
+            /*
             //search in explorer and add only files of type .mp4, .m4a, .wav
             string path = EditorUtility.OpenFilePanel("choose a sample file of type .mp3/.m4a/.wav", "", "");
 
@@ -76,23 +101,19 @@ public class Backend_API : MonoBehaviour
                 {
                     UnityEngine.Debug.Log("file not of correct type");
                 }
-                */
-
             }
+            */
         }
 
-        public void recordUserSample()
+        public void addUserSample(AudioClip userSample)
         {
-            //audio visualization page
-        }
-
-        public void showAnalysis()
-        {
-            //go to analysis page if both the sample and userSample are given.
+            this.userSample = userSample;
         }
     }
 
     public List<User> users;
+
+    public string currUser;
 
     public string backendPath = "http://127.0.0.1:5000/";
 
@@ -110,15 +131,25 @@ public class Backend_API : MonoBehaviour
         {
             DontDestroyOnLoad(gameObject);
             this.users = new List<User>();
+            this.currUser = null;
             instance = this;
         }
     }
 
-
+    //user functions
     public void addUser(string email, string password)
     {
         if (!isUser(email, password))
             users.Add(new User(email, password));
+    }
+
+    public bool isEmailTaken(string email)
+    {
+        foreach (User user in users)
+            if (user.email == email)
+                return true;
+        //if not we check in backend
+        return false;
     }
 
     public bool isUser(string email, string password)
@@ -129,6 +160,24 @@ public class Backend_API : MonoBehaviour
         //now if we not found the user he may be in the backend so we send a request to find him, for now we do nothing
         return false;
     }
+
+    private User getUser()
+    {
+        foreach(User user in users)
+            if(user.email == currUser) return user;
+        return null;
+    }
+
+
+    //project functions
+    public string addProject(string title, string  description)
+    {
+        User user = getUser();
+        return user.addProject(title, description);
+    }
+
+
+
 
 
 

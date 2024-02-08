@@ -36,22 +36,38 @@ public class register_script : MonoBehaviour
 
     public bool isPasswordValid()
     {
-        return true;
+        if(password.Length < 6) return false;
+        bool isDigit = false;
+        bool isUpper = false;
+        bool isLower = false;
+        foreach(char c in password){
+            if( c >= '0' && c<='9')
+                isDigit = true;
+            if(c >='a' && c<='z')
+                isLower = true;
+            if(c >='A' && c<='Z')
+                isUpper = true;
+        }
+        return isDigit && isLower && isUpper;
     }
 
     public void register()
     {
-       if (!isEmailValid()) 
+        if (!isEmailValid())
         {
             notifications.text = "the email entered is not valid";
         }
-       else if (!isPasswordValid())
+        else if (!isPasswordValid())
         {
             notifications.text = "the password entered is not valid";
         }
-       else if(!String.Equals(password, passeword_validator))
+        else if (!String.Equals(password, passeword_validator))
         {
             notifications.text = "the passwords don't match";
+        }
+        else if (Backend_API.instance.isEmailTaken(username))
+        {
+            notifications.text = "the email already belongs to another user";
         }
         else
         {
