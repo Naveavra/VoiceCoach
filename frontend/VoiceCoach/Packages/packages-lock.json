@@ -218,6 +218,13 @@
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
+    "com.unity.scripting.python.windows": {
+      "version": "1.2.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
     "com.unity.subsystemregistration": {
       "version": "1.1.1",
       "depth": 2,
