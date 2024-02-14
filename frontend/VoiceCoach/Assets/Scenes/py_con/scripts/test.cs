@@ -2,9 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-using IronPython.Hosting;
 using System.IO;
 using UnityEngine.UI;
+using UnityEditor.Scripting.Python;
 
 public class test : MonoBehaviour
 {
@@ -12,8 +12,6 @@ public class test : MonoBehaviour
     void Start()
     {
         string path = "Assets/Scenes/py_con/py_scripts/main.py";
-        var engine = Python.CreateEngine();
-        dynamic py = engine.ExecuteFile(path);
-        Debug.Log("end");
+        PythonRunner.RunFile(path);
     }
 }

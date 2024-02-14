@@ -1,3 +1,11 @@
+import librosa
+import pandas as pd
+import matplotlib.pylab as plt
+import numpy as np
+import librosa.display
+from fastdtw import fastdtw
+from scipy.spatial.distance import euclidean
+
 class Greeter():
     def __init__(self, name):
         self.name = name
