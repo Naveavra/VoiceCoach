@@ -11,7 +11,7 @@
 /[Uu]ser[Ss]ettings/
 
 #need to keep the libraries of python
-!/[Ll]ibrary/[Pp]ythonInstall/[Ll]ib/
+!/[Ll]ibrary/[Pp]ython[Ii]nstall/[Ll]ib/
 
 # MemoryCaptures can get excessive in size.
 # They also could contain extremely sensitive data
