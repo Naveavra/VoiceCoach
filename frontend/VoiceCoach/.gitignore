@@ -2,7 +2,7 @@
 #
 # Get latest from https://github.com/github/gitignore/blob/master/Unity.gitignore
 #
-/[Ll]ibrary/*/
+/[Ll]ibrary/*
 #need to keep the libraries of python
 !/[Ll]ibrary/[Pp]ython[Ii]nstall/[Ll]ib/
 /[Tt]emp/
