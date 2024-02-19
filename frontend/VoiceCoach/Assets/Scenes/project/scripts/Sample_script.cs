@@ -110,7 +110,7 @@ public class Sample_script : MonoBehaviour
         float[] spectrumData = audioSource.GetSpectrumData(visualizerSimples, 0, FFTWindow.Hanning);
         for (int i = 0; i < visSampleArray.Count; i++)
         {
-            float y = Mathf.Clamp(Mathf.Lerp(visSampleArray[i].transform.localScale.y, minHeight + (spectrumData[i] * (maxHeight - minHeight) * 20.0f), updateSentivity * 0.5f), minHeight, maxHeight);
+            float y = Mathf.Clamp(Mathf.Lerp(visSampleArray[i].transform.localScale.y, minHeight + (spectrumData[i] * (maxHeight - minHeight) * 50.0f), updateSentivity * 0.5f), minHeight, maxHeight);
             visSampleArray[i].transform.localScale = new Vector3(0.1f, y, 1.0f);
         }
     }

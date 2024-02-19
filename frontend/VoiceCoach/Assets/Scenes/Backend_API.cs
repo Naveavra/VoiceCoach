@@ -50,6 +50,25 @@ public class Backend_API : MonoBehaviour
 
         }
 
+        public string addSampleForProject(string title, AudioClip sample)
+        {
+            foreach (Project project in projects)
+                if (project.title == title) {
+                    project.addSample(sample);
+                }
+            return "no project has this name";
+        }
+
+        public string addUserSampleForProject(string title, AudioClip userSample)
+        {
+            foreach (Project project in projects)
+                if (project.title == title)
+                {
+                    project.addUserSample(userSample);
+                }
+            return "no project has this name";
+        }
+
         public void removeProject(string title)
         {
             foreach (Project p in projects)
@@ -68,112 +87,114 @@ public class Backend_API : MonoBehaviour
         public string title;
         public string description;
         public AudioClip sample;
-        public AudioClip userSample;
+        public List<AudioClip> userSamples;
 
         public Project(string title, string description)
         {
             this.title = title;
             this.description = description;
             sample = null;
-            userSample = null;
+            userSamples = new List<AudioClip>();
         }
 
         public void addSample(AudioClip sample)
         {
             this.sample = sample;
-            /*
-            //search in explorer and add only files of type .mp4, .m4a, .wav
-            string path = EditorUtility.OpenFilePanel("choose a sample file of type .mp3/.m4a/.wav", "", "");
-
-            //change this with the code you found from the video that shows an app that uses audio files, in whatsapp search "הסרטון כאן"
-            if (path != null)
-            {
-                /*
-                string pathType = path.Split('.')[path.Split('.').Length - 1];
-                UnityEngine.Debug.Log(path);
-                if (pathType == ".mp3" || pathType == ".m4a" || pathType == ".wav")
-                {
-                    WWW www = new WWW("file:///" + path);
-                    sample = www.GetAudioClip(false, true);
-                    UnityEngine.Debug.Log(sample);
-                }
-                else
-                {
-                    UnityEngine.Debug.Log("file not of correct type");
-                }
-            }
-            */
         }
 
         public void addUserSample(AudioClip userSample)
         {
-            this.userSample = userSample;
+            this.userSamples.Add(userSample);
         }
     }
 
-    public List<User> users;
 
-    public string currUser;
+    //backend data
+    public User currUser;
+
+    public Project currProject;
 
     public string backendPath = "http://127.0.0.1:5000/";
 
     public static Backend_API instance;
 
-    /*
-    //temp
-    public AudioSource player;
-    public Image img;
-    */
 
     private void Awake()
     {
         if (instance == null)
         {
             DontDestroyOnLoad(gameObject);
-            this.users = new List<User>();
             this.currUser = null;
             instance = this;
         }
     }
 
     //user functions
-    public void addUser(string email, string password)
+    public bool isUser(string email, string password)
     {
-        if (!isUser(email, password))
-            users.Add(new User(email, password));
+        if(currUser != null && currUser.email == email && currUser.password == password)
+            return true;
+        //check in backend
+        return false;
+    }
+
+    public bool login(string username, string password)
+    {
+        if (isUser(username, password))
+            return true;//we need to add here that the currUser will change here, for now it only changes in register
+        return false;
+
+    }
+
+    public bool register(string username, string password)
+    {
+        if (!isUser(username, password)) { 
+            //add credantials to backend
+            currUser = new User(username, password);
+            return true;
+        }
+        return false;
     }
 
     public bool isEmailTaken(string email)
     {
-        foreach (User user in users)
-            if (user.email == email)
-                return true;
-        //if not we check in backend
+        if (currUser != null && currUser.email == email)
+            return true;
+        //check in backend
         return false;
     }
 
-    public bool isUser(string email, string password)
+    public List<String> getUserProjects()
     {
-        foreach (User user in users)
-            if (user.compare(email, password))
-                return true;
-        //now if we not found the user he may be in the backend so we send a request to find him, for now we do nothing
-        return false;
+        //use python function to get from the DB all the projects to display them, now we only get the name each project
+        return new List<String>();
     }
 
-    private User getUser()
-    {
-        foreach(User user in users)
-            if(user.email == currUser) return user;
-        return null;
-    }
 
 
     //project functions
     public string addProject(string title, string  description)
     {
-        User user = getUser();
-        return user.addProject(title, description);
+        return currUser.addProject(title, description);
+    }
+
+    public string addSampleForUser(string title, AudioClip sample)
+    {
+        return currUser.addSampleForProject(title, sample);
+    }
+
+    public string addUserSampleForUser(string title, AudioClip userSample)
+    {
+        return currUser.addUserSampleForProject(title, userSample);
+    }
+
+    public void getCurProject(string name)
+    {
+        foreach (Project project in currUser.projects)
+            if (project.title == name)
+            {
+                currProject = project;
+            }
     }
 
 
@@ -183,7 +204,9 @@ public class Backend_API : MonoBehaviour
 
 
 
-    //calling to requests for backend
+
+
+    //calling to requests for backend, this will be replaced with running python code
     public IEnumerator GetRequest(string url)
     {
         using (UnityWebRequest webRequest = UnityWebRequest.Get(url))

@@ -71,7 +71,7 @@ public class register_script : MonoBehaviour
         }
         else
         {
-            Backend_API.instance.addUser(username, password);
+            Backend_API.instance.register(username, password);
             SceneManager.LoadScene("login_page");
         }
     }
