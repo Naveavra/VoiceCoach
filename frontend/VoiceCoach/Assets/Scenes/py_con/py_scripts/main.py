@@ -411,7 +411,7 @@ def generate_duration_feedback(durations1, durations2, times, sr, threshold=0.2)
     return feedback if feedback else "Excellent! Your timing and duration closely match the goal."
 
 
-def generate_vowel_feedback(f1_goal, f2_goal, f1_session, f2_session,times, threshold=50):
+def generate_vowel_feedback(f1_goal, f2_goal, f1_session, f2_session,times, threshold=500):
     """
     Generate feedback based on the vowel formant frequency comparison between two audio signals.
 
