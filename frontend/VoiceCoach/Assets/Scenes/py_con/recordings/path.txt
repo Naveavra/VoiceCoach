@@ -1,0 +1,4 @@
+{
+  "goal_path": "C:\\Users\\Nave Avraham\\Desktop\\VoiceCoach\\frontend\\VoiceCoach\\Assets\\Scenes\\py_con\\recordings\\NaveRecording.wav",
+  "session_path": "C:\\Users\\Nave Avraham\\Desktop\\VoiceCoach\\frontend\\VoiceCoach\\Assets\\Scenes\\py_con\\recordings\\NaveRecording2.wav"
+}
