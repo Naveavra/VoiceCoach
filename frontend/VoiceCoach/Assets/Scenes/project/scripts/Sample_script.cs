@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEditor;
 using System;
 using UnityEngine.Networking;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 public class Sample_script : MonoBehaviour
 {
@@ -20,11 +21,12 @@ public class Sample_script : MonoBehaviour
 
     public AudioSource audioSource;
 
-    public AudioClip audioClip;
+    public AudioClip uploadedAudioClip; 
     public bool loop = true;
 
     public string path;
     public string audioType;
+
 
 
     // Start is called before the first frame update
@@ -52,14 +54,18 @@ public class Sample_script : MonoBehaviour
             x = x + 0.3f;
         }
     }
+    private bool hasRecording()
+    {
+        return uploadedAudioClip != null;
+    }
 
     private void addClipForSample()
     {
         audioSource.loop = loop;
-        audioSource.clip = audioClip;
-
+        audioSource.clip = uploadedAudioClip;
         audioSource.Play();
     }
+
 
     public void accessFileExplorer()
     {
@@ -71,7 +77,6 @@ public class Sample_script : MonoBehaviour
             Debug.Log(audioType);
             return; // add here line to inform the user the recording given isn't compatible
         }
-
         StartCoroutine(loadClip());
     }
 
@@ -85,7 +90,7 @@ public class Sample_script : MonoBehaviour
             yield return webRequest.SendWebRequest();
             if (webRequest.result == UnityWebRequest.Result.Success)
             {
-                audioClip = NAudioPlayer.FromMp3Data(webRequest.downloadHandler.data);
+                uploadedAudioClip = NAudioPlayer.FromMp3Data(webRequest.downloadHandler.data);
             }
             else
                 UnityEngine.Debug.Log("Error: " + webRequest.error);
@@ -96,12 +101,12 @@ public class Sample_script : MonoBehaviour
             yield return webRequest.SendWebRequest();
             if (webRequest.result == UnityWebRequest.Result.Success)
             {
-                audioClip = DownloadHandlerAudioClip.GetContent(webRequest);
+                uploadedAudioClip = DownloadHandlerAudioClip.GetContent(webRequest);
             }
             else
                 UnityEngine.Debug.Log("Error: " + webRequest.error);
         }
-        audioSource.clip = audioClip;
+        audioSource.clip = uploadedAudioClip;
         audioSource.Play();
     }
 
