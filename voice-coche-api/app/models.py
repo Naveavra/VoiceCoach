@@ -7,8 +7,32 @@ class AudioFile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
     content = db.Column(db.LargeBinary, nullable=False)
+    analysis = db.Column(db.String(255), nullable=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    project = db.relationship('Project', back_populates='audio_files', foreign_keys=[project_id])
+
+class Project(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=True)
+    description = db.Column(db.String(255), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    user = db.relationship('User', back_populates='audio_files')
+    user = db.relationship('User', back_populates='projects')
+    main_goal_audio_id = db.Column(db.Integer, db.ForeignKey('audio_file.id'), nullable=True)
+    audio_files = db.relationship('AudioFile', back_populates='project', cascade='all, delete-orphan',foreign_keys=[AudioFile.project_id])
+
+    def __init__(self,user, name, description):
+        self.name = name
+        self.user = user
+        self.description = description
+        
+    def serialize(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'name': self.name,
+            'description': self.description
+            # Add more fields if needed
+        }
 
 class User(db.Model):
     __tablename__ = "users"
@@ -18,7 +42,7 @@ class User(db.Model):
     email = db.Column(db.String(128), unique=True, nullable=False)
     password_hash = db.Column(db.String(258), nullable=False)
     active = db.Column(db.Boolean(), default=True, nullable=False)
-    audio_files = db.relationship('AudioFile', back_populates='user', cascade='all, delete-orphan')
+    projects = db.relationship('Project', back_populates='user', cascade='all, delete-orphan')
 
     def __init__(self, email, name, password):
         self.email = email

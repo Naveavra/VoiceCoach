@@ -65,14 +65,14 @@ public class register_script : MonoBehaviour
         {
             notifications.text = "the passwords don't match";
         }
-        else if (Backend_API.instance.isEmailTaken(username))
-        {
-            notifications.text = "the email already belongs to another user";
-        }
         else
         {
-            Backend_API.instance.register(username, password);
-            SceneManager.LoadScene("login_page");
+            Backend_API.instance.register(username, password,(res)=>{
+                if(res.result == "Success")
+                    SceneManager.LoadScene("login_page");
+                else
+                    notifications.text = res.text as string;
+            });
         }
     }
 }

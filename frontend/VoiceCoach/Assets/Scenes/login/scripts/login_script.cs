@@ -26,12 +26,14 @@ public class login_script : MonoBehaviour
 
     public void checkLogin()
     {
-        if (Backend_API.instance.isUser(username, password))
+        Backend_API.instance.login(username, password,(res)=>
         {
-            SceneManager.LoadScene("main_manu_page");
-        }
-        else
-            notifications.text = "no such user has this credantials";
+            if(res.result == "Success")
+                SceneManager.LoadScene(sceneName);
+            else
+                
+                notifications.text = res.text as string;
+        });
     }
 
     public void registerPage()

@@ -4,120 +4,23 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEditor;
 using System.Collections.Generic;
-using System.Diagnostics;
+// using System.Diagnostics;
 using UnityEngine.UI;
+using MyUser;
+using MyProject;
+using MyResponse;
+using myToken;
+using myError;
+using myProject;
 
+// using Api.config;
 public class Backend_API : MonoBehaviour
 {
-    // user data
-    public class User
-    {
-        public string email;
-        public string password;
-        public List<Project> projects;
-
-        public User(string email, string password)
-        {
-            this.email = email;
-            this.password = password;
-            this.projects = new List<Project>();
-        }
-
-        public bool compare(User other)
-        {
-            if (other == null)
-                return false;
-            if (!String.Equals(other.email, this.email) || !String.Equals(other.password, this.password))
-                return false;
-            return true;
-        }
-
-        public bool compare(string email, string password)
-        {
-            if (!String.Equals(email, this.email) || !String.Equals(password, this.password))
-                return false;
-            return true;
-        }
-
-        public string addProject(string title, string description)
-        {
-            foreach (Project project in projects)
-                if (project.title == title)
-                    return "the project name is already taken";
-
-            projects.Add(new Project(title, description));
-            return "";
-
-        }
-
-        public string addSampleForProject(string title, AudioClip sample)
-        {
-            foreach (Project project in projects)
-                if (project.title == title) {
-                    project.addSample(sample);
-                }
-            return "no project has this name";
-        }
-
-        public string addUserSampleForProject(string title, AudioClip userSample)
-        {
-            foreach (Project project in projects)
-                if (project.title == title)
-                {
-                    project.addUserSample(userSample);
-                }
-            return "no project has this name";
-        }
-
-        public void removeProject(string title)
-        {
-            foreach (Project p in projects)
-            {
-                if(p.title.Equals(title))
-                    projects.Remove(p);
-            }
-        }
-
-    }
-
-
-    //project data
-    public class Project
-    {
-        public string title;
-        public string description;
-        public AudioClip sample;
-        public List<AudioClip> userSamples;
-
-        public Project(string title, string description)
-        {
-            this.title = title;
-            this.description = description;
-            sample = null;
-            userSamples = new List<AudioClip>();
-        }
-
-        public void addSample(AudioClip sample)
-        {
-            this.sample = sample;
-        }
-
-        public void addUserSample(AudioClip userSample)
-        {
-            this.userSamples.Add(userSample);
-        }
-    }
-
-
     //backend data
     public User currUser;
-
     public Project currProject;
-
-    public string backendPath = "http://127.0.0.1:5000/";
-
+    public BackendConfig backendConfig;
     public static Backend_API instance;
-
 
     private void Awake()
     {
@@ -126,56 +29,109 @@ public class Backend_API : MonoBehaviour
             DontDestroyOnLoad(gameObject);
             this.currUser = null;
             instance = this;
+            backendConfig = new BackendConfig();
         }
     }
 
-    //user functions
-    public bool isUser(string email, string password)
+   
+    public void login(string email, string password,Action<Response> callback)
     {
-        if(currUser != null && currUser.email == email && currUser.password == password)
-            return true;
-        //check in backend
-        return false;
+        WWWForm formData = new WWWForm();
+        formData.AddField("email", email);
+        formData.AddField("password", password);
+        Debug.Log("login" + formData + " " + backendConfig.AuthRoute["login"]);
+        StartCoroutine(PostRequest(backendConfig.AuthRoute["login"],false, formData,(res)=>{
+            if(res.result == "Success"){
+                TokenResponse tr = JsonUtility.FromJson<TokenResponse>(res.text);
+                Debug.Log("tr: " + tr);
+                string token = tr.token;
+                string user_id = tr.user_id;
+                currUser = new User(email,token,Int32.Parse(user_id));
+                Debug.Log("token: " + token);
+                callback(res);
+            }
+            else{
+                string error = res.text;
+                Debug.Log("error as text: " + error);
+                ErrorResponse er = JsonUtility.FromJson<ErrorResponse>(error);
+                Debug.Log("er: " + er);
+                res.text = er.error;
+                callback(res);
+            }
+            
+        }));
     }
 
-    public bool login(string username, string password)
+    public void register(string email, string password ,Action<Response> callback)
     {
-        if (isUser(username, password))
-            return true;//we need to add here that the currUser will change here, for now it only changes in register
-        return false;
-
+        WWWForm formData = new WWWForm();
+        formData.AddField("email", email);
+        formData.AddField("password", password);
+        Debug.Log("register" + formData + " " + backendConfig.AuthRoute["register"]);
+        StartCoroutine(PostRequest(backendConfig.AuthRoute["register"],false, formData,(res)=>{
+            if(res.result == "Success"){
+                callback(res);
+            }
+            else{
+                string error = res.text;
+                Debug.Log("error as text: " + error);
+                ErrorResponse er = JsonUtility.FromJson<ErrorResponse>(error);
+                Debug.Log("er: " + er);
+                res.text = er.error;
+                callback(res);
+            }
+            
+        }));
     }
 
-    public bool register(string username, string password)
+    public void getUserProjects(Action<List<string>> callback)
     {
-        if (!isUser(username, password)) { 
-            //add credantials to backend
-            currUser = new User(username, password);
-            return true;
-        }
-        return false;
+        Debug.Log("getting...");
+        string url = backendConfig.ProjectRoute["get_all"] + "/" + currUser.user_id;
+        StartCoroutine(GetRequest(url, true, (response) =>
+        {
+            List<string> ans = new List<string>();
+            if (response.result == "Success")
+            {
+                Debug.Log("Request successful");
+                string projectsData = response.text;
+                ProjectWrapper wrapper = JsonUtility.FromJson<ProjectWrapper>(projectsData);
+                foreach (var project in wrapper.projects)
+                {
+                    Debug.Log("Project Name: " + project.name);
+                    Debug.Log("Project Description: " + project.description);
+                    ans.Add(project.name);
+                }
+            }
+            else
+            {
+                Debug.LogError("Request failed: " + response.error);
+            }
+            callback(ans);
+        }));
     }
-
-    public bool isEmailTaken(string email)
-    {
-        if (currUser != null && currUser.email == email)
-            return true;
-        //check in backend
-        return false;
-    }
-
-    public List<String> getUserProjects()
-    {
-        //use python function to get from the DB all the projects to display them, now we only get the name each project
-        return new List<String>();
-    }
-
 
 
     //project functions
     public string addProject(string title, string  description)
     {
-        return currUser.addProject(title, description);
+        string url = backendConfig.ProjectRoute["create"];
+        url = url + "/" + currUser.user_id;
+        WWWForm formData = new WWWForm();
+        formData.AddField("name", title);
+        formData.AddField("description", description);
+        StartCoroutine(PostRequest(url, true, formData,(res)=>{
+            Debug.Log(res);
+            Debug.Log(res.result);
+            if(res.result == "Success"){
+                currUser.addProject(title, description);
+                Debug.Log("suc-106");
+            }
+            else{
+                Debug.Log("fail-109");
+            }
+        }));
+        return "success";
     }
 
     public string addSampleForUser(string title, AudioClip sample)
@@ -198,28 +154,80 @@ public class Backend_API : MonoBehaviour
     }
 
 
-
-
-
-
-
-
-
-
     //calling to requests for backend, this will be replaced with running python code
-    public IEnumerator GetRequest(string url)
+    public IEnumerator GetRequest(string url,Boolean secure , Action<Response> callback)
     {
         using (UnityWebRequest webRequest = UnityWebRequest.Get(url))
         {
+            if (secure)
+            {
+                webRequest.SetRequestHeader("Authorization", "Bearer " + currUser.token);
+            }
             yield return webRequest.SendWebRequest();
-            if (webRequest.result == UnityWebRequest.Result.Success)
+            Debug.Log("165");
+            UnityEngine.Debug.Log(webRequest.downloadHandler.text);
+            string text = webRequest.downloadHandler.text;
+            Debug.Log(text);
+            Response response = new Response.ResponseBuilder()
+            .WithResult(webRequest.result == UnityWebRequest.Result.Success ? "Success" : "Fail")
+            .WithStatusCode((int) webRequest.responseCode)
+            .WithError(webRequest.error)
+            .WithData(text)
+            .Build();
+            callback(response);
+        }
+    }
+    public IEnumerator PostRequest(string url,Boolean secure, WWWForm formData,Action<Response> callback)
+    {
+        using (UnityWebRequest webRequest = UnityWebRequest.Post(url, formData))
+        {
+            if (secure)
             {
-                UnityEngine.Debug.Log(webRequest.downloadHandler.text);
+                webRequest.SetRequestHeader("Authorization", "Bearer " + currUser.token);
             }
-            else
-            {
-                UnityEngine.Debug.Log("Error: " + webRequest.error);
-            }
+            yield return webRequest.SendWebRequest();
+            // if (webRequest.result == UnityWebRequest.Result.Success)
+            // {
+            //     int statusCode = (int)webRequest.responseCode;
+            //     if(statusCode == 200)
+            //     {
+            //         string text = webRequest.downloadHandler.text;
+            //         Dictionary<string, object> responseData = JsonConvert.DeserializeObject<Dictionary<string, object>>(text);
+            //         response 
+            //         .WithResult("Success")
+            //         .WithStatusCode(200)
+            //         .WithError(null)
+            //         .WithData(responseData)
+            //         .Build();
+            //         callback(response);
+            //     }
+            //     else
+            //     {
+            //         response
+            //         .WithResult("Fail")
+            //         .WithStatusCode(statusCode)
+            //         .WithError(webRequest.error)
+            //         callback(response);
+            //     }
+            // }
+            // else
+            // {
+            //     Debug.LogError("Error: " + webRequest.error);
+            //     Debug.Log("Response: " + webRequest.downloadHandler.text);
+            //     response
+            //     .WithResult("Fail")
+            //     .WithStatusCode((int)webRequest.responseCode)
+            //     .WithError(webRequest.error)
+            //     callback(response);
+            // }
+            string text = webRequest.downloadHandler.text;
+            Response response = new Response.ResponseBuilder()
+            .WithResult(webRequest.result == UnityWebRequest.Result.Success ? "Success" : "Fail")
+            .WithStatusCode((int) webRequest.responseCode)
+            .WithError(webRequest.error)
+            .WithData(text)
+            .Build();
+            callback(response);
         }
     }
 
@@ -263,6 +271,8 @@ public class Backend_API : MonoBehaviour
             }
         }
     }
+
+
 
 
 }
