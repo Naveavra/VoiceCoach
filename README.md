@@ -84,8 +84,8 @@ The application will be accessible at [http://localhost:5000](http://localhost:5
 To manage database migrations, use the following commands:
 
 ```bash
-python manage.py db migrate
-python manage.py db upgrade
+flask --app main.py db migrate
+flask --app main.py db upgrade
 ```
 
 ## Docker
