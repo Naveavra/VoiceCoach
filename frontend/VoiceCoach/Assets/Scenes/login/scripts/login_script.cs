@@ -10,7 +10,7 @@ using TMPro;
 public class login_script : MonoBehaviour
 {
     public TMP_Text notifications;
-    public string sceneName = "main_manu_page";
+    private string sceneName = "Main_menu_Page";
     public string username;
     public string password;
 
@@ -28,7 +28,7 @@ public class login_script : MonoBehaviour
     {
         if (Backend_API.instance.isUser(username, password))
         {
-            SceneManager.LoadScene("main_manu_page");
+            SceneManager.LoadScene(sceneName);
         }
         else
             notifications.text = "no such user has this credantials";

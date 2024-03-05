@@ -980,7 +980,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   notifications: {fileID: 1950435156}
-  sceneName: main_manu_page
+  sceneName: 
   username: 
   password: 
 --- !u!1 &942212411
