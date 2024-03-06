@@ -23,7 +23,6 @@ public class projects_list : MonoBehaviour
 
     void Start()
     {
-        //add the functionallity of the button to move to the project page of the correct project(from the name)
         name_input.onEndEdit.AddListener(readName);
         desc_input.onEndEdit.AddListener(readDesc);
         Debug.Log("trying gets projects");

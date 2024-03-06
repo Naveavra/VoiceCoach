@@ -10,7 +10,7 @@ using TMPro;
 public class login_script : MonoBehaviour
 {
     public TMP_Text notifications;
-    public string sceneName = "main_manu_page";
+    private string sceneName = "Main_menu_Page";
     public string username;
     public string password;
 

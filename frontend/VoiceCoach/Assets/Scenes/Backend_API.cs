@@ -16,6 +16,7 @@ using myProject;
 // using Api.config;
 public class Backend_API : MonoBehaviour
 {
+
     //backend data
     public User currUser;
     public Project currProject;
@@ -113,7 +114,7 @@ public class Backend_API : MonoBehaviour
 
 
     //project functions
-    public string addProject(string title, string  description)
+    public string addProject(string title, string description)
     {
         string url = backendConfig.ProjectRoute["create"];
         url = url + "/" + currUser.user_id;
@@ -274,5 +275,5 @@ public class Backend_API : MonoBehaviour
 
 
 
-
 }
+
