@@ -74,7 +74,7 @@ A brief description of your project.
 To run the development server locally, execute the following command:
 
 ```bash
-python manage.py runserver
+python main.py (--skip for skipping the creation of tables)
 ```
 
 The application will be accessible at [http://localhost:5000](http://localhost:5000).
