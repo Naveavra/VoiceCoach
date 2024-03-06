@@ -71,7 +71,7 @@ A brief description of your project.
 
 ### Development Server
 
-To run the development server locally, execute the following command:
+To run the development server locally, execute the following command (from /app , venv activated ):
 
 ```bash
 python main.py (--skip for skipping the creation of tables)
