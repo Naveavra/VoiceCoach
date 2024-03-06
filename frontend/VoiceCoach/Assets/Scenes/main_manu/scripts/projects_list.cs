@@ -26,16 +26,18 @@ public class projects_list : MonoBehaviour
         //add the functionallity of the button to move to the project page of the correct project(from the name)
         name_input.onEndEdit.AddListener(readName);
         desc_input.onEndEdit.AddListener(readDesc);
-
-        List<string> names = Backend_API.instance.getUserProjects();
-        foreach (string name in names)
-        {
-            Button newProject = Instantiate(project);
-            newProject.gameObject.SetActive(true);
-            newProject.transform.SetParent(parent.transform, true);
-            newProject.transform.GetChild(0).GetComponent<TMP_Text>().text = name;
-            projects.Add(newProject);
-        }
+        Debug.Log("trying gets projects");
+        Backend_API.instance.getUserProjects((names)=>{
+            Debug.Log(names);
+            foreach (string name in names)
+            {
+                Button newProject = Instantiate(project);
+                newProject.gameObject.SetActive(true);
+                newProject.transform.SetParent(parent.transform, true);
+                newProject.transform.GetChild(0).GetComponent<TMP_Text>().text = name;
+                projects.Add(newProject);
+            }
+            });
     }
 
     public void readName(string s)
