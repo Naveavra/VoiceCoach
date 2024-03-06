@@ -32,13 +32,13 @@ A brief description of your project.
 1. Clone the repository:
 
     ```bash
-    git clone https://github.com/your-username/your-project.git
+    git clone https://github.com/Naveavra/VoiceCoach.git
     ```
 
 2. Navigate to the project directory:
 
     ```bash
-    cd your-project
+    cd VoiceCoach
     ```
 
 3. Create a virtual environment (optional but recommended):
