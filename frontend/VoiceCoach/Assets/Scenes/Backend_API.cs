@@ -53,7 +53,8 @@ public class Backend_API : MonoBehaviour
         public string addSampleForProject(string title, AudioClip sample)
         {
             foreach (Project project in projects)
-                if (project.title == title) {
+                if (project.title == title)
+                {
                     project.addSample(sample);
                 }
             return "no project has this name";
@@ -73,7 +74,7 @@ public class Backend_API : MonoBehaviour
         {
             foreach (Project p in projects)
             {
-                if(p.title.Equals(title))
+                if (p.title.Equals(title))
                     projects.Remove(p);
             }
         }
@@ -132,7 +133,7 @@ public class Backend_API : MonoBehaviour
     //user functions
     public bool isUser(string email, string password)
     {
-        if(currUser != null && currUser.email == email && currUser.password == password)
+        if (currUser != null && currUser.email == email && currUser.password == password)
             return true;
         //check in backend
         return false;
@@ -148,7 +149,8 @@ public class Backend_API : MonoBehaviour
 
     public bool register(string username, string password)
     {
-        if (!isUser(username, password)) { 
+        if (!isUser(username, password))
+        {
             //add credantials to backend
             currUser = new User(username, password);
             return true;
@@ -173,7 +175,7 @@ public class Backend_API : MonoBehaviour
 
 
     //project functions
-    public string addProject(string title, string  description)
+    public string addProject(string title, string description)
     {
         return currUser.addProject(title, description);
     }
