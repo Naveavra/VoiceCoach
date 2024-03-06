@@ -1,7 +1,7 @@
 from io import BytesIO
 from flask import jsonify ,send_file, request, render_template
 from flask_jwt_extended import jwt_required,get_jwt_identity
-from models import AudioFile , User , Project
+from models import User , Project
 from init import db
 
 def init_file_routes(app):
@@ -16,7 +16,7 @@ def init_file_routes(app):
                 return jsonify({"msg": "Missing user information"}), 400
             file = request.files['file']
             content = file.read()
-            new_file = AudioFile(filename=file.filename, content=content, user=current_user)            
+            new_file = None#AudioFile(filename=file.filename, content=content, user=current_user)            
             project = Project.query.get(user = current_user)
             if project != None:
                 if project.id == project_id:
@@ -34,7 +34,7 @@ def init_file_routes(app):
     @app.route('/files/download/<upload_id>')
     @jwt_required()
     def download_file(upload_id):
-        upload = AudioFile.query.filter_by(id=upload_id).first()
+        upload = None#AudioFile.query.filter_by(id=upload_id).first()
         return send_file(BytesIO(upload.content), attachment_filename=upload.filename, as_attachment=True)
     
 
