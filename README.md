@@ -83,6 +83,13 @@ The application will be accessible at [http://localhost:5000](http://localhost:5
 
 To manage database migrations, use the following commands:
 
+if getting error :
+"ERROR [flask_migrate] Error: Target database is not up to date."
+ run this before migrate & upgrade :
+```bash
+flask --app main.py db stamp head
+```
+
 ```bash
 flask --app main.py db migrate
 flask --app main.py db upgrade
