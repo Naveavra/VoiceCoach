@@ -42,7 +42,7 @@ def init_project_routes(app):
         project = Project(user=current_user,name=name, description=description)
         db.session.add(project)
         db.session.commit()
-        return jsonify({'msg':"success"}), 201
+        return jsonify({'projectId':project.id}), 201
 
     @app.route("/projects/<int:project_id>", methods=["PUT"])
     def update_project(project_id):
