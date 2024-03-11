@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 public class MainMenuConroller : MonoBehaviour
 {
     public TMP_Text notifications;
-    private string[] scenes = { "My_Projects_Page", "Classes", "Teaching_Classes", "Settings" };
+    private string[] scenes = { "My_Projects_Page", "User_Classes_Page", "Teaching_Classes", "Settings" };
     public void MoveToProjectsPage()
     {
         Debug.Log("got here");
@@ -16,7 +16,7 @@ public class MainMenuConroller : MonoBehaviour
     }
     public void MoveToClassesPage()
     {
-        Debug.Log("Not implemented Yet");
+        SceneManager.LoadScene(scenes[1]);
     }
     public void MoveToTeachingClassesPage()
     {

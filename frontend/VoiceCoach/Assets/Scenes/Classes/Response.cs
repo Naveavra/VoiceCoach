@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace MyResponse
+namespace Assets.Scenes.Classes
 {
     public class Response
     {

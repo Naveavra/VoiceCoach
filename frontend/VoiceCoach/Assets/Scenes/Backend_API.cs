@@ -6,9 +6,7 @@ using UnityEditor;
 using System.Collections.Generic;
 // using System.Diagnostics;
 using UnityEngine.UI;
-using MyUser;
-using MyProject;
-using MyResponse;
+using Assets.Scenes.Classes;
 using myToken;
 using myError;
 using myProject;
@@ -46,8 +44,8 @@ public class Backend_API : MonoBehaviour
                 TokenResponse tr = JsonUtility.FromJson<TokenResponse>(res.text);
                 Debug.Log("tr: " + tr);
                 string token = tr.token;
-                string user_id = tr.user_id;
-                currUser = new User(email,token,Int32.Parse(user_id));
+                //TODO: check about id.
+                currUser = new User(email,token);
                 Debug.Log("token: " + token);
                 callback(res);
             }
@@ -62,6 +60,9 @@ public class Backend_API : MonoBehaviour
             
         }));
     }
+
+
+
 
     public void register(string email, string password ,Action<Response> callback)
     {
@@ -88,7 +89,7 @@ public class Backend_API : MonoBehaviour
     public void getUserProjects(Action<List<string>> callback)
     {
         Debug.Log("getting...");
-        string url = backendConfig.ProjectRoute["get_all"] + "/" + currUser.user_id;
+        string url = backendConfig.ProjectRoute["get_all"] + "/" + currUser.email;
         StartCoroutine(GetRequest(url, true, (response) =>
         {
             List<string> ans = new List<string>();
@@ -117,7 +118,7 @@ public class Backend_API : MonoBehaviour
     public string addProject(string title, string description)
     {
         string url = backendConfig.ProjectRoute["create"];
-        url = url + "/" + currUser.user_id;
+        url = url + "/" + currUser.email;
         WWWForm formData = new WWWForm();
         formData.AddField("name", title);
         formData.AddField("description", description);
@@ -125,6 +126,7 @@ public class Backend_API : MonoBehaviour
             Debug.Log(res);
             Debug.Log(res.result);
             if(res.result == "Success"){
+                addProjectResponse apr = JsonUtility.FromJson<addProjectResponse>(res.text);
                 currUser.addProject(title, description);
                 Debug.Log("suc-106");
             }
