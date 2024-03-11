@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine.UI;
 
-namespace MyProject
+namespace Assets.Scenes.Classes
 {
     public class Project
     {

@@ -26,8 +26,6 @@ namespace myError {
 namespace myProject {
 
 
-
-
     [System.Serializable]
     public class ProjectResponse {
         public string description;
@@ -46,5 +44,11 @@ namespace myProject {
     [System.Serializable]
     public class ProjectWrapper {
         public ProjectResponse[] projects;
+    }
+
+    [System.Serializable]
+    public class addProjectResponse
+    {
+        public int projectId;
     }
 }

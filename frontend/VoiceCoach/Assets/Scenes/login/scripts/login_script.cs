@@ -1,11 +1,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
+using Assets.Scenes;
+using System.Net;
+using Assets.Scenes.Classes;
+using System.Security.Cryptography;
 
 public class login_script : MonoBehaviour
 {
@@ -24,18 +27,32 @@ public class login_script : MonoBehaviour
         password = s;
     }
 
+
+    //TODO: FIX WITH ZIV.
     public void checkLogin()
     {
-        Backend_API.instance.login(username, password,(res)=>
+        Backend_API.instance.login(username, password, (res) =>
         {
-            if(res.result == "Success")
+            if (res.result == "Success")
                 SceneManager.LoadScene(sceneName);
             else
-                
+
                 notifications.text = res.text as string;
         });
     }
 
+    /*    public void checkLogin()
+        {
+            if(FrontEndAPI.instance.login(username, password))
+            {
+                SceneManager.LoadScene(sceneName);
+            }
+            else
+            {
+                notifications.text = "Login failed";
+            }
+        }
+    */
     public void registerPage()
     {
         SceneManager.LoadScene("register_page");

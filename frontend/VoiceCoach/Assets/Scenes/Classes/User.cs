@@ -5,25 +5,25 @@ using UnityEngine.Networking;
 using UnityEditor;
 using System.Collections.Generic;
 using System.Diagnostics;
-using MyProject;
 using UnityEngine.UI;
 
-namespace MyUser
+namespace Assets.Scenes.Classes
 {
     public class User
     {
-        public int user_id;
-        public string username;
         public string email;
         public string token;
         public List<Project> projects;
+        public List<int> assignedClasses;
+        public List<int> CreatedClasses;
 
-        public User(string email,string token , int userId)
+        public User(string email,string token)
         {
             this.email = email;
             this.token = token;
-            this.user_id = userId;
-            this.projects = new List<Project>();
+            projects = new List<Project>();
+            assignedClasses = new List<int>();
+            CreatedClasses = new List<int>();  
         }
 
         public void addProject(Project project)

@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using TMPro;
+using System.Security.Cryptography;
 
 public class register_script : MonoBehaviour
 {
@@ -67,8 +68,18 @@ public class register_script : MonoBehaviour
         }
         else
         {
-            Backend_API.instance.register(username, password,(res)=>{
-                if(res.result == "Success")
+/*            if(FrontEndAPI.instance.register(username, password))
+            {
+                SceneManager.LoadScene("login_page");
+            }
+            else
+            {
+                notifications.text = "user already exists";
+            }*/
+            //TODO: Fix with Ziv
+            Backend_API.instance.register(username, password, (res) =>
+            {
+                if (res.result == "Success")
                     SceneManager.LoadScene("login_page");
                 else
                     notifications.text = res.text as string;

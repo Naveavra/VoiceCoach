@@ -26,6 +26,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Python_con.unity
     guid: bcc9d0d31d8e1fe468b6e5b4bdc18c22
+  - enabled: 1
+    path: Assets/Scenes/Users_Classes/User_Classes_Page.unity
+    guid: 33c9ba2d3bcece341a639cfaa81b366c
   m_configObjects:
     com.unity.adaptiveperformance.loader_settings: {fileID: 11400000, guid: 58ba5511858c97d4c966ea899c727868, type: 2}
     com.unity.adaptiveperformance.simulator.provider_settings: {fileID: 11400000, guid: 6e765f1a96ec4124da156b79e739bfad, type: 2}
