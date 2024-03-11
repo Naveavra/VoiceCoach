@@ -2,8 +2,13 @@ from flask import Flask, render_template, request, jsonify
 from models import User
 from init import db
 from flask_jwt_extended import create_access_token
+from ..decorators import logout_required
+
+
+
 def init_auth_routes(app):
     @app.route("/users/login", methods=["POST"])
+    @logout_required
     def login():
         data = request.get_json() if request.is_json else request.values
         print(data)
@@ -23,7 +28,10 @@ def init_auth_routes(app):
                 return jsonify({'error': 'Invalid email or password'}), 401
             access_token = create_access_token(identity=email)
             return jsonify({'user_id' :user.id,'token': access_token }), 200
+        
+
     @app.route("/users/register", methods=['GET','POST'])
+    @logout_required
     def register():
         if request.method == "POST":
             access_token = ""

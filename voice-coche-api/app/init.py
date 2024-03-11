@@ -1,43 +1,36 @@
-from flask import Flask  
+from flask import Flask , Blueprint
 from flask_migrate import Migrate
 from models import db
 from routes import init_routes
+from manage import init_commands
 from flask_jwt_extended import JWTManager
 
-
-def create_app(skip_create_tables=False):
+def create_app():
     app = Flask(__name__)
-    # maybe register blueprints here
-    # configure app
     app.config.from_object("config")
-    print(app.config.get("SQLALCHEMY_DATABASE_URI"))
-    # bootstrap database migrate commands
+    users = Blueprint("users", __name__)
+    activate = Blueprint("activate", __name__)
+
+    # Initialize database
     db.init_app(app)
-    db.app = app
     jwt = JWTManager(app)
-
+    
     try:
-        # Attempt to connect to the database
         with app.app_context():
-            print("Attempting to connect to the database...")
-            if not skip_create_tables:
-                # Add more table names as needed
-                db.create_all()
-                print("All tables created")
-            else:
-                print("Tables already exist or skip_create_tables is set to True. Skipping table creation.")                
+            db.create_all()
     except Exception as e:
-        # Check if tables already exist
-        if "relation" in str(e) and "already exists" in str(e):
-            print("Tables already exist. Skipping table creation.")
-        else:
-            print(f"Error connecting to the database: {e}")
-            raise RuntimeError("Database connection failed")
-            # You can choose to raise an exception, log the error, or handle it differently
+        print(f"Error connecting to the database: {e}")
+        #raise RuntimeError("Database connection failed")
 
+    # Initialize migration
     migrate = Migrate(app, db)
 
-    print("app created")
-    # register routes
+    print("App initialization completed")
+    
+    # Register routes
     init_routes(app)
+    init_commands(app ,users ,activate,db)
+    app.register_blueprint(users)
+    app.register_blueprint(activate)
+
     return app
