@@ -5,7 +5,7 @@ using UnityEngine.UI;
 using TMPro;
 using System.IO;
 using System;
-using UnityEditor.Scripting.Python;
+//using UnityEditor.Scripting.Python;
 
 public class FeedbackAnalyzer : MonoBehaviour
 {
@@ -14,7 +14,7 @@ public class FeedbackAnalyzer : MonoBehaviour
     void Start()
     {
         string path = "Assets/Scenes/py_con/py_scripts/main.py";
-        PythonRunner.RunFile(path);
+        //PythonRunner.RunFile(path);
         string filePath = "Assets/Scenes/py_con/files/feedback.txt";
         try
         {

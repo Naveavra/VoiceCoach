@@ -4,7 +4,9 @@ using UnityEngine;
 using UnityEditor;
 using System;
 using UnityEngine.Networking;
-using System.Runtime.InteropServices.WindowsRuntime;
+using UnityEditor.Scripting.Python;
+using System.Threading.Tasks;
+using System.IO;
 
 public class Sample_script : MonoBehaviour
 {
@@ -21,11 +23,29 @@ public class Sample_script : MonoBehaviour
 
     public AudioSource audioSource;
 
-    public AudioClip uploadedAudioClip; 
-    public bool loop = true;
+    private AudioClip uploadedAudioClip; 
+    public bool loop = false;
 
-    public string path;
-    public string audioType;
+    private string path;
+    private string audioType;
+    private string samplePath = "Assets/Scenes/project/recordings/sample.wav";
+    private string py_words_path = "Assets/Scenes/project/py_scripts/get_words.py";
+    private float counter = 0.0f;
+
+    private string argumentsPath = "Assets/Scenes/project/py_scripts/arguments.json";
+
+    private SampleData data;
+
+    [System.Serializable]
+    public class SampleData
+    {
+        public float offset;
+        public float duration;
+        public string line;
+        public string oldLine;
+        public List<string> syllables;
+
+    }
 
 
 
@@ -59,13 +79,6 @@ public class Sample_script : MonoBehaviour
         return uploadedAudioClip != null;
     }
 
-    private void addClipForSample()
-    {
-        audioSource.loop = loop;
-        audioSource.clip = uploadedAudioClip;
-        audioSource.Play();
-    }
-
 
     public void accessFileExplorer()
     {
@@ -78,6 +91,8 @@ public class Sample_script : MonoBehaviour
             return; // add here line to inform the user the recording given isn't compatible
         }
         StartCoroutine(loadClip());
+        loadWords();
+        //InvokeRepeating(nameof(loadWords), 0.0f, 10.0f);
     }
 
 
@@ -106,9 +121,53 @@ public class Sample_script : MonoBehaviour
             else
                 UnityEngine.Debug.Log("Error: " + webRequest.error);
         }
+        AudioRecorder.SaveRecording(uploadedAudioClip, samplePath);
         audioSource.clip = uploadedAudioClip;
-        audioSource.Play();
+        //audioSource.Play(); only play when recording starts
     }
+
+    private async void loadWords()
+    {
+
+        data = new SampleData()
+        {
+            offset = 0,
+            duration = 30,
+            line = "",
+            oldLine = oldWords,
+            syllables = new List<string>()
+        };
+        try
+        {
+            // Convert the object to a JSON string
+            string jsonData = JsonUtility.ToJson(data, true);
+
+            // Write the JSON string to the file
+            File.WriteAllText(argumentsPath, jsonData);
+        }
+        catch (System.Exception ex)
+        {
+        }
+        Debug.Log("finished json");
+
+        while(counter <= uploadedAudioClip.length)
+
+        await Task.Run(() =>
+        {
+            PythonRunner.RunFile(py_words_path);
+        });
+        Debug.Log("done");
+        counter += data.duration;
+        Debug.Log(uploadedAudioClip.length + " " + counter);
+        string jsonText = File.ReadAllText(argumentsPath);
+
+        // Deserialize the JSON string into a SampleData object
+        data = JsonUtility.FromJson<SampleData>(jsonText);
+
+        Debug.Log($"line: {data.line}");
+        Debug.Log($"Syllables: {data.syllables[0]}");
+    }
+
 
     void FixedUpdate()
     {
