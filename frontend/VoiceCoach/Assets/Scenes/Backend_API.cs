@@ -69,7 +69,7 @@ public class Backend_API : MonoBehaviour
         WWWForm formData = new WWWForm();
         formData.AddField("email", email);
         formData.AddField("password", password);
-        Debug.Log("register" + formData + " " + backendConfig.AuthRoute["register"]);
+        Debug.Log("register" + " " + email + " " + backendConfig.AuthRoute["register"]);
         StartCoroutine(PostRequest(backendConfig.AuthRoute["register"],false, formData,(res)=>{
             if(res.result == "Success"){
                 callback(res);

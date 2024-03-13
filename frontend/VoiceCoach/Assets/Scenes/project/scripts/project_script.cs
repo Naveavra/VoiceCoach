@@ -20,8 +20,10 @@ public class project_script : MonoBehaviour
     public int visualizerSimples;
 
     public AudioSource audioSource;
+    public AudioSource sampleSource;
     public AudioClip recordedAudioClip;
     private bool isRecording = false;
+
 
 
     void Start()
@@ -44,7 +46,7 @@ public class project_script : MonoBehaviour
         while (x <= 2.7f)
         {
             GameObject visClone = Instantiate(vis);
-            visClone.transform.position = new Vector3(x, -0.3f, 1.0f);
+            visClone.transform.position = new Vector3(x, 0.21f, 1.0f);
             visRecordingArray.Add(visClone);
             x = x + 0.3f;
         }
@@ -53,7 +55,7 @@ public class project_script : MonoBehaviour
 
     public void startRecording()
     {
-        if (!isRecording)
+        if (!isRecording && sampleSource.clip != null)
         {
             Debug.Log("Start Recording was invoked");
             recordedAudioClip = audioSource.clip = Microphone.Start(string.Empty, audioSource.loop, 300, 44100);
@@ -62,50 +64,29 @@ public class project_script : MonoBehaviour
             audioSource.Play();
             isRecording = true;
         }
-    }
-
-    private AudioClip TrimSilence(AudioClip clip)
-    {
-        float[] samples = new float[clip.samples];
-        clip.GetData(samples, 0);
-
-        // Trim silence from the beginning
-        int startSample = 0;
-        while (Mathf.Approximately(samples[startSample], 0f) && startSample < samples.Length)
+        else
         {
-            startSample++;
+            Debug.Log("needs to wait for sample");
         }
-
-        // Trim silence from the end
-        int endSample = samples.Length - 1;
-        while (Mathf.Approximately(samples[endSample], 0f) && endSample > 0)
-        {
-            endSample--;
-        }
-
-        // Create a new AudioClip with trimmed data
-        float[] trimmedSamples = new float[endSample - startSample + 1];
-        System.Array.Copy(samples, startSample, trimmedSamples, 0, trimmedSamples.Length);
-
-        AudioClip trimmedClip = AudioClip.Create("TrimmedClip", trimmedSamples.Length, 1, clip.frequency, false);
-        trimmedClip.SetData(trimmedSamples, 0);
-
-        return trimmedClip;
     }
 
 
     public void stopRecording()
     {
-        Debug.Log("Stop Recording was invoked");
         if (isRecording)
         {
+            Debug.Log("Stop Recording was invoked");
             Microphone.End(null);
             isRecording = false;
             audioSource.clip = null; // Stop playing sound from the microphone
-            string filePath = Application.persistentDataPath + "/recordedAudio.wav";
-            AudioRecorder.SaveRecording(TrimSilence(recordedAudioClip), filePath);
+            string filePath = "Assets/Scenes/project/recordings/recordedAudio.wav";
+            AudioRecorder.SaveRecording(filePath, AudioRecorder.TrimSilenceEnds(recordedAudioClip));
             Debug.Log("Recording saved to: " + filePath);
             isRecording = false;
+        }
+        else
+        {
+            Debug.Log("already recording");
         }
     }
 

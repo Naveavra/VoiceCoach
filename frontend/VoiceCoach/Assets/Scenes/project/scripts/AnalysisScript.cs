@@ -3,6 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+//using UnityEditor.Scripting.Python;
+using System.Threading.Tasks;
+using System.IO;
+using Assets.Scenes.project.data;
+using System;
+using System.Diagnostics;
+using Assets.Scenes.project.python;
+
 
 public class AnalyzeScript : MonoBehaviour
 {
@@ -14,12 +22,65 @@ public class AnalyzeScript : MonoBehaviour
     public List<string> userNotes = new List<string>();
     public List<string> sampleNotes = new List<string>();
     private int countIntervals = 0;
+    public TMP_Text line_txt;
+    public TMP_Text user_line_txt;
+    private float user_line_dur = 20;
+    private float user_offset = 0;
+
+
+    private string argumentsPath = "Assets/Scenes/project/py_scripts/arguments.json";
+    private string userArgumentsPath = "Assets/Scenes/project/py_scripts/user_arguments.json";
+    private string py_words_path = "Assets/Scenes/project/py_scripts/get_words.py";
+    private string user_py_words_path = "Assets/Scenes/project/py_scripts/user_get_words.py";
+    private string user_path = "Assets/Scenes/project/recordings/recordedAudio.wav";
+
+    private PythonManager py_manager = new PythonManager();
+
+    void Start()
+    {
+        py_manager.StartPythonProcess();
+    }
 
 
     public void startAnalyze()
     {
-        InvokeRepeating(nameof(printPitch), 0, 1.0f / estimateRate);
-        InvokeRepeating(nameof(analyze), 3.0f, 3.0f);
+        if (userAudioSource.clip != null)
+        {
+            SampleData userData = new SampleData()
+            {
+                path = user_path,
+                offset = user_offset,
+                duration = user_line_dur,
+                lines = new List<string>(),
+                syllables = new List<string>()
+            };
+            try
+            {
+                // Convert the object to a JSON string
+                string jsonData = JsonUtility.ToJson(userData, true);
+
+                // Write the JSON string to the file
+                File.WriteAllText(userArgumentsPath, jsonData);
+            }
+            catch (System.Exception ex)
+            {
+            }
+            InvokeRepeating(nameof(printPitch), 0, 1.0f / estimateRate);
+            InvokeRepeating(nameof(getWordsUser), user_line_dur, user_line_dur);
+        }
+        else
+        {
+            UnityEngine.Debug.Log("the user clip is not ready for use");
+        }
+
+        if(sampleAudioSource.clip != null)
+        {
+            getWords();
+        }
+        else
+        {
+            UnityEngine.Debug.Log("the sample clip is not ready for use");
+        }
     }
 
     public void endAnalyze()
@@ -78,50 +139,71 @@ public class AnalyzeScript : MonoBehaviour
         return newClip;
     }
 
-    void analyze()
+    private async void getWords()
     {
-        //TODO: check if the number for comparison is ok
-        if(userNotes.Count > sampleNotes.Count+(userNotes.Count/5)) 
-        { 
 
-        }
-        //using this to detect syllables, tempo and strength
-        if (countIntervals * 3 + 3 < sampleAudioSource.clip.length)
+        string jsonText = File.ReadAllText(argumentsPath);
+        // Deserialize the JSON string into a SampleData object
+        SampleData data = JsonUtility.FromJson<SampleData>(jsonText);
+
+        line_txt.text = data.lines[0];
+        float sampleLength = sampleAudioSource.clip.length;
+        while (data.offset < sampleLength)
         {
-            AudioClip userSubClip = MakeSubclip(userAudioSource.clip, countIntervals * 3 + 1, countIntervals * 3 + 4);
-            Debug.Log("saved");
-            AudioClip sampleSubClip = MakeSubclip(sampleAudioSource.clip, countIntervals * 3, countIntervals * 3 + 3);
+            UnityEngine.Debug.Log(data.offset + " " + sampleLength);
+            await Task.Run(() =>
+            {
+                //py_manager.RunPythonScriptFile(py_words_path);
+                //py_manager.RunIronPythonScript(py_words_path);
+                runPython(py_words_path);
+                //PythonRunner.RunFile(py_words_path);
+            });
+
+            jsonText = File.ReadAllText(argumentsPath);
+            data = JsonUtility.FromJson<SampleData>(jsonText);
         }
+
     }
 
-
-    private AudioClip TrimSilence(AudioClip clip)
+    private async void getWordsUser()
     {
-        float[] samples = new float[clip.samples];
-        clip.GetData(samples, 0);
+        string jsonText = File.ReadAllText(argumentsPath);
+        // Deserialize the JSON string into a SampleData object
+        SampleData data = JsonUtility.FromJson<SampleData>(jsonText);
 
-        // Trim silence from the beginning
-        int startSample = 0;
-        while (Mathf.Approximately(samples[startSample], 0f) && startSample < samples.Length)
+        line_txt.text = data.lines[(int)Math.Floor(user_offset / 20)+1];
+
+        AudioRecorder.SaveRecording(user_path, AudioRecorder.TrimSilenceEnds(MakeSubclip(userAudioSource.clip, 0, user_offset+user_line_dur+5)));
+        await Task.Run(() =>
         {
-            startSample++;
-        }
+            //py_manager.RunPythonScriptFile(user_py_words_path);
+            runPython(user_py_words_path);
+            //PythonRunner.RunFile(user_py_words_path);
+        });
+        jsonText = File.ReadAllText(userArgumentsPath);
+        // Deserialize the JSON string into a SampleData object
+        data = JsonUtility.FromJson<SampleData>(jsonText);
+        user_offset = data.offset;
+        user_line_txt.text = data.lines[data.lines.Count - 1];
+    }
 
-        // Trim silence from the end
-        int endSample = samples.Length - 1;
-        while (Mathf.Approximately(samples[endSample], 0f) && endSample > 0)
+    private void runPython(string path)
+    {
+        string pythonExe = "Library/PythonInstall/python.exe";  // Modify if Python is not in your system PATH
+
+        ProcessStartInfo start = new ProcessStartInfo
         {
-            endSample--;
+            FileName = pythonExe,
+            Arguments = path,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using (Process process = Process.Start(start))
+        {
+            process.WaitForExit();
+
         }
-
-        // Create a new AudioClip with trimmed data
-        float[] trimmedSamples = new float[endSample - startSample + 1];
-        System.Array.Copy(samples, startSample, trimmedSamples, 0, trimmedSamples.Length);
-
-        AudioClip trimmedClip = AudioClip.Create("TrimmedClip", trimmedSamples.Length, 1, clip.frequency, false);
-        trimmedClip.SetData(trimmedSamples, 0);
-
-        return trimmedClip;
     }
 
 }

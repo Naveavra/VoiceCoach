@@ -4,9 +4,12 @@ using UnityEngine;
 using UnityEditor;
 using System;
 using UnityEngine.Networking;
-using UnityEditor.Scripting.Python;
 using System.Threading.Tasks;
 using System.IO;
+using Assets.Scenes.project.data;
+using System.Diagnostics;
+using AnotherFileBrowser.Windows;
+using TMPro;
 
 public class Sample_script : MonoBehaviour
 {
@@ -17,6 +20,7 @@ public class Sample_script : MonoBehaviour
     public float minHeight;
     public float maxHeight;
     public float updateSentivity;
+    public TMP_Text wait_txt;
 
 
     public int visualizerSimples;
@@ -30,22 +34,10 @@ public class Sample_script : MonoBehaviour
     private string audioType;
     private string samplePath = "Assets/Scenes/project/recordings/sample.wav";
     private string py_words_path = "Assets/Scenes/project/py_scripts/get_words.py";
-    private float counter = 0.0f;
 
     private string argumentsPath = "Assets/Scenes/project/py_scripts/arguments.json";
 
     private SampleData data;
-
-    [System.Serializable]
-    public class SampleData
-    {
-        public float offset;
-        public float duration;
-        public string line;
-        public string oldLine;
-        public List<string> syllables;
-
-    }
 
 
 
@@ -69,7 +61,7 @@ public class Sample_script : MonoBehaviour
         while (x <= 2.7f)
         {
             GameObject visClone = Instantiate(vis);
-            visClone.transform.position = new Vector3(x, 2.5f, 1.0f);
+            visClone.transform.position = new Vector3(x, 3.43f, 1.0f);
             visSampleArray.Add(visClone);
             x = x + 0.3f;
         }
@@ -82,16 +74,28 @@ public class Sample_script : MonoBehaviour
 
     public void accessFileExplorer()
     {
-        path = EditorUtility.OpenFilePanel("select voice recording", "", "");
+        //path = EditorUtility.OpenFilePanel("select voice recording", "", "");
+        var bp = new BrowserProperties();
+        bp.filter = "";
+        bp.filterIndex = 0;
 
-        audioType = path.Split('.')[path.Split('.').Length - 1];
-        if (!String.Equals(audioType, "wav") && !String.Equals(audioType, "mp3"))
+        new FileBrowser().OpenFileBrowser(bp, filePath =>
         {
-            Debug.Log(audioType);
-            return; // add here line to inform the user the recording given isn't compatible
-        }
-        StartCoroutine(loadClip());
-        loadWords();
+            path = filePath;
+            UnityEngine.Debug.Log(path);
+            audioType = path.Split('.')[path.Split('.').Length - 1];
+            if (!String.Equals(audioType, "wav") && !String.Equals(audioType, "mp3"))
+            {
+                UnityEngine.Debug.Log(audioType);
+                return; // add here line to inform the user the recording given isn't compatible
+            }
+            else
+            {
+                
+                StartCoroutine(loadClip());
+                loadWords();
+            }
+        });
         //InvokeRepeating(nameof(loadWords), 0.0f, 10.0f);
     }
 
@@ -99,6 +103,7 @@ public class Sample_script : MonoBehaviour
     private IEnumerator loadClip()
     {
         audioSource.Stop();
+        audioSource.clip = null;
         if (String.Equals(audioType, "mp3"))
         {
             UnityWebRequest webRequest = UnityWebRequest.Get(path);
@@ -121,8 +126,7 @@ public class Sample_script : MonoBehaviour
             else
                 UnityEngine.Debug.Log("Error: " + webRequest.error);
         }
-        AudioRecorder.SaveRecording(uploadedAudioClip, samplePath);
-        audioSource.clip = uploadedAudioClip;
+        AudioRecorder.SaveRecording(samplePath, uploadedAudioClip);
         //audioSource.Play(); only play when recording starts
     }
 
@@ -131,10 +135,10 @@ public class Sample_script : MonoBehaviour
 
         data = new SampleData()
         {
+            path = samplePath,
             offset = 0,
-            duration = 30,
-            line = "",
-            oldLine = oldWords,
+            duration = 20,
+            lines = new List<string>(),
             syllables = new List<string>()
         };
         try
@@ -148,24 +152,16 @@ public class Sample_script : MonoBehaviour
         catch (System.Exception ex)
         {
         }
-        Debug.Log("finished json");
-
-        while(counter <= uploadedAudioClip.length)
+        UnityEngine.Debug.Log("finished json");
 
         await Task.Run(() =>
         {
-            PythonRunner.RunFile(py_words_path);
+            runPython(py_words_path);
+            //PythonRunner.RunFile(py_words_path);
         });
-        Debug.Log("done");
-        counter += data.duration;
-        Debug.Log(uploadedAudioClip.length + " " + counter);
-        string jsonText = File.ReadAllText(argumentsPath);
-
-        // Deserialize the JSON string into a SampleData object
-        data = JsonUtility.FromJson<SampleData>(jsonText);
-
-        Debug.Log($"line: {data.line}");
-        Debug.Log($"Syllables: {data.syllables[0]}");
+        UnityEngine.Debug.Log("done");
+        wait_txt.text = "done";
+        audioSource.clip = uploadedAudioClip;
     }
 
 
@@ -176,6 +172,26 @@ public class Sample_script : MonoBehaviour
         {
             float y = Mathf.Clamp(Mathf.Lerp(visSampleArray[i].transform.localScale.y, minHeight + (spectrumData[i] * (maxHeight - minHeight) * 50.0f), updateSentivity * 0.5f), minHeight, maxHeight);
             visSampleArray[i].transform.localScale = new Vector3(0.1f, y, 1.0f);
+        }
+    }
+
+    private void runPython(string path)
+    {
+        string pythonExe = "Library/PythonInstall/python.exe";  // Modify if Python is not in your system PATH
+
+        ProcessStartInfo start = new ProcessStartInfo
+        {
+            FileName = pythonExe,
+            Arguments = path,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using (Process process = Process.Start(start))
+        {
+            process.WaitForExit();
+
         }
     }
 }

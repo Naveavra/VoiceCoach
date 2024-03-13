@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify
 from models import User
 from init import db
 from flask_jwt_extended import create_access_token
-from ..decorators import logout_required
+from decorators import logout_required
 
 
 

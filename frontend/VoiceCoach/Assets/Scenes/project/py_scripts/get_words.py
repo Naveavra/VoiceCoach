@@ -24,12 +24,14 @@ def combine_strings_with_overlap(str1, str2):
     return overlap_length
 
 
-samplePath = "Assets/Scenes/project/recordings/sample.wav"
 argumentsPath = "Assets/Scenes/project/py_scripts/arguments.json"
 data = None
 with open(argumentsPath, 'r') as file:
         # Load the JSON data from the file
         data = json.load(file)
+
+
+samplePath = data['path']
 
 recognizer = sr.Recognizer()
 song = sr.AudioFile(samplePath)
@@ -40,17 +42,24 @@ song_dur = get_duration_wave(samplePath)
 with song as source:
     recognizer.adjust_for_ambient_noise(song)
 
-old_str = data['oldLine']
+old_str = ""
+if len(data['lines']) > 0:
+    old_str = data['lines'][len(data['lines'])-1]
 song_aud = None
 with song as source:
-    song_aud = recognizer.record(song, duration = (min(duration+5, song_dur-offset+5)), offset = max(0, (min(offset-5, song_dur))))
-song_txt = recognizer.recognize_google(song_aud, language = "iw-IL")
+    song_aud = recognizer.record(song, duration = math.floor((min(duration+5, song_dur-offset+5))), offset = math.floor(max(0, (min(offset-5, song_dur)))))
+
+try:
+    song_txt = recognizer.recognize_google(song_aud, language="iw-IL")
+# Rest of your code
+except sr.UnknownValueError as e:
+    song_txt = ""
+
 song_txt = song_txt[combine_strings_with_overlap(old_str, song_txt):]
-old_str = song_txt
+data['lines'].append(song_txt)
 #song_txt = str(offset) + ":" + str(offset+duration) + " " +song_txt + '\n'
 
-
-all_syllables = []
+str_syllables = ""
 words = word_tokenize(song_txt)
 syllable_tokenizer = SyllableTokenizer()
 syllables = [syllable_tokenizer.tokenize(word) for word in words]
@@ -58,17 +67,16 @@ for word_syllables in syllables:
     str_syllable = ""
     for syllable in word_syllables:
         str_syllable = str_syllable + "," + syllable
-    all_syllables.append(str_syllable)
-
-song_txt = song_txt + '\n'
+    str_syllables = str_syllables + " " + str_syllable
+data['syllables'].append(str_syllables)
 
 # Create an instance of the SampleData class
 sample_data = {
+    'path': data['path'],
     'offset': offset + duration,
     'duration': duration,
-    'line': song_txt,
-    'oldLine': song_txt,
-    'syllables': all_syllables
+    'lines': data['lines'],
+    'syllables': data['syllables']
 }
 
 with open(argumentsPath, 'w') as file:

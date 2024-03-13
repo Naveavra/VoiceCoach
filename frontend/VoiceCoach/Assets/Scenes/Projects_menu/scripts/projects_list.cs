@@ -6,7 +6,6 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
 using Assets.Scenes.Classes;
-using UnityEditor.TextCore.Text;
 
 public class projects_list : MonoBehaviour
 {

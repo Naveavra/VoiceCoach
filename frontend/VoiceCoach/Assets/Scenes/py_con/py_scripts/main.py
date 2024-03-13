@@ -46,6 +46,11 @@ def load_and_normalize_audio(filePath, trim_db=20):
     y_normalized = y_trimmed / np.max(np.abs(y_trimmed))
     return y_normalized, sr
 
+def reduce_noise(file_path):
+     audio_data, sr = librosa.load(file_path)
+     reduced_noise_audio = nr.reduce_noise(audio_clip=audio_data, noise_clip=audio_data)
+     return reduced_noise_audio
+
 
 # def calculate_similarity(y1, y2):
 #     """Calculate and print DTW distance and correlation peak."""

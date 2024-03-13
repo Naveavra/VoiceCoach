@@ -1,0 +1,5 @@
+python -m pip install librosa
+python -m pip install speechRecognition
+python -m pip install numpy
+python -m pip install math
+python -m pip install wave
