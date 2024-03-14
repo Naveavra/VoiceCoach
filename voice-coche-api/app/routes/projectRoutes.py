@@ -9,24 +9,9 @@ def init_project_routes(app):
     @jwt_required()
     @authenticate
     def get_all_projects(current_user):
-        # current_user = get_jwt_identity()
-        # current_user = User.query.filter_by(email=current_user).first()
-        # if current_user.email != email:
-        #     return jsonify({"message": "Unauthorized"}), 401
         print(current_user.email)
         projects = Project.query.filter_by(creator_email=current_user.email).all()
         return jsonify({"projects":[project.simpleSerialize() for project in projects]})
-
-    # @app.route("/projects/get_one/<int:user_id>/<int:project_id>", methods=["GET"])
-    # def get_project(user_id,project_id):
-    #     project = Project.query.get(project_id)
-    #     if not project:
-    #         return jsonify({"message": "Project not found"}), 404
-    #     sample_clip = project.sample_clip
-    #     sample_clip = cipher_suite.decrypt(sample_clip)
-    #     recorings = []
-        
-    #     return jsonify(project.serialize())
 
     @app.route("/projects/create", methods=["POST"])
     @jwt_required()
