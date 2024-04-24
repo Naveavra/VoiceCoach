@@ -57,8 +57,7 @@ def init_auth_routes(app,login_manager,mail):
                     html = render_template("confirm_email.html", confirm_url=confirm_url)
                     subject = "Please confirm your email"
                     send_email(app,mail,email, subject, html)
-                
-                    #todo: remove the access token                
+                           
                     return jsonify({'msg':'email send success'}), 200
                 except Exception as e:
                     print(e)
