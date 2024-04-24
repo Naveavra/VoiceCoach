@@ -9,9 +9,9 @@ def init_project_routes(app):
     @jwt_required()
     @authenticate
     def get_all_projects(current_user):
+        print(current_user.email)
         projects = Project.query.filter_by(creator_email=current_user.email).all()
         return jsonify({"projects":[project.simpleSerialize() for project in projects]})
-
 
     @app.route("/projects/create", methods=["POST"])
     @jwt_required()
