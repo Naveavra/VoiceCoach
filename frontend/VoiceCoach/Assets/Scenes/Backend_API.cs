@@ -1,15 +1,15 @@
 using System;
-using System.Collections;
 using UnityEngine;
-using UnityEngine.Networking;
-using UnityEditor;
 using System.Collections.Generic;
-// using System.Diagnostics;
 using UnityEngine.UI;
 using Assets.Scenes.Classes;
 using myToken;
 using myError;
 using myProject;
+using System.IO;
+using UnityEngine.Networking;
+using System.Collections;
+using NAudio.Wave;
 
 // using Api.config;
 public class Backend_API : MonoBehaviour
@@ -86,13 +86,13 @@ public class Backend_API : MonoBehaviour
         }));
     }
 
-    public void getUserProjects(Action<List<string>> callback)
+    public void getUserProjects(Action<List<Project>> callback)
     {
         Debug.Log("getting...");
-        string url = backendConfig.ProjectRoute["get_all"] + "/" + currUser.email;
+        string url = backendConfig.ProjectRoute["get_all"] + "/" + UnityWebRequest.EscapeURL(currUser.email);
         StartCoroutine(GetRequest(url, true, (response) =>
         {
-            List<string> ans = new List<string>();
+            List<Project> ans = new List<Project>();
             if (response.result == "Success")
             {
                 Debug.Log("Request successful");
@@ -100,25 +100,27 @@ public class Backend_API : MonoBehaviour
                 ProjectWrapper wrapper = JsonUtility.FromJson<ProjectWrapper>(projectsData);
                 foreach (var project in wrapper.projects)
                 {
-                    Debug.Log("Project Name: " + project.name);
-                    Debug.Log("Project Description: " + project.description);
-                    ans.Add(project.name);
+                    Project p = new Project(project);
+                    ans.Add(p);
+                    currUser.addProject(p);
                 }
             }
             else
             {
                 Debug.LogError("Request failed: " + response.error);
             }
+
+            foreach(var project in ans)
+                Debug.Log("Project Name: " + project.title);
             callback(ans);
         }));
     }
 
 
     //project functions
-    public string addProject(string title, string description)
+    public void addProject(string title, string description)
     {
-        string url = backendConfig.ProjectRoute["create"];
-        url = url + "/" + currUser.email;
+        string url = backendConfig.ProjectRoute["create"] + "/" + UnityWebRequest.EscapeURL(currUser.email);
         WWWForm formData = new WWWForm();
         formData.AddField("name", title);
         formData.AddField("description", description);
@@ -127,33 +129,98 @@ public class Backend_API : MonoBehaviour
             Debug.Log(res.result);
             if(res.result == "Success"){
                 addProjectResponse apr = JsonUtility.FromJson<addProjectResponse>(res.text);
-                currUser.addProject(title, description);
+                currUser.addProject(apr.projectId, title, description);
                 Debug.Log("suc-106");
             }
             else{
                 Debug.Log("fail-109");
             }
         }));
-        return "success";
     }
 
-    public string addSampleForUser(string title, AudioClip sample)
+    public void setCurrProject(string name)
     {
-        return currUser.addSampleForProject(title, sample);
+        currProject = currUser.getProject(name);
     }
 
-    public string addUserSampleForUser(string title, AudioClip userSample)
+    public IEnumerator UpdateProjectWithSample(AudioClip sample)
     {
-        return currUser.addUserSampleForProject(title, userSample);
+        // Convert AudioClip to byte array
+        byte[] audioData = ConvertToByteArray(sample);
+
+        // Convert byte array to Base64 string (if needed)
+        string base64Audio = System.Convert.ToBase64String(audioData);
+
+        // Create JSON data
+        string jsonData = "{\"sample\":\"" + base64Audio + "\"}";
+
+        // Create UnityWebRequest
+        UnityWebRequest www = UnityWebRequest.Put(backendConfig.ProjectRoute["add_sample"] + "/" + UnityWebRequest.EscapeURL(currProject.id+""), jsonData);
+        www.method = "PUT";
+        www.SetRequestHeader("Content-Type", "application/json");
+        www.SetRequestHeader("Authorization", "Bearer " + currUser.token);
+
+        // Send request
+        yield return www.SendWebRequest();
+
+        if (www.result != UnityWebRequest.Result.Success)
+        {
+            Debug.Log(www.error);
+        }
+        else
+        {
+            Debug.Log("Sample added to project successfully!");
+            currUser.addSampleForProject(currProject.title, sample);
+        }
     }
+
+    public void AddSampleToProject(AudioClip sample)
+    {
+        StartCoroutine(UpdateProjectWithSample(sample));
+    }
+
+
+    //used to send audio files
+    byte[] ConvertToByteArray(AudioClip clip)
+    {
+        // Convert AudioClip to WAV byte array
+        using (MemoryStream memoryStream = new MemoryStream())
+        {
+            using (BinaryWriter writer = new BinaryWriter(memoryStream))
+            {
+                // Write WAV header
+                writer.Write(new char[4] { 'R', 'I', 'F', 'F' });
+                writer.Write(36 + clip.samples * 2);
+                writer.Write(new char[4] { 'W', 'A', 'V', 'E' });
+                writer.Write(new char[4] { 'f', 'm', 't', ' ' });
+                writer.Write(16);
+                writer.Write((ushort)1);
+                writer.Write((ushort)clip.channels);
+                writer.Write(clip.frequency);
+                writer.Write(clip.frequency * clip.channels * 2);
+                writer.Write((ushort)(clip.channels * 2));
+                writer.Write((ushort)16);
+                writer.Write(new char[4] { 'd', 'a', 't', 'a' });
+                writer.Write(clip.samples * 2);
+
+                // Write audio data
+                float[] samples = new float[clip.samples * clip.channels];
+                clip.GetData(samples, 0);
+                foreach (float sample in samples)
+                {
+                    writer.Write((short)(sample * 32767f));
+                }
+            }
+
+            return memoryStream.ToArray();
+        }
+    }
+    
+
 
     public void getCurProject(string name)
     {
-        foreach (Project project in currUser.projects)
-            if (project.title == name)
-            {
-                currProject = project;
-            }
+        currProject = currUser.getProject(name);
     }
 
 

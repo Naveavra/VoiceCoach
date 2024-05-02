@@ -59,8 +59,10 @@ class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     creator_email = db.Column(db.String(128), db.ForeignKey('user.email'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.String(255), nullable=True)
+    description = db.Column(db.Text, nullable=True)
     sample_clip = db.Column(db.LargeBinary, nullable=True)
+    sample_lines = db.Column(db.Text, nullable=True)
+    sample_syllables = db.Column(db.Text, nullable=True)
     sessions = db.relationship('Session', backref='project', lazy=True)
     created_at_project = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
 

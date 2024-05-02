@@ -43,7 +43,8 @@ def init_auth_routes(app,login_manager,mail):
             password = data.get('password')
             name = email.split('@')[0]
             print(email, password,name)
-            existing_user = User.query.filter_by(email=email).first()
+            existing_user = db.session.query(User).filter(User.email==email).all()
+            print(len(existing_user))
             if existing_user:
                 return jsonify({'error': 'User already exists'}), 400
             else:
