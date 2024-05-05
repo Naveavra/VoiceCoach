@@ -26,12 +26,14 @@ public class projects_list : MonoBehaviour
         name_input.onEndEdit.AddListener(readName);
         desc_input.onEndEdit.AddListener(readDesc);
         Debug.Log("trying gets projects");
+
         Backend_API.instance.getUserProjects((ans)=>{
             foreach (Project project in ans)
             {
                 Button newProject = Instantiate(projectButton);
                 newProject.gameObject.SetActive(true);
                 newProject.transform.SetParent(parent.transform, true);
+
                 newProject.transform.GetChild(0).GetComponent<TMP_Text>().text = project.title;
                 projectsButtons.Add(newProject);
             }

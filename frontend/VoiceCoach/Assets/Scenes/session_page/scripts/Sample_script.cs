@@ -98,16 +98,20 @@ public class Sample_script : MonoBehaviour
     }
 
 
-    private IEnumerator loadClip()
+    private IEnumerator loadClip(Action onComplete)
     {
+        Debug.Log("enter loading");
         audioSource.Stop();
         if (String.Equals(audioType, "mp3"))
         {
             UnityWebRequest webRequest = UnityWebRequest.Get(path);
             yield return webRequest.SendWebRequest();
+            Debug.Log("sending mp3");
             if (webRequest.result == UnityWebRequest.Result.Success)
             {
                 uploadedAudioClip = NAudioPlayer.FromMp3Data(webRequest.downloadHandler.data);
+                Debug.Log("Loadclip");
+                Debug.Log(uploadedAudioClip);
             }
             else
                 UnityEngine.Debug.Log("Error: " + webRequest.error);
@@ -115,13 +119,17 @@ public class Sample_script : MonoBehaviour
         else if (String.Equals(audioType, "wav"))
         {
             UnityWebRequest webRequest = UnityWebRequestMultimedia.GetAudioClip(path, AudioType.WAV);
+            Debug.Log("sending wav");
             yield return webRequest.SendWebRequest();
             if (webRequest.result == UnityWebRequest.Result.Success)
             {
+                Debug.Log("setting wav");
                 uploadedAudioClip = DownloadHandlerAudioClip.GetContent(webRequest);
+                Debug.Log("131");
+                Debug.Log(uploadedAudioClip);
             }
             else
-                UnityEngine.Debug.Log("Error: " + webRequest.error);
+                Debug.Log("Error: " + webRequest.error);
         }
         else {
             Debug.Log("file type is not supported");

@@ -18,6 +18,7 @@ public class Backend_API : MonoBehaviour
     //backend data
     public User currUser;
     public Project currProject;
+    public SimpleProject simpleproject;
     public BackendConfig backendConfig;
     public static Backend_API instance;
 
@@ -27,6 +28,8 @@ public class Backend_API : MonoBehaviour
         {
             DontDestroyOnLoad(gameObject);
             this.currUser = null;
+            this.currProject = null;
+            this.simpleproject = null;
             instance = this;
             backendConfig = new BackendConfig();
         }
@@ -115,6 +118,12 @@ public class Backend_API : MonoBehaviour
             callback(ans);
         }));
     }
+    public void setSimpleProject(SimpleProject sp)
+    {
+        Debug.Log("setting the project");
+        simpleproject = sp;
+        Debug.Log(simpleproject.id);
+    }
 
 
     //project functions
@@ -141,6 +150,14 @@ public class Backend_API : MonoBehaviour
     public void setCurrProject(string name)
     {
         currProject = currUser.getProject(name);
+    }
+    public void uploadSample(AudioClip ac,Action<Response> callback){
+        string url = backendConfig.ProjectRoute["uploade_main"];
+        url = url + "/" + simpleproject.id;
+        Debug.Log("trying to uplaod the sample" + url);
+        Debug.Log(ac);
+        StartCoroutine(SendAudio(ac,url,callback));
+        Debug.Log("uploade done");
     }
 
     public IEnumerator UpdateProjectWithSample(AudioClip sample)
@@ -322,7 +339,67 @@ public class Backend_API : MonoBehaviour
             }
         }
     }
+    public IEnumerator SendAudio(AudioClip ac,string url,Action<Response> callback)
+    {
+        // Convert AudioClip to byte array
+        // float[] samples = new float[audioClip.samples * audioClip.channels];
+        // audioClip.GetData(samples, 0);
+        // byte[] audioData = new byte[samples.Length * 4];
+        // Buffer.BlockCopy(samples, 0, audioData, 0, audioData.Length);
 
+        // Create a UnityWebRequest
+        //UnityWebRequest webRequest = UnityWebRequest.PostWwwForm(url, "POST");
+
+       
+
+        // // Send the request
+        // yield return webRequest.SendWebRequest();
+        Debug.Log("288");
+        Debug.Log("ac:");
+        Debug.Log(ac);
+        // Convert the audio clip to a byte array
+       // Create a float array to hold the audio data
+        float[] samples = new float[ac.samples * ac.channels];
+        ac.GetData(samples, 0);
+
+        // Convert the float array to a byte array
+        byte[] audioData = ConvertToByteArray(samples);
+        // Create a UnityWebRequest
+        // Attach audio data as bytes
+        // webRequest.uploadHandler = new UploadHandlerRaw(audioData);
+
+        // Set the method to POST
+        //webRequest.method = UnityWebRequest.kHttpVerbPOST;
+
+        WWWForm form = new WWWForm();
+        form.AddBinaryData("audio", audioData, "audio.wav", "audio/wav");
+
+    // Create a UnityWebRequest
+        UnityWebRequest webRequest = UnityWebRequest.Post(url, form);
+
+        // Set the content type
+        //webRequest.SetRequestHeader("Content-Type", "audio/wav");
+        webRequest.SetRequestHeader("Authorization", "Bearer " + currUser.token);
+        // Send the request
+        yield return webRequest.SendWebRequest();
+
+        string text = webRequest.downloadHandler.text;
+        Response response = new Response.ResponseBuilder()
+        .WithResult(webRequest.result == UnityWebRequest.Result.Success ? "Success" : "Fail")
+        .WithStatusCode((int) webRequest.responseCode)
+        .WithError(webRequest.error)
+        .WithData(text)
+        .Build();
+        callback(response);
+    }
+
+    // Method to convert float array to byte array
+byte[] ConvertToByteArray(float[] floatArray)
+{
+    byte[] byteArray = new byte[floatArray.Length * 4];
+    Buffer.BlockCopy(floatArray, 0, byteArray, 0, byteArray.Length);
+    return byteArray;
+}
     //getting image from backend
     public IEnumerator GetImageRequest(Image img, string url)
     {

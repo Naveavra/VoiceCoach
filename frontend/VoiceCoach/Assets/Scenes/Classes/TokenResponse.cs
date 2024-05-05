@@ -28,16 +28,14 @@ namespace myProject {
 
     [System.Serializable]
     public class ProjectResponse {
-        public string description;
         public int id;
         public string name;
-        public int user_id;
+        public string description;
 
-        public ProjectResponse(string description,int id, string name, int user_id ) {
-            this.description = description;
+        public ProjectResponse(int id, string name,string description ) {
             this.id = id;
             this.name = name;
-            this.user_id = user_id;
+            this.description = description;
         }
     }
 

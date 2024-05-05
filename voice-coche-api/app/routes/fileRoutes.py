@@ -2,10 +2,8 @@ from io import BytesIO
 import io
 from flask import jsonify ,send_file, request, render_template
 from flask_jwt_extended import jwt_required,get_jwt_identity
-from models import User , Project ,Session
+from models import User , Project
 from init import db
-
-import time
 
 
 from cryptography.fernet import Fernet
@@ -67,4 +65,6 @@ def init_file_routes(app):
     def download_file(upload_id):
         upload = None#AudioFile.query.filter_by(id=upload_id).first()
         return send_file(BytesIO(upload.content), attachment_filename=upload.filename, as_attachment=True)
+    
+
     
