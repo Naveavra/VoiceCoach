@@ -31,13 +31,13 @@ namespace Assets.Scenes.Classes
             this.projects.Add(project);
         }
               
-        public string addProject(string title, string description)
+        public string addProject(int id , string title, string description)
         {
             foreach (Project project in projects)
                 if (project.title == title)
                     return "the project name is already taken";
 
-            projects.Add(new Project(title, description));
+            projects.Add(new Project(id,title, description));
             return "";
 
         }

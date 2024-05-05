@@ -11,7 +11,7 @@ namespace Assets.Scenes.Classes
     public class TaskProject : Project
     {
         public List<Notification> Feedbacks { get; set; }
-        public TaskProject(string title, string description) : base(title, description)
+        public TaskProject(int id,string title, string description) : base(id,title, description)
         {
         }
     }

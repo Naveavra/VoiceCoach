@@ -11,13 +11,15 @@ namespace Assets.Scenes.Classes
 {
     public class Project
     {
+        int id;
         public string title;
         public string description;
         public AudioClip sample;
         public List<AudioClip> userSamples;
 
-        public Project(string title, string description)
+        public Project(int id,string title, string description)
         {
+            this.id = id;
             this.title = title;
             this.description = description;
             sample = null;

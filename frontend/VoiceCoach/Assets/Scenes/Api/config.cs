@@ -22,6 +22,9 @@ public class BackendConfig : ScriptableObject
         ProjectRoute = new Dictionary<string, string>();
         ProjectRoute["create"] = backendPath + "projects/create";
         ProjectRoute["get_all"] = backendPath + "projects/get_all";
+        ProjectRoute["uploade_main"] = backendPath + "projects/uploade_main";
+    
+
         
         
         
