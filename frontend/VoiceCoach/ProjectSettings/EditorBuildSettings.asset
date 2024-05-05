@@ -9,7 +9,7 @@ EditorBuildSettings:
     path: Assets/Scenes/SampleScene.unity
     guid: 2cda990e2423bbf4892e6590ba056729
   - enabled: 1
-    path: Assets/Scenes/Login/login_page.unity
+    path: Assets/Scenes/login/login_page.unity
     guid: 3fc8acdd13e6c734bafef6554d6fdbcd
   - enabled: 1
     path: Assets/Scenes/Main_menu/Main_menu_Page.unity
@@ -18,10 +18,10 @@ EditorBuildSettings:
     path: Assets/Scenes/Projects_menu/My_Projects_Page.unity
     guid: 4d948decc1b2c50479ae595277516e7e
   - enabled: 1
-    path: Assets/Scenes/Register/register_page.unity
+    path: Assets/Scenes/register/register_page.unity
     guid: c3cacb4623be059409a8710fd22442e5
   - enabled: 1
-    path: Assets/Scenes/project/project_page.unity
+    path: Assets/Scenes/session_page/session_page.unity
     guid: 0f2fecace9cf66e499970b76f01a533c
   - enabled: 1
     path: Assets/Scenes/Python_con.unity
@@ -29,6 +29,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Users_Classes/User_Classes_Page.unity
     guid: 33c9ba2d3bcece341a639cfaa81b366c
+  - enabled: 1
+    path: Assets/Scenes/project_page/project_page.unity
+    guid: d2d4d10e99ff3ce4c9a50f2e3ed534c5
   m_configObjects:
     com.unity.adaptiveperformance.loader_settings: {fileID: 11400000, guid: 58ba5511858c97d4c966ea899c727868, type: 2}
     com.unity.adaptiveperformance.simulator.provider_settings: {fileID: 11400000, guid: 6e765f1a96ec4124da156b79e739bfad, type: 2}

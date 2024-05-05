@@ -8,7 +8,6 @@ using Unity.VisualScripting;
 using UnityEditor.TextCore.Text;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using static UnityEngine.UIElements.UxmlAttributeDescription;
 
 public class FrontEndAPI : MonoBehaviour
 {

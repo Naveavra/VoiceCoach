@@ -1,20 +1,15 @@
-from io import BytesIO
-from flask import jsonify ,send_file, request, render_template
+from flask import jsonify ,request
 from flask_jwt_extended import jwt_required,get_jwt_identity
-from models import User , Project , Class ,ClassAssignment
+from decorators import authenticate
+from models import User , Class ,ClassAssignment
 from init import db
 
 def init_class_routes(app):
-    @app.route('/class/get_classes/<int:user_id/', methods=['GET'])
+    @app.route('/class/get_classes', methods=['GET'])
     @jwt_required()
-    def get_assigned_classes_of_user(user_id):
-        #get the user from the token and get the assigned classes
-        current_user = get_jwt_identity()
-        current_user = User.query.filter_by(email=current_user).first()
-        current_user_id = current_user.id
-        if current_user_id != user_id:
-            return jsonify({"message": "Unauthorized"}), 401
-        cls = ClassAssignment.query.filter_by(user_id=user_id).all()
+    @authenticate
+    def get_assigned_classes_of_user(current_user):
+        cls = ClassAssignment.query.filter_by(user_id=current_user.id).all()
         classes = [Class.query.get(cl.class_id) for cl in cls]
         return jsonify({"classes":[class_.serialize() for class_ in classes]})
 

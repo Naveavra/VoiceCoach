@@ -22,4 +22,3 @@ ENV FLASK_DEBUG=true
 ENV FLASK_ENV=development
 
 CMD ["python","main.py"]
-
