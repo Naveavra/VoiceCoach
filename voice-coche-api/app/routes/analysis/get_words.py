@@ -28,12 +28,14 @@ def combine_strings_with_overlap(str1, str2):
 
     return overlap_length
 
-def getWords(projectId, binary_data, duration, offset):
+def getWords(projectId, binary_data, nchannels, samplewidth, framerate, duration, offset):
     recognizer = sr.Recognizer()
-    
-    audio = AudioSegment.from_wav(io.BytesIO(binary_data))
     file_path = f"audio_{projectId}.wav"
-    audio.export(file_path, format="wav")
+    with wave.open(file_path, 'wb') as wf:
+        wf.setnchannels(nchannels)  # Set number of channels (adjust as needed)
+        wf.setsampwidth(samplewidth)  # Set sample width in bytes (adjust as needed)
+        wf.setframerate(framerate)  # Set sample rate (adjust as needed)
+        wf.writeframes(binary_data)
 
     song = sr.AudioFile(file_path)
 
@@ -60,7 +62,8 @@ def getWords(projectId, binary_data, duration, offset):
 
         print(song_txt)
         print(all_syllables)
-    
+        
+    #os.remove(file_path)
     return song_txt, all_syllables
 
 

@@ -145,14 +145,14 @@ public class Backend_API : MonoBehaviour
 
     public IEnumerator UpdateProjectWithSample(AudioClip sample)
     {
+        Debug.Log(sample.length);
         // Convert AudioClip to byte array
         byte[] audioData = ConvertToByteArray(sample);
 
         // Convert byte array to Base64 string (if needed)
         string base64Audio = System.Convert.ToBase64String(audioData);
-
         // Create JSON data
-        string jsonData = "{\"sample\":\"" + base64Audio + "\"}";
+        string jsonData = "{\"sample\":\"" + base64Audio + "\", \"nchannels\":" + sample.channels + ", \"samplewidth\":16, \"framerate\":" + sample.frequency + "}";
 
         // Create UnityWebRequest
         UnityWebRequest www = UnityWebRequest.Put(backendConfig.ProjectRoute["add_sample"] + "/" + UnityWebRequest.EscapeURL(currProject.id+""), jsonData);
@@ -180,7 +180,6 @@ public class Backend_API : MonoBehaviour
     }
 
 
-    //used to send audio files
     byte[] ConvertToByteArray(AudioClip clip)
     {
         // Convert AudioClip to WAV byte array
@@ -203,19 +202,23 @@ public class Backend_API : MonoBehaviour
                 writer.Write(new char[4] { 'd', 'a', 't', 'a' });
                 writer.Write(clip.samples * 2);
 
-                // Write audio data
+                // De-interleave and write samples
                 float[] samples = new float[clip.samples * clip.channels];
                 clip.GetData(samples, 0);
-                foreach (float sample in samples)
+                for (int i = 0; i < clip.samples; i++)
                 {
-                    writer.Write((short)(sample * 32767f));
+                    for (int j = 0; j < clip.channels; j++)
+                    {
+                        float sample = samples[i * clip.channels + j];
+                        writer.Write((short)(sample * 32767f));
+                    }
                 }
             }
 
             return memoryStream.ToArray();
         }
     }
-    
+
 
 
     public void getCurProject(string name)
