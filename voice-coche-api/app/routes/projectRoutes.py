@@ -38,21 +38,15 @@ def init_project_routes(app):
         nchannels = data.get("nchannels")
         samplewidth = data.get("samplewidth")
         framerate = data.get("framerate")
-        print(nchannels, samplewidth, framerate)
         if sample:
             binary_data = base64.b64decode(sample)
             project.sample_clip = binary_data
-            file_path = f"audio_{project_id}.wav"
-            with wave.open(file_path, 'wb') as wf:
-                wf.setnchannels(nchannels)
-                wf.setsampwidth(samplewidth // 8)  # Convert bits to bytes
-                wf.setframerate(framerate)
-                wf.writeframes(binary_data)
-            '''
-            text, syllables = getWords(project.id ,binary_data,nchannels, samplewidth, framerate, 20, 0)
+            project.sample_channels = nchannels
+            project.sample_width = samplewidth
+            project.sample_rate = framerate
+            text, syllables = getWords(project.id ,binary_data, nchannels, samplewidth, framerate, 20, 0)
             project.sample_lines = text
             project.sample_syllables = syllables
-            '''
         db.session.commit()
         return jsonify(project.simpleSerialize())
     

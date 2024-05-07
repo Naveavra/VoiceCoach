@@ -98,7 +98,7 @@ public class Sample_script : MonoBehaviour
     }
 
 
-    private IEnumerator loadClip(Action onComplete)
+    private IEnumerator loadClip()
     {
         Debug.Log("enter loading");
         audioSource.Stop();

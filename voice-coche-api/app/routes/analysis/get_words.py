@@ -32,9 +32,9 @@ def getWords(projectId, binary_data, nchannels, samplewidth, framerate, duration
     recognizer = sr.Recognizer()
     file_path = f"audio_{projectId}.wav"
     with wave.open(file_path, 'wb') as wf:
-        wf.setnchannels(nchannels)  # Set number of channels (adjust as needed)
-        wf.setsampwidth(samplewidth)  # Set sample width in bytes (adjust as needed)
-        wf.setframerate(framerate)  # Set sample rate (adjust as needed)
+        wf.setnchannels(nchannels)
+        wf.setsampwidth(samplewidth // 8)  # Convert bits to bytes
+        wf.setframerate(framerate)
         wf.writeframes(binary_data)
 
     song = sr.AudioFile(file_path)

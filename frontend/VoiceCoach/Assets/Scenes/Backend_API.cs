@@ -18,7 +18,6 @@ public class Backend_API : MonoBehaviour
     //backend data
     public User currUser;
     public Project currProject;
-    public SimpleProject simpleproject;
     public BackendConfig backendConfig;
     public static Backend_API instance;
 
@@ -29,7 +28,6 @@ public class Backend_API : MonoBehaviour
             DontDestroyOnLoad(gameObject);
             this.currUser = null;
             this.currProject = null;
-            this.simpleproject = null;
             instance = this;
             backendConfig = new BackendConfig();
         }
@@ -118,12 +116,6 @@ public class Backend_API : MonoBehaviour
             callback(ans);
         }));
     }
-    public void setSimpleProject(SimpleProject sp)
-    {
-        Debug.Log("setting the project");
-        simpleproject = sp;
-        Debug.Log(simpleproject.id);
-    }
 
 
     //project functions
@@ -151,18 +143,9 @@ public class Backend_API : MonoBehaviour
     {
         currProject = currUser.getProject(name);
     }
-    public void uploadSample(AudioClip ac,Action<Response> callback){
-        string url = backendConfig.ProjectRoute["uploade_main"];
-        url = url + "/" + simpleproject.id;
-        Debug.Log("trying to uplaod the sample" + url);
-        Debug.Log(ac);
-        StartCoroutine(SendAudio(ac,url,callback));
-        Debug.Log("uploade done");
-    }
 
     public IEnumerator UpdateProjectWithSample(AudioClip sample)
     {
-        Debug.Log(sample.length);
         // Convert AudioClip to byte array
         byte[] audioData = ConvertToByteArray(sample);
 

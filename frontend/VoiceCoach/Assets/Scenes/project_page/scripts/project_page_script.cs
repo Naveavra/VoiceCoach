@@ -5,6 +5,8 @@ using System;
 using UnityEngine.Networking;
 using System.IO;
 using Assets.Scenes.Classes;
+using TMPro;
+
 
 public class project_page_script : MonoBehaviour
 {
@@ -12,6 +14,8 @@ public class project_page_script : MonoBehaviour
     public AudioSource audioSource;
     private string path;
     private string audioType;
+
+    public TMP_Text notification;
 
     private AudioClip uploadedAudioClip;
     private string[] audioFileTypes;
@@ -42,9 +46,13 @@ public class project_page_script : MonoBehaviour
         NativeFilePicker.Permission permission = NativeFilePicker.PickFile((filePath) =>
         {
             if (filePath == null)
+            {
+                notification.text = "path given isn't valid";
                 Debug.Log("Operation cancelled");
+            }
             else
             {
+                notification.text = "please wait for sample to load";
                 Debug.Log("Picked voice recording: " + filePath);
                 audioType = filePath.Split('.')[1];
                 path = filePath;
@@ -52,7 +60,7 @@ public class project_page_script : MonoBehaviour
             }
         }, null);
 
-        Debug.Log("Permission result: " + permission);
+
     }
 
 
@@ -87,6 +95,7 @@ public class project_page_script : MonoBehaviour
         }
         audioSource.clip = uploadedAudioClip;
         Backend_API.instance.AddSampleToProject(uploadedAudioClip);
+        notification.text = "finished to load sample";
     }
 
 
