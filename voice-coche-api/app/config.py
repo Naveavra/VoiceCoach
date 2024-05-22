@@ -3,6 +3,10 @@ from dotenv import load_dotenv
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 load_dotenv()
+from cryptography.fernet import Fernet
+
+# Generate a secret key for encryption
+SECRET_KEY = Fernet.generate_key()
 
 FLASK_RUN_HOST = os.getenv("FLASK_RUN_HOST", "localhost")
 FLASK_RUN_PORT = os.getenv("FLASK_RUN_PORT", 5000)
@@ -15,7 +19,7 @@ SQLALCHEMY_DATABASE_URI = os.getenv(
     f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@localhost:5432/{POSTGRES_DB}",
 )
 SQLALCHEMY_TRACK_MODIFICATIONS = False
-SECRET_KEY = os.getenv("SECRET_KEY" , 'top secret')
+# SECRET_KEY = os.getenv("SECRET_KEY" , 'top secret')
 JWT_SECRET_KEY = os.getenv("SECRET_KEY" , 'top secret')
 JWT_ACCESS_TOKEN_EXPIRES = 3600
 JWT_REFRESH_TOKEN_EXPIRES = 3600
