@@ -11,8 +11,6 @@ class User(UserMixin,db.Model):
     username = db.Column(db.String(128), nullable=False)
     password_hash = db.Column(db.String(258), nullable=False)
     projects = db.relationship('Project', backref='creator', lazy=True)
-    assigned_classes = db.relationship('Class', secondary='class_assignment', backref='students', lazy=True)
-    created_classes = db.relationship('Class', backref='teacher', lazy=True)
     is_admin = db.Column(db.Boolean(), default=False, nullable=False)
     is_confirmed = db.Column(db.Boolean(), default=False, nullable=False)
     confirmed_on = db.Column(db.DateTime(), nullable=True)
@@ -35,79 +33,74 @@ class User(UserMixin,db.Model):
 class Session(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
-    Session = db.Column(db.LargeBinary, nullable=False)
+    recording = db.Column(db.LargeBinary, nullable=True)
     analysis_id = db.Column(db.Integer, db.ForeignKey('analysis.id'), nullable=True)
     analysis = db.relationship('Analysis', backref='Session', lazy=True)
+    session_lines = db.Column(db.Text, nullable=True)
+    session_syllables = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
+    url = db.Column(db.String(255), nullable=True)
 
-    def __init__(self, project_id, Session):
+    def __init__(self, project_id):
         self.project_id = project_id
-        self.Session = Session
         self.created_at = datetime.utcnow()
+
+    def simpleSerialize(self):
+        return {
+            'id': self.id,
+            'project_id': self.project_id,
+            'created_at': self.created_at,
+            'url': self.url,
+        }
 
 class Analysis(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    sessionId = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
     rhytem = db.Column(db.String(255), nullable=True)
     pitch = db.Column(db.String(255), nullable=True)
     wordsAndNoteTiming = db.Column(db.String(255), nullable=True)
     vowelsDeviation = db.Column(db.String(255), nullable=True)
     wordsMismatch = db.Column(db.String(255), nullable=True)
+    syllablesMismatch = db.Column(db.String(255), nullable=True)
+    teamimMismatch = db.Column(db.String(255), nullable=True)
+    description = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
 
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     creator_email = db.Column(db.String(128), db.ForeignKey('user.email'), nullable=False)
-    name = db.Column(db.String(255), nullable=False)
+    parasha = db.Column(db.String(255), nullable=False)
+    aliyah = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=True)
+    sample_url = db.Column(db.String(255), nullable=True)
     sample_clip = db.Column(db.LargeBinary, nullable=True)
-    sample_channels = db.Column(db.Integer, nullable = True)
-    sample_width = db.Column(db.Integer, nullable = True)
-    sample_rate = db.Column(db.Integer, nullable = True)
     sample_lines = db.Column(db.Text, nullable=True)
     sample_syllables = db.Column(db.Text, nullable=True)
     sessions = db.relationship('Session', backref='project', lazy=True)
-    created_at_project = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
 
-    def __init__(self, creator, name, description):
+    parasha_id = db.Column(db.Integer, db.ForeignKey('parasha.id'), nullable=True)
+    parasha_ref = db.relationship('Parasha', backref='projects', lazy=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
+
+    def __init__(self, creator, parasha,aliyah, description):
         self.creator_email = creator
-        self.name = name
+        self.parasha = parasha
+        self.aliyah = aliyah
         self.description = description
         self.created_at = datetime.utcnow()
     
     def simpleSerialize(self):
         return {
             'id': self.id,
-            'name': self.name,
+            'parasha': self.parasha,
+            'aliyah': self.aliyah,
             'description': self.description,
+            'created_at': self.created_at,
+            'sample_url': self.sample_url,
+            'sessions': [session.simpleSerialize() for session in self.sessions]
         } 
-    def deepSerialize(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'description': self.description,
-            'creator': self.creator_email,
-            'created_at': self.created_at_project,
-        }
 
-class Class(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), nullable=False)
-    description = db.Column(db.String(255), nullable=True)
-    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    notifications = db.relationship('Notification', backref='class', lazy=True)
-    tasks = db.relationship('Task', backref='class_', lazy=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
 
-    def serialize(self):
-        teacher_name = User.query.filter_by(id=self.teacher_id).first().name
-        return {
-            'id': self.id,
-            'name': self.name,
-            'description': self.description,
-            'teacher_id': self.teacher_id,
-            'teacher_name': teacher_name
-        }
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -115,30 +108,22 @@ class Notification(db.Model):
     receiver_id = db.Column(db.Integer, nullable=False)
     message = db.Column(db.String(255), nullable=False)
     notification_type = db.Column(db.Enum('JOIN_REQUEST', 'FEEDBACK_MSG', name='notification_type_enum'), nullable=False)
-    class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
-    task_project_id = db.Column(db.Integer, db.ForeignKey('task_project.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
 
-class Task(db.Model):
+
+class Parasha(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
-    name = db.Column(db.String(128), nullable=False)
-    description = db.Column(db.String(255), nullable=True)
-    sample = db.Column(db.LargeBinary, nullable=True)
-    task_projects = db.relationship('TaskProject', backref='task', lazy=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
+    parasha = db.Column(db.String(255), nullable=False)
+    clean = db.Column(db.Boolean, nullable=False)
+    aliya = db.Column(db.String(255), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    
+    def serialize(self):
+        return {
+            'parasha': self.parasha,
+            'clean': self.clean,
+            'aliya': self.aliya,
+            'text': self.text
+        }
+    
 
-class TaskProject(Project):
-    id = db.Column(db.Integer, db.ForeignKey('project.id'), primary_key=True)
-    feedbacks = db.relationship('Notification', backref='task_project', lazy=True)
-    task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
-    created_at_task_project = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
-
-    def __init__(self, creator, name, description):
-            super().__init__(creator, name, description)  # Call the parent class's __init__ method
-            self.created_at_task_project = datetime.utcnow()
-
-class ClassAssignment(db.Model):
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
-    class_id = db.Column(db.Integer, db.ForeignKey('class.id'), primary_key=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
