@@ -131,6 +131,7 @@ def get_words_by_google(audio_file, duration):
             return ans
     except Exception as e:
         print(e)
+        return get_words_by_google(audio_file, duration)
     return ans
         #return get_words_by_google(audio_file)
     
