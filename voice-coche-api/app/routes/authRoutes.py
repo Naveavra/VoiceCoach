@@ -31,7 +31,7 @@ def init_auth_routes(app,login_manager,mail):
             if not user.check_password(password):
                 return jsonify({'error': 'Invalid email or password'}), 401
             access_token = create_access_token(identity=email)
-            return jsonify({'user_id' :user.id,'token': access_token }), 200
+            return jsonify({'data' :{'id':user.id,'name':user.username,'email':email},'token': access_token }), 200
         
 
     @app.route("/users/register", methods=['GET','POST'])
@@ -42,9 +42,7 @@ def init_auth_routes(app,login_manager,mail):
             email = data.get('email')
             password = data.get('password')
             name = email.split('@')[0]
-            print(email, password,name)
             existing_user = db.session.query(User).filter(User.email==email).all()
-            print(len(existing_user))
             if existing_user:
                 return jsonify({'error': 'User already exists'}), 400
             else:
@@ -52,12 +50,13 @@ def init_auth_routes(app,login_manager,mail):
                     new_user = User(email=email,username=name, password=password)
                     db.session.add(new_user)
                     db.session.commit()
+                    '''
                     email_token = generate_token(email,app)
-                    print("email token",email_token)
                     confirm_url = url_for("confirm_email", token=email_token, _external=True)
                     html = render_template("confirm_email.html", confirm_url=confirm_url)
                     subject = "Please confirm your email"
                     send_email(app,mail,email, subject, html)
+                    '''
                            
                     return jsonify({'msg':'email send success'}), 200
                 except Exception as e:
@@ -65,7 +64,7 @@ def init_auth_routes(app,login_manager,mail):
                     #delete the user if the email is not sent
                     db.session.delete(new_user)
                     db.session.commit()
-                    return jsonify({'error': 'Error creating user'}), 400
+                    return jsonify({'error': e}), 400
 
 
     @app.route("/users/confirm/<token>")
