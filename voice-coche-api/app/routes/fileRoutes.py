@@ -26,8 +26,8 @@ def init_file_routes(app):
                     if 'audio' not in request.files:
                         return jsonify({"error": "No audio file part"}), 400
                     audio_file = request.files['audio']
-                    content = audio_file.read()
 
+                    content = audio_file.read()
                     kind = filetype.guess(content)
                     if not kind is None:
                         print(kind.mime, kind.extension)
@@ -51,7 +51,7 @@ def init_file_routes(app):
                             audio.export(wav_io, format="wav")
                             wav_content = wav_io.getvalue()
                             project.sample_clip = wav_content
-
+                            
                             #now we get the words from the sample
                             words = get_words_by_google(wav_content, duration_seconds)
                             project.sample_lines = words
