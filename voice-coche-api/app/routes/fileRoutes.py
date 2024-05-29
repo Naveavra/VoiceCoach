@@ -26,7 +26,6 @@ def init_file_routes(app):
                     if 'audio' not in request.files:
                         return jsonify({"error": "No audio file part"}), 400
                     audio_file = request.files['audio']
-
                     content = audio_file.read()
                     kind = filetype.guess(content)
                     if not kind is None:
@@ -44,7 +43,6 @@ def init_file_routes(app):
                         if kind.extension in format_map:
                             audio = AudioSegment.from_file(audio_file_like, format=format_map[kind.extension])
                             duration_seconds = audio.duration_seconds
-                            print(duration_seconds)
                             
                             #Export the audio data to a BytesIO object in WAV format
                             wav_io = io.BytesIO()

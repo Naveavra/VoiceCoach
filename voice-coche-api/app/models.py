@@ -10,7 +10,7 @@ class User(UserMixin,db.Model):
     email = db.Column(db.String(128), unique=True, nullable=False)
     username = db.Column(db.String(128), nullable=False)
     password_hash = db.Column(db.String(258), nullable=False)
-    projects = db.relationship('Project', backref='creator', lazy=True)
+    projects = db.relationship('Project', backref='creator', cascade="all, delete", lazy=True)
     is_admin = db.Column(db.Boolean(), default=False, nullable=False)
     is_confirmed = db.Column(db.Boolean(), default=False, nullable=False)
     confirmed_on = db.Column(db.DateTime(), nullable=True)
@@ -35,7 +35,7 @@ class Session(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     recording = db.Column(db.LargeBinary, nullable=True)
     analysis_id = db.Column(db.Integer, db.ForeignKey('analysis.id'), nullable=True)
-    analysis = db.relationship('Analysis', backref='Session', lazy=True)
+    analysis = db.relationship('Analysis', backref='Session', cascade="all, delete", lazy=True)
     session_lines = db.Column(db.Text, nullable=True)
     session_syllables = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
@@ -75,7 +75,7 @@ class Project(db.Model):
     sample_clip = db.Column(db.LargeBinary, nullable=True)
     sample_lines = db.Column(db.Text, nullable=True)
     sample_syllables = db.Column(db.Text, nullable=True)
-    sessions = db.relationship('Session', backref='project', lazy=True)
+    sessions = db.relationship('Session', backref='project', cascade="all, delete", lazy=True)
 
     parasha_id = db.Column(db.Integer, db.ForeignKey('parasha.id'), nullable=True)
     parasha_ref = db.relationship('Parasha', backref='projects', lazy=True)
@@ -95,6 +95,8 @@ class Project(db.Model):
             'parasha': self.parasha,
             'aliyah': self.aliyah,
             'description': self.description,
+            'clean_text': "בראשית ברא אלוהים",
+            'mark_text': "בראשית ברא אלוהים",
             'created_at': self.created_at,
             'sample_url': self.sample_url,
             'sessions': [session.simpleSerialize() for session in self.sessions]
