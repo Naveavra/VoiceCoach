@@ -10,6 +10,7 @@ from init import db
 import speech_recognition as sr
 from pydub import AudioSegment
 import filetype
+import tempfile
 
 def init_file_routes(app):
     
@@ -28,7 +29,6 @@ def init_file_routes(app):
 
                     content = audio_file.read()
                     kind = filetype.guess(content)
-
                     if not kind is None:
                         print(kind.mime, kind.extension)
                         #supported audio files
@@ -43,17 +43,25 @@ def init_file_routes(app):
                         audio_file_like = io.BytesIO(content)
                         if kind.extension in format_map:
                             audio = AudioSegment.from_file(audio_file_like, format=format_map[kind.extension])
-
+                            duration_seconds = audio.duration_seconds
+                            print(duration_seconds)
+                            
                             #Export the audio data to a BytesIO object in WAV format
                             wav_io = io.BytesIO()
                             audio.export(wav_io, format="wav")
                             wav_content = wav_io.getvalue()
                             project.sample_clip = wav_content
+                            
+                            #now we get the words from the sample
+                            words = get_words_by_google(wav_content, duration_seconds)
+                            project.sample_lines = words
+
                         else:
                             return jsonify({"error": "received unsupported file"}), 401
-
                         hash_value = generate_hash(project_id)
                         project.sample_url = hash_value
+
+                        db.session.add(project)
                         db.session.commit()
                     else:
                         return jsonify({"error": "received unsupported file"}), 401
@@ -99,20 +107,34 @@ def init_file_routes(app):
       
         # upload = None#AudioFile.query.filter_by(id=upload_id).first()
         # return send_file(BytesIO(upload.content), attachment_filename=upload.filename, as_attachment=True)
-def get_words_by_google(file_path):
+def get_words_by_google(audio_file, duration):
+    ans = ""
     try:
-        recognizer = sr.Recognizer()
-        song = sr.AudioFile(file_path)
-        song_txt = ""
-        
-        with song as source:
-            recognizer.adjust_for_ambient_noise(song)
-            song_aud = recognizer.record(song, duration=30.0, offset=0)
-            song_txt = recognizer.recognize_google(song_aud, language="iw-IL")
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file:
+            temp_wav_file.write(audio_file)
+
+            recognizer = sr.Recognizer()
+            song = sr.AudioFile(temp_wav_file.name)
+            song_txt = ""
             
-        return song_txt
+            with song as source:
+                recognizer.adjust_for_ambient_noise(song)
+            count = 0
+            while count <= duration:
+                with song as source:
+                    song_aud = recognizer.record(song, duration=min(30.0, duration - count), offset=count)
+                    song_txt = recognizer.recognize_google(song_aud, language="iw-IL")
+                count = count + 30
+                print(song_txt)
+                if len(ans) == 0:
+                    ans = song_txt
+                else:
+                    ans = ans + ',' + song_txt
+            return ans
     except Exception as e:
-        return get_text_by_google(file_path)
+        print(e)
+    return ans
+        #return get_words_by_google(audio_file)
     
 
     

@@ -12,6 +12,8 @@ from pydub import AudioSegment
 import io
 import base64
 import wave
+import tempfile
+
 
 recognizer = sr.Recognizer()
 
@@ -42,32 +44,34 @@ def init_session_routes(app, socketio):
     @jwt_required()
     def upload(session_id):
         audio_file = request.files['audio']
-        content = audio_file.read()
         session = Session.query.get(session_id)
         if session.recording is None:
             session.recording = audio_file.read()
         else:
             sessionRec = AudioSegment.from_file(io.BytesIO(session.recording))
             session.recording = sessionRec.append(audio_file, crossfade=0).read()
-        return process_audio_to_text(AudioSegment.from_file(audio_file)), 200
+        return process_audio_to_text(audio_file), 200
     
     def process_audio_to_text(recording):
         audio = AudioSegment.from_file(recording)
         audio_wav = io.BytesIO()
         audio.export(audio_wav, format="wav")
-        audio_wav.seek(0)
-        with sr.AudioFile(audio_wav) as source:
-            audio_data = recognizer.record(source)
-            text = recognizer.recognize_google(audio_data, language='iw-IL')
-            return text
+        wav_content = audio_wav.getvalue()
+
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file:
+            temp_wav_file.write(wav_content)
+            with sr.AudioFile(temp_wav_file.name) as source:
+                audio_data = recognizer.record(source)
+                text = recognizer.recognize_google(audio_data, language='iw-IL')
+                return text
 
     @app.route('/files/download/<session_url>', methods=['GET'])
     def download_session(session_url):
-        Session = Session.query.filter_by(url=session_url).first()
-        if not project:
+        session = Session.query.filter_by(url=session_url).first()
+        if not session:
             return jsonify({"msg": "Session not found"}), 401
         #decrypted_content = cipher_suite.decrypt(project.sample_clip)
-        return send_file(BytesIO(project.sample_clip), 
+        return send_file(BytesIO(session.recording), 
                          download_name="session.wav",  # Specify the download name
                          as_attachment=True, 
                          mimetype='audio/wav')

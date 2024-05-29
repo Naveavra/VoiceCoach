@@ -12,6 +12,8 @@ from manage import init_commands
 
 import atexit
 
+import os
+
 from apscheduler.schedulers.background import BackgroundScheduler
 
 
@@ -21,6 +23,8 @@ def create_app():
     users = Blueprint("users", __name__)
     activate = Blueprint("activate", __name__)
     login_manager = LoginManager()
+    directory = 'recordings'
+    os.makedirs(directory, exist_ok=True)
 
     # Initialize database
     db.init_app(app)
