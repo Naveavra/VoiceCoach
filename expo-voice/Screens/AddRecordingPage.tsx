@@ -1,10 +1,9 @@
 import axios from "axios";
-import * as DocumentPicker from 'expo-document-picker';
 
 import { Audio } from "expo-av";
 import { Recording } from "expo-av/build/Audio";
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../AppNavigation";
 import { API_URL } from "../common/config";
@@ -17,10 +16,9 @@ import { useAuth, useUtilities } from "../common/hooks";
 
 type AddRecordingScreenProps = NativeStackScreenProps<RootStackParamList, 'AddRecord'>;
 import { LogBox } from 'react-native';
-import { ActivityIndicator } from 'react-native-paper';
-import { setSampleUrl } from "../common/redux/projectsReducer";
 import { delay } from "../common/utils";
 import Animated, { useSharedValue, withTiming, useAnimatedStyle } from 'react-native-reanimated';
+import { UploadDocument } from "../common/components/Btn/UploadDocument";
 
 LogBox.ignoreLogs([
     'Non-serializable values were found in the navigation state',
@@ -29,7 +27,7 @@ LogBox.ignoreLogs([
 let recording: Audio.Recording;
 let index = 0;
 
-
+const text = "בראשית ברא אלוהים את השמיים ואת הארץ והארץ הייתה תוהו ובוהו וחושך על פני תהום ורוח אלוהים מרחפת על פני המים "
 //todo: add pause recording option
 export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProps) => {
     const { dispatch, useAppSelector } = useUtilities();
@@ -40,41 +38,71 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const [loopPromise, setLoopPromise] = useState<Promise<void> | null>(null);
     const [transcript, setTranscript] = useState<string>('');
     const [status, setStatus] = useState<string>('');
-    const [isLoading, setIsLoading] = useState(false);
 
     const selectedProject = useAppSelector((state) => state.projects.selectedProject);
-    const { project, is_sample, reloadData, session_id } = route.params;
+    const { reloadData, session_id } = route.params;
 
 
     const [currentWord, setCurrentWord] = useState(0);
     const opacity = useSharedValue(0);
+    const [wordColors, setWordColors] = useState<string[]>(selectedProject.clean_text.split(" ").map(() => 'black'));
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentWord((prev) => (prev + 1) % selectedProject.clean_text.split(" ").length);
-            opacity.value = 1;
-        }, 1000);
+    const errorAlert = () => {
+        Alert.alert('error', 'something went wrong', [
+            {
+                text: 'okay', onPress: () => navigation.goBack()
+            },
+        ]);
+    }
+    // useEffect(() => {
+    //     const interval = setInterval(() => {
+    //         setCurrentWord((prev) => (prev + 1) % selectedProject.clean_text.split(" ").length);
+    //         opacity.value = 1;
+    //     }, 1000);
 
-        return () => clearInterval(interval);
-    }, []);
+    //     return () => clearInterval(interval);
+    // }, []);
 
-    useEffect(() => {
-        opacity.value = withTiming(0, { duration: 500 });
-    }, [currentWord]);
+    // useEffect(() => {
+    //     opacity.value = withTiming(1, { duration: 500 });
+    // }, [currentWord]);
 
-    const animatedStyles = useAnimatedStyle(() => {
-        return {
-            opacity: opacity.value,
-        };
-    });
+    // const animatedStyles = useAnimatedStyle(() => {
+    //     return {
+    //         opacity: opacity.value,
+    //     };
+    // });
 
 
     const handleTranscript = (data: any) => {
+        setTranscript((prev) => prev + data + ' ');
         data.split(" ").forEach((word: string) => {
-            if (word === selectedProject.clean_text.split(" ")[index]) {
-                setTranscript((prev) => prev + word + " ");
-                index++;
+            console.log(word, text.split(" ")[index]);
+            if (word === text.split(" ")[index]) {
+                setWordColors((prev) => {
+                    const newColors = [...prev];
+                    newColors[index] = 'green';
+                    return newColors;
+                });
             }
+            else if (word === text.split(" ")[index + 1]) {
+                setWordColors((prev) => {
+                    const newColors = [...prev];
+                    newColors[index + 1] = 'green';
+                    index += 1;
+                    return newColors;
+                });
+            }
+
+            else {
+                setWordColors((prev) => {
+                    const newColors = [...prev];
+                    newColors[index] = 'red';
+                    return newColors;
+                });
+            }
+            setCurrentWord((prev) => (prev + 1) % text.split(" ").length);
+            index++;
         })
     }
 
@@ -137,6 +165,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
 
     const stopLoop = () => {
         loopRunning.current = false;
+        index = 0;
     };
 
     const handleStartButtonClick = () => {
@@ -153,59 +182,8 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 setLoopPromise(null);
             });
         }
-    };
-
-    const openDocumentPicker = async () => {
-        try {
-            const document = await DocumentPicker.getDocumentAsync();
-            if (document) {
-                if (document.type === 'cancel') {
-                    return;
-                }
-                if (document.type === 'success') {
-                    // Handle the selected document (e.g., display its details)
-                }
-                // Create FormData object to append the document
-                const formData = new FormData();
-                formData.append('audio', {
-                    uri: document['assets'][0]['uri'],
-                    name: document['assets'][0]['name'],
-                    type: document['assets'][0]['mimeType'],
-                });
-
-                // Set your API URL
-                const url = is_sample ? `${API_URL}/projects/${project.id}/uploade_sample` : `${API_URL}/projects/${project.id}/upload_version`;
-
-                // Set headers for multipart/form-data
-                const config = {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                        'Authorization': `Bearer ${token}`
-                    },
-                };
-
-                // Send the document using Axios POST request
-                //todo :put the res and err in alerts
-                setIsLoading(true);
-                await axios.post(url, formData, config).
-                    then((response) => {
-                        if (is_sample) {
-                            const sampleUrl = response.data.sample_url;
-                            dispatch(setSampleUrl(sampleUrl));
-                            setIsLoading(false);
-                        }
-                        reloadData();
-                        navigation.goBack();
-                    })
-                    .catch((error) => {
-                        setIsLoading(false);
-                        console.log('error', error);
-                    }
-                    );
-            }
-        } catch (error) {
-            console.error('Failed to open document picker:', error);
-        }
+        //todo:fetch analysis 
+        reloadData();
     };
 
     const sendAudioData = async (recording: Audio.Recording | undefined) => {
@@ -215,7 +193,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 const uri = recording.getURI();
                 const formData = new FormData();
                 formData.append('audio', {
-                    uri,
+                    uri: uri,
                     name: 'audio.wav',
                     type: 'audio/wav',
                 });
@@ -227,13 +205,19 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     }
                 }
 
-                const result = await axios.post(url, formData, config)
-                handleTranscript(result.data);
+                await axios.post(url, formData, config).then
+                    ((response) => {
+                        handleTranscript(response.data);
+                    }).catch((error) => {
+                        console.log('error', error);
+                        stopLoop();
+                    });
+
 
             }
             // setTranscript(result.data);
         } catch (error) {
-            console.error('Failed to send audio data:', error);
+            errorAlert();
         }
     }
 
@@ -246,52 +230,42 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 </View>
                 {transcript &&
                     <Text>{transcript}</Text>}
-                {status == 'recording' && transcript.length > 0 && !is_sample ?
-                    <>
-                        <SafeAreaView style={styles.safeContainer}>
-                            <View style={styles.textContainer}>
-                                {selectedProject.clean_text.split(" ").map((word, index) => {
-                                    let color = 'black';
-                                    if (index < transcript?.split(" ").length) {
-                                        color = word === transcript.split(" ")[index] ? 'green' : 'red';
-                                    }
 
-                                    return (
-                                        <Animated.Text
-                                            key={index}
-                                            style={[
-                                                styles.word,
-                                                { color },
-                                                currentWord === index && animatedStyles,
-                                                currentWord === index && styles.highlight,
-                                            ]}
+                <SafeAreaView style={styles.safeContainer}>
+                    <View style={styles.textContainer}>
+                        {text.split(" ").map((word, index) => {
+                            // let color = 'black';
+                            // if (index < transcript?.split(" ").length) {
+                            //     color = word === transcript.split(" ")[index] ? 'green' : 'red';
+                            // }
 
-                                        >
-                                            {word}{' '}
-                                        </Animated.Text>
-                                    );
-                                })}
-                            </View>
-                        </SafeAreaView>
-                    </>
-                    : null
-                }
+                            return (
+                                <Animated.Text
+                                    key={index}
+                                    style={[
+                                        styles.word,
+                                        { color: wordColors[index] },
+                                        // currentWord === index && animatedStyles,
+                                        currentWord === index && styles.highlight,
+                                    ]}
+
+                                >
+                                    {word}{' '}
+                                </Animated.Text>
+                            );
+                        })}
+                    </View>
+                </SafeAreaView>
                 <View style={styles.mainContainer}>
                     {status == '' ?
                         <>
-                            {isLoading ? <ActivityIndicator animating={true} color={"#0ea5e9"} size={80} /> :
-                                <View style={styles.itemsContainer}>
+                            <View style={styles.itemsContainer}>
+                                <TouchableOpacity style={styles.itemContainer} onPress={handleStartButtonClick}>
+                                    <FontAwesome name="microphone" size={24} color="black" />
+                                    <Text style={defaultTheme.components.text}>Start Recording</Text>
+                                </TouchableOpacity>
 
-                                    <TouchableOpacity style={styles.itemContainer} onPress={handleStartButtonClick}>
-                                        <FontAwesome name="microphone" size={24} color="black" />
-                                        <Text style={defaultTheme.components.text}>Start Recording</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.itemContainer} onPress={openDocumentPicker}>
-                                        <AntDesign name="addfile" size={24} color="black" />
-                                        <Text style={defaultTheme.components.text}>Upload File</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            }
+                            </View>
                         </>
                         :
                         status == 'recording' ?
@@ -312,7 +286,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                             null
                     }
                 </View>
-            </View>
+            </View >
             <TouchableOpacity style={styles.homeBtn} onPress={() => navigation.navigate('Home')}>
                 <AntDesign name="home" size={24} color="black" />
             </TouchableOpacity>
@@ -402,5 +376,3 @@ const styles = StyleSheet.create({
         direction: 'rtl',
     },
 });
-
-
