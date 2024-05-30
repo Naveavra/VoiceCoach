@@ -95,7 +95,7 @@ class Project(db.Model):
             'parasha': self.parasha,
             'aliyah': self.aliyah,
             'description': self.description,
-            'clean_text': self.sample_lines.split(','),
+            'clean_text': "בראשית ברא אלוהים",
             'mark_text': "בראשית ברא אלוהים",
             'created_at': self.created_at,
             'sample_url': self.sample_url

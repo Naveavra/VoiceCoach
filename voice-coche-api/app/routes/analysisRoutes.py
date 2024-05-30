@@ -6,7 +6,6 @@ import speech_recognition as sr
 from models import Project, Session, Analysis
 from init import db
 from pydub import AudioSegment
-import whisper_timestamped as whisper
 import json
 import tempfile
 import assemblyai as aai
@@ -26,13 +25,13 @@ def init_analysis_routes(app):
         user_lines = session.session_lines.split(',')
         sample_lines = project.sample_lines.split(',')
         lines_length = len(min(user_lines, sample_lines))
-        wordsMismatch = ""
+        wordsMismatch = []
         wordsDescription = ""
         google_txt = ""
         for i in range(0, lines_length):
             google_txt = google_txt + " " + user_lines[i]
             line_wordsMismatch, line_wordsDescription = compare_line(user_lines[i], sample_lines[i])
-            wordsMismatch = wordsMismatch + ',' + line_wordsMismatch
+            wordsMismatch.extend(line_wordsMismatch)
             wordsDescription = wordsDescription + line_wordsDescription + '\n'
 
             with tempfile.NamedTemporaryFile(delete=True, suffix=".wav") as tmpfile:
@@ -63,7 +62,7 @@ def init_analysis_routes(app):
     def compare_line(user_line, sample_line):
         user_words = user_line.split(' ')
         sample_words = sample_line.split(' ')
-        wordsMismatch = ""
+        wordsMismatch = []
         wordsDescription = ""
         num_words = len(min(user_words, sample_words))
         nonsense_words = 0
@@ -73,7 +72,7 @@ def init_analysis_routes(app):
                 wordsDescription = wordsDescription + "you said the word:" + user_words[i]+ " but it shouldn't appear." + '\n'
                 nonsense_words  = nonsense_words + 1
             elif user_words[i] != sample_words[i-nonsense_words]:
-                wordsMismatch = wordsMismatch + "," + user_words[i]
+                wordsMismatch.append(user_words[i])
                 wordsDescription = wordsDescription + "wrongly said here:" + user_words[i] + " should have said here:" + sample_words[i] + '\n'
         return wordsMismatch, wordsDescription
                     
