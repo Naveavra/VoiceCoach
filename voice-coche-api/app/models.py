@@ -95,11 +95,10 @@ class Project(db.Model):
             'parasha': self.parasha,
             'aliyah': self.aliyah,
             'description': self.description,
-            'clean_text': "בראשית ברא אלוהים",
+            'clean_text': self.sample_lines.split(','),
             'mark_text': "בראשית ברא אלוהים",
             'created_at': self.created_at,
-            'sample_url': self.sample_url,
-            'sessions': [session.simpleSerialize() for session in self.sessions]
+            'sample_url': self.sample_url
         } 
 
 

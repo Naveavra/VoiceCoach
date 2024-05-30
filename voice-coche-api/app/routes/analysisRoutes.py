@@ -9,9 +9,10 @@ from pydub import AudioSegment
 import whisper_timestamped as whisper
 import json
 import tempfile
+import assemblyai as aai
 
-
-# model = whisper.load_model("openai/whisper-large-v3", device="cuda")
+#needed for transcription with assemblyai
+aai.settings.api_key = "0dc55bacc27c4f6786439e81b735f87a"
 
 def init_analysis_routes(app):
     @app.route("/analysis/<int:session_id>", methods=["GET"])
@@ -34,19 +35,28 @@ def init_analysis_routes(app):
             wordsMismatch = wordsMismatch + ',' + line_wordsMismatch
             wordsDescription = wordsDescription + line_wordsDescription + '\n'
 
-        '''
-        #for the teamim
-        with tempfile.NamedTemporaryFile(delete=True, suffix=".wav") as tmpfile:
-            tmpfile.write(session.recording)
-            tmpfile.flush()  # Ensure all data is written to disk
-            audio = whisper.load_audio(tmpfile.name)
+            with tempfile.NamedTemporaryFile(delete=True, suffix=".wav") as tmpfile:
+                tmpfile.write(session.recording)
+                tmpfile.flush()
 
-            result = {"whisper_result":whisper.transcribe(model ,audio, language="he",vad = "silero:3.1",detect_disfluencies=True,condition_on_previous_text=True,naive_approach=False,verbose=True),'google_result':google_txt}  # Set language to Hebrew
-            print(result)
-        '''
+                # URL of the file to transcribe
+                FILE_URL = tmpfile.name
+
+                config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
+                transcriber = aai.Transcriber(config=config)
+                transcript = transcriber.transcribe(FILE_URL)
+
+                stamps_array = []
+                if transcript.status == aai.TranscriptStatus.completed:
+                    for word in transcript.words:
+                        start_time = word.start/1000
+                        end_time = word.end/1000
+                        word_text = word.text
+                        stamps_array.append({'text': word.text, 'start': start_time, 'end': end_time})
+                elif transcript.status == aai.TranscriptStatus.failed:
+                    return jsonify("transciption failed"), 401
+
         return jsonify({"words" : wordsMismatch, "teamim" : "", "description" : wordsDescription}), 200
-        
-            # analysis = Analysis(creator=current_user.email, parasha=parasha,aliyah=aliyah, description=description)
         
 
 
