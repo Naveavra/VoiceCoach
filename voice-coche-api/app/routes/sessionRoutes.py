@@ -59,6 +59,7 @@ def init_session_routes(app, socketio):
                 'ogg': 'ogg',
                 'flac': 'flac',
                 'mp4': 'mp4',
+                'm4a' : 'm4a',
                 # Add other formats as needed
             }
             audio_file_like = io.BytesIO(content)

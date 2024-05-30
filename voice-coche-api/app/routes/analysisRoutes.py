@@ -6,12 +6,12 @@ import speech_recognition as sr
 from models import Project, Session, Analysis
 from init import db
 from pydub import AudioSegment
-import whisper_timestamped as whisper
 import json
 import tempfile
+import assemblyai as aai
 
-
-# model = whisper.load_model("openai/whisper-large-v3", device="cuda")
+#needed for transcription with assemblyai
+aai.settings.api_key = "0dc55bacc27c4f6786439e81b735f87a"
 
 def init_analysis_routes(app):
     @app.route("/analysis/<int:session_id>", methods=["GET"])
@@ -25,35 +25,44 @@ def init_analysis_routes(app):
         user_lines = session.session_lines.split(',')
         sample_lines = project.sample_lines.split(',')
         lines_length = len(min(user_lines, sample_lines))
-        wordsMismatch = ""
+        wordsMismatch = []
         wordsDescription = ""
         google_txt = ""
         for i in range(0, lines_length):
             google_txt = google_txt + " " + user_lines[i]
             line_wordsMismatch, line_wordsDescription = compare_line(user_lines[i], sample_lines[i])
-            wordsMismatch = wordsMismatch + ',' + line_wordsMismatch
+            wordsMismatch.extend(line_wordsMismatch)
             wordsDescription = wordsDescription + line_wordsDescription + '\n'
 
-        '''
-        #for the teamim
-        with tempfile.NamedTemporaryFile(delete=True, suffix=".wav") as tmpfile:
-            tmpfile.write(session.recording)
-            tmpfile.flush()  # Ensure all data is written to disk
-            audio = whisper.load_audio(tmpfile.name)
+            with tempfile.NamedTemporaryFile(delete=True, suffix=".wav") as tmpfile:
+                tmpfile.write(session.recording)
+                tmpfile.flush()
 
-            result = {"whisper_result":whisper.transcribe(model ,audio, language="he",vad = "silero:3.1",detect_disfluencies=True,condition_on_previous_text=True,naive_approach=False,verbose=True),'google_result':google_txt}  # Set language to Hebrew
-            print(result)
-        '''
+                # URL of the file to transcribe
+                FILE_URL = tmpfile.name
+
+                config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
+                transcriber = aai.Transcriber(config=config)
+                transcript = transcriber.transcribe(FILE_URL)
+
+                stamps_array = []
+                if transcript.status == aai.TranscriptStatus.completed:
+                    for word in transcript.words:
+                        start_time = word.start/1000
+                        end_time = word.end/1000
+                        word_text = word.text
+                        stamps_array.append({'text': word.text, 'start': start_time, 'end': end_time})
+                elif transcript.status == aai.TranscriptStatus.failed:
+                    return jsonify("transciption failed"), 401
+
         return jsonify({"words" : wordsMismatch, "teamim" : "", "description" : wordsDescription}), 200
-        
-            # analysis = Analysis(creator=current_user.email, parasha=parasha,aliyah=aliyah, description=description)
         
 
 
     def compare_line(user_line, sample_line):
         user_words = user_line.split(' ')
         sample_words = sample_line.split(' ')
-        wordsMismatch = ""
+        wordsMismatch = []
         wordsDescription = ""
         num_words = len(min(user_words, sample_words))
         nonsense_words = 0
@@ -63,7 +72,7 @@ def init_analysis_routes(app):
                 wordsDescription = wordsDescription + "you said the word:" + user_words[i]+ " but it shouldn't appear." + '\n'
                 nonsense_words  = nonsense_words + 1
             elif user_words[i] != sample_words[i-nonsense_words]:
-                wordsMismatch = wordsMismatch + "," + user_words[i]
+                wordsMismatch.append(user_words[i])
                 wordsDescription = wordsDescription + "wrongly said here:" + user_words[i] + " should have said here:" + sample_words[i] + '\n'
         return wordsMismatch, wordsDescription
                     

@@ -37,6 +37,8 @@ def init_file_routes(app):
                             'oga': 'ogg',
                             'ogg': 'ogg',
                             'flac': 'flac',
+                            'm4a' : 'm4a',
+                            'mp4' : 'mp4',
                             # Add other formats as needed
                         }
                         audio_file_like = io.BytesIO(content)
@@ -131,7 +133,6 @@ def get_words_by_google(audio_file, duration):
             return ans
     except Exception as e:
         print(e)
-        return get_words_by_google(audio_file, duration)
     return ans
         #return get_words_by_google(audio_file)
     

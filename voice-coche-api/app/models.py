@@ -98,8 +98,7 @@ class Project(db.Model):
             'clean_text': "בראשית ברא אלוהים",
             'mark_text': "בראשית ברא אלוהים",
             'created_at': self.created_at,
-            'sample_url': self.sample_url,
-            'sessions': [session.simpleSerialize() for session in self.sessions]
+            'sample_url': self.sample_url
         } 
 
 
