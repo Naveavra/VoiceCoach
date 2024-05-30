@@ -23,7 +23,13 @@ export interface ProjectData {
     created_at: string;
     clean_text: string;
     mark_text: string;
-    sessions: SessionData[];
+}
+
+export interface Analysis 
+{
+    words: string[],
+    teamim: {start: string, end: string, result: string}[]
+    description: string
 }
 
 export interface SessionData {
@@ -31,4 +37,5 @@ export interface SessionData {
     projectId: string;
     url: string;
     created_at: string;
+    analysis : Analysis | null
 }

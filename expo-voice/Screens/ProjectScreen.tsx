@@ -8,7 +8,7 @@ import AppFlatList from "../common/components/AppFlatList";
 import * as DocumentPicker from 'expo-document-picker';
 
 import { AntDesign } from '@expo/vector-icons';
-import { cleanStateMsg } from "../common/redux/projectReducer";
+import { addSession, cleanSession, cleanStateMsg, deleteSession } from "../common/redux/projectReducer";
 import { deleteAsync } from "expo-file-system";
 
 type projectScreenProps = NativeStackScreenProps<RootStackParamList, 'Project'>;
@@ -18,7 +18,6 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import AppSessionCard from "../common/components/AppSessionCard";
 import { sessionApi } from "../common/api/sessionApi";
-import { clearSession, setSampleUrl } from "../common/redux/projectsReducer";
 import { API_URL } from "../common/config";
 import { noAuthApiClient } from "../common/api/apiClient";
 import { ActivityIndicator } from "react-native-paper";
@@ -32,21 +31,25 @@ export const ProjectScreen = ({ route, navigation }: projectScreenProps) => {
     const { useAppSelector, dispatch } = useUtilities();
     const { token } = useAuth({});
     const selectedProject = useAppSelector((state) => state.projects.selectedProject);
-    const { isLoadingProject, versions, error, msg, reloadData } = useProject({ token: token, project_id: selectedProject?.id || 0 });
+    const { isLoadingProject, sessions, error, msg, reloadData } = useProject({ token: token, project_id: selectedProject?.id || 0 });
     const [isLoading, setIsLoading] = useState(false);
 
-    const elements = selectedProject.sessions.map((session, index) => {
+    const elements = sessions.map((session, index) => {
         return (
             <AppSessionCard
                 session={session}
-                onPress={() => { }}
-                onDelete={() =>
-                    sessionApi.deleteSession({ session_id: session.id, token: token }).then((res: any) => {
-                        dispatch(clearSession(session.id));
-                    })
-                }
-                onEdit={() => console.log('edit')}
-            />
+                onPress={() => { } }
+                onDelete={() => dispatch(deleteSession({ session_id: session.id, token: token })).then((res: any) => {
+                    console.log(res, 'session deleted');
+
+                    // sessionApi.deleteSession({ session_id: session.id, token: token }).then((res: any) => {
+                    //     dispatch(cleanSession(session.id));
+                    // })
+                }).catch((err: any) => {
+                    console.error(err, 'error');
+                })} onEdit={function (): void {
+                    console.log("Function not implemented.");
+                } }            />
         )
     })
 
@@ -78,7 +81,7 @@ export const ProjectScreen = ({ route, navigation }: projectScreenProps) => {
                 <Ionicons style={styles.addProjectIcon} name="add-circle-outline" size={30} onPress={
 
                     () => {
-                        sessionApi.addSession({ project_id: selectedProject.id, token: token }).then((res: any) => {
+                        dispatch(addSession({ project_id: selectedProject.id, token: token })).then((res: any) => {
                             console.log(res, 'session added');
 
                             navigation.navigate('AddRecord', {
@@ -94,7 +97,7 @@ export const ProjectScreen = ({ route, navigation }: projectScreenProps) => {
                     }
                 } />
 
-                <AppFlatList isLoading={false} objects={selectedProject.sessions} elements={elements} />
+                <AppFlatList isLoading={false} objects={sessions} elements={elements} />
 
 
             </View>

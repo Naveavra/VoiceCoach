@@ -1,5 +1,5 @@
 import { ApiResponseListData } from "../types/apiTypes";
-import { getVersionsData } from "../types/requestTypes";
+import { getVersionsData as getSessionsData } from "../types/requestTypes";
 import { ProjectData, SessionData } from "../types/systemTypes";
 import { apiErrorHandlerWrapper } from "../utils";
 import { noAuthApiClient } from "./apiClient";
@@ -7,7 +7,7 @@ import { noAuthApiClient } from "./apiClient";
 export const projectApi = {
 
 
-    getData: (data: getVersionsData): Promise<{ versions: ApiResponseListData<SessionData>, project: ProjectData }> =>
+    getData: (data: getSessionsData): Promise<{ sessions: ApiResponseListData<SessionData>}> =>
         apiErrorHandlerWrapper(noAuthApiClient.get(`/projects/${data.project_id}`, {
             headers: {
                 'Content-Type': 'application/json',

@@ -1,12 +1,12 @@
 import { ApiResponse } from "../types/apiTypes";
 import { addSessionData, deleteSessionData } from "../types/requestTypes";
-import { ProjectData } from "../types/systemTypes";
+import { ProjectData, SessionData } from "../types/systemTypes";
 import { apiErrorHandlerWrapper } from "../utils";
 import { noAuthApiClient } from "./apiClient";
 
 export const sessionApi = {
 
-    addSession: (data: addSessionData): Promise<ApiResponse<ProjectData>> =>
+    addSession: (data: addSessionData): Promise<ApiResponse<SessionData>> =>
         apiErrorHandlerWrapper(noAuthApiClient.post(`/sessions/create/${data.project_id}`, data, {
             headers: {
                 'Content-Type': 'application/json',
@@ -14,7 +14,7 @@ export const sessionApi = {
             }
         })),
 
-    deleteSession: (data: deleteSessionData): Promise<ApiResponse<ProjectData>> =>
+    deleteSession: (data: deleteSessionData): Promise<ApiResponse<SessionData>> =>
         apiErrorHandlerWrapper(noAuthApiClient.delete(`/sessions/${data.session_id}`, {
             headers: {
                 'Content-Type': 'application/json',
