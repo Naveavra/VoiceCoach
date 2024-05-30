@@ -1,8 +1,8 @@
-import { Alert, StyleSheet, TouchableOpacity } from "react-native"
+import { Alert, StyleSheet, TouchableOpacity, View } from "react-native"
 import { useAuth, useProjects, useUtilities } from "../common/hooks";
 import AppFlatList from "../common/components/AppFlatList";
 import { AppLoader } from "../common/components/Loader";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../AppNavigation";
 import { Title } from "../common/components/Title";
@@ -14,16 +14,16 @@ import { useNavigationState } from '@react-navigation/native';
 import { cleanProjectsState, clearSelectedProject, deleteProject, selectProject } from "../common/redux/projectsReducer";
 import { deleteAsync } from "expo-file-system";
 import AppProjectCard from "../common/components/AppProjectCard";
+import { SimpleLineIcons } from '@expo/vector-icons';
 
 
 export const HomeScreen = ({ navigation }: HomeScreenProps) => {
     const { user, token } = useAuth({});
     const { dispatch } = useUtilities();
-    const { isLoadingProjects, projects, selectedProject, error, msg } = useProjects({ token: token });
+    const { isLoadingProjects, projects, selectedProject, error, msg, reloadData } = useProjects({ token: token });
     const routeNames = useNavigationState(state => state.routeNames);
     const index = useNavigationState(state => state.index);
     const currentRouteName = routeNames[index];
-
 
     const AddProjectAlert = () => {
         Alert.alert('No projects found', '', [
@@ -83,23 +83,34 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
     return (
         <>
-            <Title title={`hi ${user?.name}`} subtitle="this is your projects" />
-            <Ionicons style={{
-                marginTop: 20,
-                alignSelf: 'center',
-                color: '#1976d2',
+            <View style={styles.container}>
+                <Title title={`hi ${user?.name}`} subtitle="this is your projects" />
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    width: '30%',
+                }}
+                >
+                    <Ionicons style={{
+                        alignSelf: 'center',
+                        color: '#1976d2',
 
-            }} name="add-circle-outline" size={30} color="black" onPress={() => navigation.navigate('AddProject')} />
-            {isLoadingProjects ? <AppLoader /> :
-                <AppFlatList isLoading={isLoadingProjects} objects={projects} elements={elements} />
-            }
-            <TouchableOpacity style={styles.itemContainer} onPress={() => {
-                cleanState()
-                dispatch(logout())
-            }}>
-                <AntDesign name="logout" size={24} color="black" />
-            </TouchableOpacity>
+                    }} name="add-circle-outline" size={40} color="black" onPress={() => navigation.navigate('AddProject')} />
 
+                    <SimpleLineIcons name="refresh" size={34} color="#1976d2" onPress={reloadData} />
+
+                </View>
+
+                {isLoadingProjects ? <AppLoader /> :
+                    <AppFlatList isLoading={isLoadingProjects} objects={projects} elements={elements} />
+                }
+                <TouchableOpacity style={styles.itemContainer} onPress={() => {
+                    cleanState()
+                    dispatch(logout())
+                }}>
+                    <AntDesign name="logout" size={24} color="black" />
+                </TouchableOpacity>
+            </View>
         </>
     );
 }

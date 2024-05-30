@@ -10,7 +10,7 @@ interface useProjectProps {
 
 export const useProject = ({ token, project_id }: useProjectProps) => {
     const { dispatch, useAppSelector } = useUtilities();
-    const versions = useAppSelector((state) => state.project.versions);
+    const sessions = useAppSelector((state) => state.project.sessions);
     const isLoadingProject = useAppSelector((state) => state.project.isLoadingProject);
     const error = useAppSelector((state) => state.project.error);
     const msg = useAppSelector((state) => state.project.msg);
@@ -21,12 +21,12 @@ export const useProject = ({ token, project_id }: useProjectProps) => {
     }, [dispatch]);
 
     useEffect(() => {
-        if (token) {
-            //todo check if passed 0 , then dont call and show error
+        if (token && sessions.length == 0 && project_id != -1) {
+            console.log('fetching project data');
             dispatch(getProjectData({ token: token, project_id: project_id }));
         }
-    }, [dispatch]);
+    }, [dispatch, project_id]);
 
-    return { isLoadingProject, versions, error, msg, reloadData };
+    return { isLoadingProject, sessions, error, msg, reloadData };
 
 }

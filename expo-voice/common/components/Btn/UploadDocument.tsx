@@ -73,7 +73,6 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
                         reloadData();
                     })
                     .catch((error) => {
-                        console.log(error);
                         setIsLoading(false);
                         errorAlert('Failed to upload sample');
                     }

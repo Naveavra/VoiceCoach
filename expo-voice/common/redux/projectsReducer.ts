@@ -75,7 +75,9 @@ export const projectsReducer = createSlice({
             state.msg = null;
         },
         selectProject: (state, action) => {
-            state.selectedProject = state.projects.find(p => p.id === action.payload) ?? emptyProject;
+            if (state.selectedProject.id !== action.payload) {
+                state.selectedProject = state.projects.find(p => p.id === action.payload) ?? emptyProject;
+            }
         },
         setSampleUrl: (state, action) => {
             if (state.selectedProject) {
@@ -103,16 +105,6 @@ export const projectsReducer = createSlice({
         },
         clearSelectedProject: (state) => {
             state.selectedProject = emptyProject;
-        },
-        clearSession: (state, action) => {
-            //remove the session from the selected project in the projects state
-            state.projects = state.projects.map(p => {
-                if (p.id === state.selectedProject.id) {
-                    p.sessions = p.sessions.filter(s => s.id !== action.payload);
-                }
-                return p;
-            });
-            state.selectedProject.sessions = state.selectedProject.sessions.filter(s => s.id !== action.payload);
         },
     },
     extraReducers: (builder) => {
@@ -162,4 +154,4 @@ export const projectsReducer = createSlice({
     },
 });
 
-export const { cleanProjectsState, selectProject, setDeviceUri, setSampleUrl, clearSelectedProject, clearSession } = projectsReducer.actions;
+export const { cleanProjectsState, selectProject, setDeviceUri, setSampleUrl, clearSelectedProject } = projectsReducer.actions;

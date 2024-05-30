@@ -16,22 +16,22 @@ type ListItemProps = {
 
 export const AppFlatListItem: React.FC<ListItemProps> = React.memo(
     ({ item, viewableItems }) => {
-        const rStyle = useAnimatedStyle(() => {
-            const isVisible = Boolean(
-                viewableItems.value
-                    .filter((item) => item.isViewable)
-                    .find((viewableItem) => viewableItem.item.id === item.id)
-            );
+        // const rStyle = useAnimatedStyle(() => {
+        //     const isVisible = Boolean(
+        //         viewableItems.value
+        //             .filter((item) => item.isViewable)
+        //             .find((viewableItem) => viewableItem.item.id === item.id)
+        //     );
 
-            return {
-                opacity: withTiming(isVisible ? 1 : 0),
-                transform: [
-                    {
-                        scale: withTiming(isVisible ? 1 : 0.6),
-                    },
-                ],
-            };
-        }, []);
+        //     return {
+        //         opacity: withTiming(isVisible ? 1 : 0),
+        //         transform: [
+        //             {
+        //                 scale: withTiming(isVisible ? 1 : 0.6),
+        //             },
+        //         ],
+        //     };
+        // }, []);
 
         return (
             <Animated.View
@@ -41,6 +41,7 @@ export const AppFlatListItem: React.FC<ListItemProps> = React.memo(
                         marginBottom: 10,
                         alignItems: 'center',
                         justifyContent: 'center',
+
                     },
 
                 ]}

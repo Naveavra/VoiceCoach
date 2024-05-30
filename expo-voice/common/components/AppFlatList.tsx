@@ -1,16 +1,12 @@
-import { Alert, FlatList, ListRenderItemInfo, StyleSheet, View, ViewStyle, ViewToken } from "react-native"
+import { FlatList, StyleSheet, ViewStyle, ViewToken } from "react-native"
 
 
 // Common Imports
 
-import { ProjectData } from "../types/systemTypes";
 import { useSharedValue } from "react-native-reanimated";
 import { UIBox } from "../ui/components";
 import { defaultTheme } from "../ui/defaultTheme";
 import { AppFlatListItem } from "./AppFlatListItem";
-import AppProjectCard from "./AppProjectCard";
-import { useAuth, useUtilities } from "../hooks";
-import { deleteProject, selectProject } from "../redux/projectsReducer";
 
 
 interface AppDrawerProps {
