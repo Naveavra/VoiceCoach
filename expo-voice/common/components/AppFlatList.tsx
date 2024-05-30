@@ -55,6 +55,7 @@ const contentItemBase = {
 const styles = StyleSheet.create({
     container: {
         height: '70%',
+        flex: 1
     },
     contentItem: {
         ...contentItemBase,

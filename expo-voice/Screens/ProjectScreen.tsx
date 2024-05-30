@@ -3,8 +3,9 @@ import { RootStackParamList } from "../AppNavigation";
 import { View, Text, StyleSheet, Alert, TouchableOpacity } from "react-native";
 import { useProject } from "../common/hooks/useProject";
 import { useAuth, useProjects, useUtilities } from "../common/hooks";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import AppFlatList from "../common/components/AppFlatList";
+import * as DocumentPicker from 'expo-document-picker';
 
 import { AntDesign } from '@expo/vector-icons';
 import { cleanStateMsg } from "../common/redux/projectReducer";
@@ -17,7 +18,11 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import AppSessionCard from "../common/components/AppSessionCard";
 import { sessionApi } from "../common/api/sessionApi";
-import { clearSession } from "../common/redux/projectsReducer";
+import { clearSession, setSampleUrl } from "../common/redux/projectsReducer";
+import { API_URL } from "../common/config";
+import { noAuthApiClient } from "../common/api/apiClient";
+import { ActivityIndicator } from "react-native-paper";
+import { UploadDocument } from "../common/components/Btn/UploadDocument";
 
 LogBox.ignoreLogs([
     'Non-serializable values were found in the navigation state',
@@ -28,24 +33,8 @@ export const ProjectScreen = ({ route, navigation }: projectScreenProps) => {
     const { token } = useAuth({});
     const selectedProject = useAppSelector((state) => state.projects.selectedProject);
     const { isLoadingProject, versions, error, msg, reloadData } = useProject({ token: token, project_id: selectedProject?.id || 0 });
+    const [isLoading, setIsLoading] = useState(false);
 
-    const AddSampleAlert = () => {
-        Alert.alert('No sample found', '', [
-            {
-                text: 'Cancel',
-                onPress: () => console.log('Cancel Pressed'),
-                style: 'cancel',
-            },
-            {
-                text: 'Add Sample', onPress: () => navigation.navigate('AddRecord', {
-                    project: selectedProject,
-                    is_sample: true,
-                    reloadData: reloadData,
-                    session_id: -1,
-                })
-            },
-        ]);
-    }
     const elements = selectedProject.sessions.map((session, index) => {
         return (
             <AppSessionCard
@@ -65,7 +54,7 @@ export const ProjectScreen = ({ route, navigation }: projectScreenProps) => {
         if (msg == "No sample found") {
             cleanStateMsg();
             if (!selectedProject.sample_url) {
-                AddSampleAlert();
+                // AddSampleAlert();
             }
         }
     }, [msg]);
@@ -79,20 +68,11 @@ export const ProjectScreen = ({ route, navigation }: projectScreenProps) => {
                 </View>
 
                 <View style={styles.sampleContainer}>
-                    {selectedProject.sample_url ?
-                        <AudioRecord project={selectedProject} is_sample={true} />
-                        :
-                        <TouchableOpacity style={styles.addSampleContainer}
-                            onPress={() => navigation.navigate('AddRecord', {
-                                project: selectedProject,
-                                is_sample: true,
-                                reloadData: reloadData,
-                                session_id: -1,
-                            })}
-                        >
-                            <MaterialIcons name="multitrack-audio" size={24} color='#1976d2' />
-                            <Text style={styles.addSampleText}>add sample</Text>
-                        </TouchableOpacity>
+                    {
+                        selectedProject.sample_url ?
+                            <AudioRecord project={selectedProject} is_sample={true} />
+                            :
+                            <UploadDocument token={token} selectedProject={selectedProject} reloadData={reloadData} styles={styles} />
                     }
                 </View>
                 <Ionicons style={styles.addProjectIcon} name="add-circle-outline" size={30} onPress={
