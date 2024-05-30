@@ -1,55 +1,47 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../AppNavigation";
-import { View, Text, StyleSheet, Alert, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useProject } from "../common/hooks/useProject";
-import { useAuth, useProjects, useUtilities } from "../common/hooks";
-import React, { useEffect, useState } from "react";
+import { useAuth, useUtilities } from "../common/hooks";
+import React, { useEffect } from "react";
 import AppFlatList from "../common/components/AppFlatList";
-import * as DocumentPicker from 'expo-document-picker';
 
 import { AntDesign } from '@expo/vector-icons';
-import { addSession, cleanSession, cleanStateMsg, deleteSession } from "../common/redux/projectReducer";
-import { deleteAsync } from "expo-file-system";
+import { addSession, cleanStateMsg, deleteSession, selectSession } from "../common/redux/projectReducer";
 
-type projectScreenProps = NativeStackScreenProps<RootStackParamList, 'Project'>;
 import { LogBox } from 'react-native';
 import { AudioRecord } from "../common/components/AudioRecord";
-import { MaterialIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import AppSessionCard from "../common/components/AppSessionCard";
-import { sessionApi } from "../common/api/sessionApi";
-import { API_URL } from "../common/config";
-import { noAuthApiClient } from "../common/api/apiClient";
-import { ActivityIndicator } from "react-native-paper";
 import { UploadDocument } from "../common/components/Btn/UploadDocument";
+import { AppLoader } from "../common/components/Loader";
+import { SimpleLineIcons } from '@expo/vector-icons';
 
 LogBox.ignoreLogs([
     'Non-serializable values were found in the navigation state',
 ]);
+type projectScreenProps = NativeStackScreenProps<RootStackParamList, 'Project'>;
 
 export const ProjectScreen = ({ route, navigation }: projectScreenProps) => {
     const { useAppSelector, dispatch } = useUtilities();
     const { token } = useAuth({});
     const selectedProject = useAppSelector((state) => state.projects.selectedProject);
     const { isLoadingProject, sessions, error, msg, reloadData } = useProject({ token: token, project_id: selectedProject?.id || 0 });
-    const [isLoading, setIsLoading] = useState(false);
-
     const elements = sessions.map((session, index) => {
         return (
             <AppSessionCard
                 session={session}
-                onPress={() => { } }
-                onDelete={() => dispatch(deleteSession({ session_id: session.id, token: token })).then((res: any) => {
-                    console.log(res, 'session deleted');
+                onPress={() => {
+                    dispatch(selectSession({ id: session.id }));
+                }}
+                onDelete={() => dispatch(deleteSession({ session_id: session.id, token: token }))}//.then((res: any) => {
+                //console.log(res, 'session deleted');
 
-                    // sessionApi.deleteSession({ session_id: session.id, token: token }).then((res: any) => {
-                    //     dispatch(cleanSession(session.id));
-                    // })
-                }).catch((err: any) => {
-                    console.error(err, 'error');
-                })} onEdit={function (): void {
-                    console.log("Function not implemented.");
-                } }            />
+                // sessionApi.deleteSession({ session_id: session.id, token: token }).then((res: any) => {
+                //     dispatch(cleanSession(session.id));
+                // })
+                // })}
+                onEdit={() => { console.log("Function not implemented."); }} />
         )
     })
 
@@ -78,27 +70,37 @@ export const ProjectScreen = ({ route, navigation }: projectScreenProps) => {
                             <UploadDocument token={token} selectedProject={selectedProject} reloadData={reloadData} styles={styles} />
                     }
                 </View>
-                <Ionicons style={styles.addProjectIcon} name="add-circle-outline" size={30} onPress={
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    width: '30%',
+                }}
+                >
 
-                    () => {
-                        dispatch(addSession({ project_id: selectedProject.id, token: token })).then((res: any) => {
-                            console.log(res, 'session added');
-
-                            navigation.navigate('AddRecord', {
-                                project: selectedProject,
-                                is_sample: false,
-                                reloadData: reloadData,
-                                session_id: Number(res.id)
+                    <Ionicons style={styles.addProjectIcon} color="#1976d2" name="add-circle-outline" size={40} onPress={
+                        () => {
+                            dispatch(addSession({ project_id: selectedProject.id, token: token })).then((res: any) => {
+                                navigation.navigate('AddRecord', {
+                                    project: selectedProject,
+                                    reloadData: reloadData,
+                                })
                             })
-                        })
-                            .catch((err: any) => {
-                                console.error(err, 'error');
-                            })
-                    }
-                } />
+                                .catch((err: any) => {
+                                    console.error(err, 'error');
+                                })
+                        }
+                    } />
+                    <SimpleLineIcons name="refresh" size={35} color="#1976d2" onPress={reloadData} />
 
-                <AppFlatList isLoading={false} objects={sessions} elements={elements} />
+                </View>
+                {isLoadingProject ?
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <AppLoader />
+                    </View>
 
+                    :
+                    <AppFlatList isLoading={isLoadingProject} objects={sessions} elements={elements} />
+                }
 
             </View>
             <TouchableOpacity style={styles.itemContainer} onPress={() => navigation.navigate('Home')}>

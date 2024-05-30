@@ -17,7 +17,7 @@ export type RootStackParamList = {
     AddProject: undefined;
     Project: { id: number };
     Session: { id: number };
-    AddRecord: { project: ProjectData, is_sample: boolean, reloadData: () => void, session_id: number };
+    AddRecord: { project: ProjectData, reloadData: () => void };
 };
 
 const NavigationStack = createNativeStackNavigator<RootStackParamList>();

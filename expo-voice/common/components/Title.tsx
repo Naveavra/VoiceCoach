@@ -21,5 +21,6 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 16,
         textAlign: 'center', // Center the text within the Text component
+        marginBottom: 20,
     }
 });

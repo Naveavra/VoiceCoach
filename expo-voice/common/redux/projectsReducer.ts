@@ -75,7 +75,9 @@ export const projectsReducer = createSlice({
             state.msg = null;
         },
         selectProject: (state, action) => {
-            state.selectedProject = state.projects.find(p => p.id === action.payload) ?? emptyProject;
+            if (state.selectedProject.id !== action.payload) {
+                state.selectedProject = state.projects.find(p => p.id === action.payload) ?? emptyProject;
+            }
         },
         setSampleUrl: (state, action) => {
             if (state.selectedProject) {
@@ -152,4 +154,4 @@ export const projectsReducer = createSlice({
     },
 });
 
-export const { cleanProjectsState, selectProject, setDeviceUri, setSampleUrl, clearSelectedProject} = projectsReducer.actions;
+export const { cleanProjectsState, selectProject, setDeviceUri, setSampleUrl, clearSelectedProject } = projectsReducer.actions;

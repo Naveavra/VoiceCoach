@@ -16,7 +16,7 @@ interface projectState {
     isLoadingProject: boolean;
     error: string | null;
     msg: string | null;
-    selectedSession: SessionData | null;
+    selectedSession: SessionData;
 }
 
 const initialState: projectState = {
@@ -29,14 +29,14 @@ const initialState: projectState = {
 
 
 export const getProjectData = createAsyncThunk<
-    { sessions: ApiListData<SessionData>},
+    { sessions: ApiListData<SessionData> },
     getSessionsData,
     { rejectValue: ApiError }
 >(`${reducerName}/getVersions`,
     async (params, thunkApi) => {
         return projectApi
             .getData(params)
-            .then((res) => thunkApi.fulfillWithValue(res as { sessions: ApiListData<SessionData>}))
+            .then((res) => thunkApi.fulfillWithValue(res as { sessions: ApiListData<SessionData> }))
             .catch((res) => thunkApi.rejectWithValue(res as ApiError));
     });
 
@@ -56,7 +56,7 @@ export const deleteSession = createAsyncThunk<
     SessionData,
     deleteSessionData,
     { rejectValue: ApiError }
-    >(`${reducerName}/deleteSession`,
+>(`${reducerName}/deleteSession`,
     async (params, thunkApi) => {
         return sessionApi
             .deleteSession(params)
@@ -97,6 +97,34 @@ export const projectReducer = createSlice({
             state.sessions = payload.sessions;
         });
         builder.addCase(getProjectData.rejected, (state, action) => {
+            state.isLoadingProject = false;
+            state.error = action.payload?.message.error || 'An error occurred';
+            state.msg = null;
+        });
+        //add session
+        builder.addCase(addSession.pending, (state) => {
+            state.isLoadingProject = true;
+        });
+        builder.addCase(addSession.fulfilled, (state, { payload }) => {
+            state.isLoadingProject = false;
+            state.sessions.push(payload);
+            state.selectedSession = payload;
+        });
+        builder.addCase(addSession.rejected, (state, action) => {
+            state.isLoadingProject = false;
+            state.error = action.payload?.message.error || 'An error occurred';
+            state.msg = null;
+        });
+
+        //delete session
+        builder.addCase(deleteSession.pending, (state) => {
+            state.isLoadingProject = true;
+        });
+        builder.addCase(deleteSession.fulfilled, (state, { payload }) => {
+            state.isLoadingProject = false;
+            state.sessions = state.sessions.filter(s => s.id !== payload.id);
+        });
+        builder.addCase(deleteSession.rejected, (state, action) => {
             state.isLoadingProject = false;
             state.error = action.payload?.message.error || 'An error occurred';
             state.msg = null;

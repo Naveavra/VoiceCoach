@@ -13,16 +13,15 @@ import { FontAwesome } from '@expo/vector-icons';
 import { defaultTheme } from "../common/ui/defaultTheme";
 import { Entypo } from '@expo/vector-icons';
 import { useAuth, useUtilities } from "../common/hooks";
-
-type AddRecordingScreenProps = NativeStackScreenProps<RootStackParamList, 'AddRecord'>;
+import { Feather } from '@expo/vector-icons';
 import { LogBox } from 'react-native';
 import { delay } from "../common/utils";
-import Animated, { useSharedValue, withTiming, useAnimatedStyle } from 'react-native-reanimated';
-import { UploadDocument } from "../common/components/Btn/UploadDocument";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
 
 LogBox.ignoreLogs([
     'Non-serializable values were found in the navigation state',
 ]);
+type AddRecordingScreenProps = NativeStackScreenProps<RootStackParamList, 'AddRecord'>;
 
 let recording: Audio.Recording;
 let index = 0;
@@ -40,11 +39,12 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const [status, setStatus] = useState<string>('');
 
     const selectedProject = useAppSelector((state) => state.projects.selectedProject);
-    const { reloadData, session_id } = route.params;
+    const selected_session = useAppSelector((state) => state.project.selectedSession);
+    const { reloadData } = route.params;
 
 
     const [currentWord, setCurrentWord] = useState(0);
-    const opacity = useSharedValue(0);
+    const [isLoading, setIsLoading] = useState(false);
     const [wordColors, setWordColors] = useState<string[]>(selectedProject.clean_text.split(" ").map(() => 'black'));
 
     const errorAlert = () => {
@@ -88,6 +88,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             else if (word === text.split(" ")[index + 1]) {
                 setWordColors((prev) => {
                     const newColors = [...prev];
+                    newColors[index] = 'red';
                     newColors[index + 1] = 'green';
                     index += 1;
                     return newColors;
@@ -165,7 +166,6 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
 
     const stopLoop = () => {
         loopRunning.current = false;
-        index = 0;
     };
 
     const handleStartButtonClick = () => {
@@ -174,21 +174,61 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         setLoopPromise(promise);
     };
 
-    const handleStopButtonClick = () => {
+    const handleStopButtonClick = async () => {
         setStatus('stopped');
+        setIsLoading(true)
         stopLoop();
         if (loopPromise) {
             loopPromise.then(() => {
                 setLoopPromise(null);
             });
         }
-        //todo:fetch analysis 
-        reloadData();
+        if (recording) {
+            await stopRecording(recording);
+            sendAudioData(recording).then(() => {
+                setIsLoading(false);
+                console.log('done');
+                //todo fetch analyze and move to analsis page , then set isloading to false
+            });
+        }
+
+        index = 0;
     };
+    // Animation shared values and styles
+    const fadeIn = useSharedValue(0);
+    const fadeOut = useSharedValue(1);
+
+    const fadeInStyle = useAnimatedStyle(() => {
+        return {
+            opacity: withTiming(fadeIn.value, {
+                duration: 1000,
+                easing: Easing.linear,
+            }),
+        };
+    });
+
+    const fadeOutStyle = useAnimatedStyle(() => {
+        return {
+            opacity: withTiming(fadeOut.value, {
+                duration: 1000,
+                easing: Easing.linear,
+            }),
+        };
+    });
+
+    useEffect(() => {
+        if (isLoading) {
+            fadeIn.value = 1;
+            fadeOut.value = 0;
+        } else {
+            fadeIn.value = 0;
+            fadeOut.value = 1;
+        }
+    }, [isLoading]);
 
     const sendAudioData = async (recording: Audio.Recording | undefined) => {
         try {
-            const url = `${API_URL}/upload/${session_id}`;
+            const url = `${API_URL}/upload/${selected_session.id}`;
             if (recording) {
                 const uri = recording.getURI();
                 const formData = new FormData();
@@ -283,7 +323,20 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
 
                             </>
                             :
-                            null
+                            status == 'stopped' ?
+                                <View style={styles.itemsContainer}>
+                                    {isLoading ?
+                                        <Animated.View style={fadeInStyle}>
+                                            <Feather name="cpu" size={24} color="black" />
+                                        </Animated.View>
+                                        :
+                                        <Animated.View style={fadeOutStyle}>
+                                            <AntDesign name="dotchart" size={24} color="black" />
+                                        </Animated.View>
+                                    }
+                                </View>
+                                :
+                                null
                     }
                 </View>
             </View >

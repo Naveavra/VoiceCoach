@@ -64,8 +64,6 @@ export const RegisterScreen = ({ navigation }: registerScreenProps) => {
                 <UIButton
                     title={title}
                     onClick={() => {
-                        console.log('[DEBUG]Register!');
-                        // console.log('[DEBUG] userName: ' + userName);
                         dispatch(register({ email: email, password: password })).then((res) => {
                             setTitle('confirmation mail sent!')
                             setSuccess(true);
