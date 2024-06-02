@@ -24,17 +24,18 @@ export interface ProjectData {
     mark_text: string;
 }
 
-export interface Analysis 
-{
-    words: string[],
-    teamim: {start: string, end: string, result: string}[]
-    description: string
+export interface Analysis {
+    teamim: { text: string, start: string, end: string, review: string }[]
+    words: [string, number, string][] //[word,typeof,correct_word][]
 }
+//0 good
+//1 exist but not in right place
+//2 garbish 
 
 export interface SessionData {
     id: number;
     projectId: string;
     url: string;
     created_at: string;
-    analysis : Analysis | null
+    analysis: Analysis | null
 }

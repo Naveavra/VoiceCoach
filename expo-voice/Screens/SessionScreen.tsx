@@ -17,6 +17,7 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
     const [isLoading, setIsLoading] = useState(true);
     const [analysis, setAnalysis] = useState<Analysis | null>(null);
     const [selectedWordIndex, setSelectedWordIndex] = useState<number | null>(null);
+
     useEffect(() => {
         axios.get(`${API_URL}/analysis/${session.id}`,
             {
@@ -32,8 +33,6 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                 setIsLoading(false);
             });
     }, [session.id, token]);
-
-    //todo : how to handle the device_url of session
     return (
         <>
             {isLoading ? <AppLoader /> :
@@ -46,14 +45,16 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                 is_sample={false}
                                 path={`${session.id}_${session.created_at}`} />
                         </View>
-                        <Text style={styles.description}>{analysis.description}</Text>
+
                         <View style={styles.wordsContainer}>
                             {analysis.words.map((word, index) => {
-                                const result = analysis.teamim[index]?.result;
-                                const wordColor = result === 'GOOD' ? 'green' : (result === 'BAD' ? 'red' : 'black');
+
+                                const wordColor = word[1] === 0 ? 'green' : word[1] == 1 ? 'orange' : word[1] == 2 ? 'red' : 'black';
+                                const word_been_said = word[0]
+                                const word_to_say = word[2]
                                 return (
                                     <TouchableOpacity key={index} onPress={() => setSelectedWordIndex(index)}>
-                                        <Text style={[styles.word, { color: wordColor }]}>{word}</Text>
+                                        <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said} - ${word_to_say}`}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -62,6 +63,7 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                             <View style={styles.timeContainer}>
                                 <Text>Start: {analysis.teamim[selectedWordIndex].start}</Text>
                                 <Text>End: {analysis.teamim[selectedWordIndex].end}</Text>
+                                <Text>Review: {analysis.teamim[selectedWordIndex].review}</Text>
                             </View>
                         )}
                     </ScrollView>
@@ -73,6 +75,7 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
 const styles = StyleSheet.create({
     container: {
         padding: 16,
+        direction: 'rtl',
     },
     sampleContainer: {
         width: '90%',
@@ -83,13 +86,17 @@ const styles = StyleSheet.create({
         marginBottom: 20, // Adjust spacing between elements
         height: 150, // Adjust height as needed
     },
-    description: {
-        fontSize: 16,
+    descriptionContainer: {
         marginBottom: 16,
+    },
+    descriptionLine: {
+        fontSize: 16,
+        marginBottom: 8,
     },
     wordsContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
+
     },
     word: {
         fontSize: 16,
