@@ -124,8 +124,8 @@ def get_words_by_google(audio_file, duration):
                 with song as source:
                     song_aud = recognizer.record(song, duration=min(30.0, duration - count), offset=count)
                     song_txt = recognizer.recognize_google(song_aud, language="iw-IL")
+                    print(song_txt)
                 count = count + 30
-                print(song_txt)
                 if len(ans) == 0:
                     ans = song_txt
                 else:

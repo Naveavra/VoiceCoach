@@ -158,7 +158,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 await delay(5000);
                 if (record) {
                     await stopRecording(record);
-                    sendAudioData(record);
+                    sendAudioData(record, false);
                 }
             }
         }
@@ -185,7 +185,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         }
         if (recording) {
             await stopRecording(recording);
-            sendAudioData(recording).then(() => {
+            sendAudioData(recording, true).then(() => {
                 setIsLoading(false);
                 console.log('done');
                 //todo fetch analyze and move to analsis page , then set isloading to false
@@ -226,7 +226,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         }
     }, [isLoading]);
 
-    const sendAudioData = async (recording: Audio.Recording | undefined) => {
+    const sendAudioData = async (recording: Audio.Recording | undefined, done: boolean) => {
         try {
             const url = `${API_URL}/upload/${selected_session.id}`;
             if (recording) {
@@ -238,6 +238,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     type: 'audio/wav',
                 });
 
+                formData.append('done', done.toString());
                 const config = {
                     headers: {
                         'content-type': 'multipart/form-data',
