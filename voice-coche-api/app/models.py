@@ -95,7 +95,7 @@ class Project(db.Model):
             'parasha': self.parasha,
             'aliyah': self.aliyah,
             'description': self.description,
-            'clean_text':' '.join(self.sample_lines) if self.sample_lines is not None else "",
+            'clean_text':' '.join(self.sample_lines)[0] if self.sample_lines is not None else "",
             'mark_text': "בראשית ברא אלוהים",
             'created_at': self.created_at,
             'sample_url': self.sample_url
