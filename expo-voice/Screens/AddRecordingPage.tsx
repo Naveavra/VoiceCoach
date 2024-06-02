@@ -37,17 +37,13 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const [transcript, setTranscript] = useState<string>('');
     const [status, setStatus] = useState<string>('');
 
-    const selectedProject = useAppSelector((state) => state.projects.selectedProject);
     const selected_session = useAppSelector((state) => state.project.selectedSession);
-    const { reloadData } = route.params;
+    const { project, reloadData } = route.params;
 
-    console.log(selectedProject);
     const [currentWord, setCurrentWord] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
-    const [wordColors, setWordColors] = useState<string[]>(selectedProject.clean_text.split(" ").map(() => 'black'));
+    const [wordColors, setWordColors] = useState<string[]>(project.clean_text.split(" ").map(() => 'black'));
     const scrollY = useSharedValue(0);
-
-
     const errorAlert = () => {
         Alert.alert('error', 'something went wrong', [
             {
@@ -55,24 +51,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             },
         ]);
     }
-    // useEffect(() => {
-    //     const interval = setInterval(() => {
-    //         setCurrentWord((prev) => (prev + 1) % selectedProject.clean_text.split(" ").length);
-    //         opacity.value = 1;
-    //     }, 1000);
 
-    //     return () => clearInterval(interval);
-    // }, []);
-
-    // useEffect(() => {
-    //     opacity.value = withTiming(1, { duration: 500 });
-    // }, [currentWord]);
-
-    // const animatedStyles = useAnimatedStyle(() => {
-    //     return {
-    //         opacity: opacity.value,
-    //     };
-    // });
     const sendAudioData = async (recording: Audio.Recording | undefined, done: boolean) => {
         try {
             const url = `${API_URL}/upload/${selected_session.id}`;
@@ -112,15 +91,15 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const handleTranscript = (data: any) => {
         setTranscript((prev) => prev + data + ' ');
         data.split(" ").forEach((word: string) => {
-            console.log(word, selectedProject.clean_text.split(" ")[index]);
-            if (word === selectedProject.clean_text.split(" ")[index]) {
+            console.log(word, project.clean_text.split(" ")[index]);
+            if (word === project.clean_text.split(" ")[index]) {
                 setWordColors((prev) => {
                     const newColors = [...prev];
                     newColors[index] = 'green';
                     return newColors;
                 });
             }
-            else if (word === selectedProject.clean_text.split(" ")[index + 1]) {
+            else if (word === project.clean_text.split(" ")[index + 1]) {
                 setWordColors((prev) => {
                     const newColors = [...prev];
                     newColors[index] = 'red';
@@ -148,7 +127,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     return newColors;
                 });
             }
-            setCurrentWord((prev) => (prev + 1) % selectedProject.clean_text.split(" ").length);
+            setCurrentWord((prev) => (prev + 1) % project.clean_text.split(" ").length);
             index++;
         })
     }
@@ -234,9 +213,8 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             sendAudioData(recording, true).then(() => {
                 setIsLoading(false);
                 console.log('done');
-                axios.get(`${API_URL}/analysis/${selected_session.id}`, { headers: { 'Authorization': `Bearer ${token}` } }).
-                    then((response) => {
-                        console.log(response.data);
+                axios.get(`${API_URL}/analysis/${selected_session.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
+                    .then((response) => {
                         navigation.navigate('Analysis', {
                             analysis: response.data,
                             session_id: selected_session.id
@@ -247,37 +225,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             index = 0;
         }
     };
-    // Animation shared values and styles
-    const fadeIn = useSharedValue(0);
-    const fadeOut = useSharedValue(1);
 
-    const fadeInStyle = useAnimatedStyle(() => {
-        return {
-            opacity: withTiming(fadeIn.value, {
-                duration: 1000,
-                easing: Easing.linear,
-            }),
-        };
-    });
-
-    const fadeOutStyle = useAnimatedStyle(() => {
-        return {
-            opacity: withTiming(fadeOut.value, {
-                duration: 1000,
-                easing: Easing.linear,
-            }),
-        };
-    });
-
-    useEffect(() => {
-        if (isLoading) {
-            fadeIn.value = 1;
-            fadeOut.value = 0;
-        } else {
-            fadeIn.value = 0;
-            fadeOut.value = 1;
-        }
-    }, [isLoading]);
 
     useEffect(() => {
         if (currentWord > 0 && currentWord % 10 === 0) {
@@ -296,15 +244,15 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         <>
             <View style={styles.container}>
                 <View style={styles.details}>
-                    <Text style={styles.projectName}>{selectedProject.parasha} - {selectedProject.aliyah}</Text>
-                    <Text style={styles.projectDescription}>{selectedProject.description}</Text>
+                    <Text style={styles.projectName}>{project.parasha} - {project.aliyah}</Text>
+                    <Text style={styles.projectDescription}>{project.description}</Text>
                 </View>
                 {transcript &&
                     <Text>{transcript}</Text>}
 
                 <SafeAreaView style={styles.safeContainer}>
                     <Animated.View style={[styles.textContainer, animatedStyles]}>
-                        {selectedProject.clean_text.split(" ").map((word, index) => {
+                        {project.clean_text.split(" ").map((word, index) => {
                             return (
                                 <Text
                                     key={index}
@@ -350,13 +298,9 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                             status == 'stopped' ?
                                 <View style={styles.itemsContainer}>
                                     {isLoading ?
-                                        <Animated.View style={fadeInStyle}>
-                                            <Feather name="cpu" size={24} color="black" />
-                                        </Animated.View>
+                                        <Feather name="cpu" size={24} color="black" />
                                         :
-                                        <Animated.View style={fadeOutStyle}>
-                                            <AntDesign name="dotchart" size={24} color="black" />
-                                        </Animated.View>
+                                        <AntDesign name="dotchart" size={24} color="black" />
                                     }
                                 </View>
                                 :

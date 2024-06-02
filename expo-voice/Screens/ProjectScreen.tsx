@@ -30,7 +30,6 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
     const { isLoadingProject, sessions, error, msg, reloadData } = useProject({ token: token, project_id: selectedProject?.id || 0 });
     const [deviceUrl, setDeviceUrl] = useState<string>('');
     const [loadingUri, setLoadingUri] = useState<boolean>(true);
-    console.log(sessions)
     useEffect(() => {
         const fetchSampleUri = async () => {
             if (selectedProject?.sample_url) {
@@ -92,7 +91,7 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
                                         is_sample={true} />
                             )
                             :
-                            <UploadDocument token={token} selectedProject={selectedProject} reloadData={reloadData} styles={styles} />
+                            <UploadDocument token={token} selectedProject={selectedProject} reloadData={reloadData} />
                     }
                 </View>
                 <View style={styles.actionButtonsContainer}>

@@ -1,41 +1,57 @@
 import React, { useState } from "react";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, Keyboard } from "react-native";
 import { RootStackParamList } from "../AppNavigation";
 
 type AnalysisScreenProps = NativeStackScreenProps<RootStackParamList, 'Analysis'>;
+import { AntDesign } from '@expo/vector-icons';
 
 export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
     const { analysis } = route.params;
-    const [selectedTime, setSelectedTime] = useState<{ start: string, end: string } | null>(null);
-
+    const [selectedWordIndex, setSelectedWordIndex] = useState<number | null>(null);
     const handleWordClick = (index: number) => {
-        const teamimEntry = analysis.teamim[index];
-        setSelectedTime({ start: teamimEntry.start, end: teamimEntry.end });
+        setSelectedWordIndex(index);
+    };
+
+    const handleScreenClick = () => {
+        setSelectedWordIndex(null);
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.description}>{analysis.description}</Text>
-            <View style={styles.wordsContainer}>
-                {analysis.words.map((word, index) => {
-                    const teamimEntry = analysis.teamim[index];
-                    const wordColor = teamimEntry.result === "GOOD" ? "green" : "red";
-                    return (
-                        <TouchableOpacity key={index} onPress={() => handleWordClick(index)}>
-                            <Text style={[styles.word, { color: wordColor }]}>{word}</Text>
-                        </TouchableOpacity>
-                    );
-                })}
-            </View>
-            {selectedTime && (
-                <View style={styles.timeContainer}>
-                    <Text style={styles.timeText}>
-                        Start: {selectedTime.start}, End: {selectedTime.end}
-                    </Text>
+        <TouchableWithoutFeedback onPress={handleScreenClick}>
+            <View style={styles.container}>
+                <AntDesign name="warning" size={24} color="#f44336" />
+                <View style={styles.wordsContainer}>
+                    {analysis.words.map((word, index) => {
+                        const status = word[1];
+                        const wordColor = status === 0 ? '#4caf50' : status == 1 ? '#ffc107' : status == 2 ? '#f44336' : '#2196f3';
+                        const word_been_said = word[0];
+                        const word_to_say = word[2];
+                        if (status == 2) {
+                            return (
+                                <TouchableOpacity key={index} onPress={() => handleWordClick(index)}>
+                                    <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said} - ${word_to_say}`}</Text>
+                                </TouchableOpacity>
+                            )
+                        }
+                        else {
+                            return (
+                                <TouchableOpacity key={index} onPress={() => handleWordClick(index)}>
+                                    <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
+                                </TouchableOpacity>)
+                        }
+                    })}
                 </View>
-            )}
-        </View>
+
+                {selectedWordIndex !== null && (
+                    <View style={styles.timeContainer}>
+                        <Text>Start: {analysis.teamim[selectedWordIndex].start}</Text>
+                        <Text>End: {analysis.teamim[selectedWordIndex].end}</Text>
+                        <Text>Review: {analysis.teamim[selectedWordIndex].review}</Text>
+                    </View>
+                )}
+            </View>
+        </TouchableWithoutFeedback>
     );
 };
 
@@ -43,6 +59,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 16,
+        direction: "rtl",
     },
     description: {
         fontSize: 16,

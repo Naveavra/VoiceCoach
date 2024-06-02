@@ -70,7 +70,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
                 }
             }
 
-            if (localUri! = '') {
+            if (localUri != '') {
                 const { sound } = await Audio.Sound.createAsync({ uri: localUri }, { shouldPlay: false }, onPlaybackStatusUpdate);
                 setVoice(sound);
                 setHasAudio(true);
@@ -215,10 +215,12 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
                         </>
                     ) : (
                         <>
-                            <TouchableOpacity onPress={createSound}>
-                                <Ionicons name="cloud-download-outline" size={24} color="black" />
-                            </TouchableOpacity>
-                            <Text>{is_sample ? 'Download sample' : 'Download version'}</Text>
+                            <View style={styles.doanloadButton}>
+                                <TouchableOpacity onPress={createSound}>
+                                    <Ionicons name="cloud-download-outline" size={24} color="black" />
+                                </TouchableOpacity>
+                                <Text>{is_sample ? 'Download sample' : 'Download session'}</Text>
+                            </View>
                         </>
                     )}
                 </>
@@ -262,5 +264,10 @@ const styles = StyleSheet.create({
     speedText: {
         fontSize: 16,
         color: primaryColor,
+    },
+    doanloadButton: {
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
