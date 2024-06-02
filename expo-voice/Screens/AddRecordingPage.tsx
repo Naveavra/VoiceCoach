@@ -285,7 +285,25 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         }
     }, [currentWord]);
 
+    const sendAudioData = async (recording: Audio.Recording | undefined, done: boolean) => {
+        try {
+            const url = `${API_URL}/upload/${selected_session.id}`;
+            if (recording) {
+                const uri = recording.getURI();
+                const formData = new FormData();
+                formData.append('audio', {
+                    uri: uri,
+                    name: 'audio.wav',
+                    type: 'audio/wav',
+                });
 
+                formData.append('done', done ? 'true' : 'false' );
+                const config = {
+                    headers: {
+                        'content-type': 'multipart/form-data',
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
     const animatedStyles = useAnimatedStyle(() => {
         return {
             transform: [{ translateY: scrollY.value }],

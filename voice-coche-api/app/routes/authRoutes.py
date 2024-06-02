@@ -48,16 +48,16 @@ def init_auth_routes(app,login_manager,mail):
             else:
                 try:
                     new_user = User(email=email,username=name, password=password)
-                    db.session.add(new_user)
-                    db.session.commit()
-                    '''
+
                     email_token = generate_token(email,app)
                     confirm_url = url_for("confirm_email", token=email_token, _external=True)
                     html = render_template("confirm_email.html", confirm_url=confirm_url)
                     subject = "Please confirm your email"
                     send_email(app,mail,email, subject, html)
-                    '''
-                           
+                    
+                    db.session.add(new_user)
+                    db.session.commit()
+                    
                     return jsonify({'msg':'email send success'}), 200
                 except Exception as e:
                     print(e)

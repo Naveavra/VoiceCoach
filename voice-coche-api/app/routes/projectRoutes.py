@@ -61,8 +61,7 @@ def init_project_routes(app, socketio):
         if project.creator_email != current_user.email:
             return jsonify({"message": "Unauthorized"}), 401
         return jsonify({
-            'sessions': [session.simpleSerialize() for session in Session.query.filter_by(project_id=project_id).all()],
-            'project': project.simpleSerialize()
+            'sessions': [session.simpleSerialize() for session in Session.query.filter_by(project_id=project_id).all()]
         }), 200
 
     @app.route('/process', methods=['GET'])
@@ -78,30 +77,3 @@ def init_project_routes(app, socketio):
             result = result.append(recording, crossfade=0)
         result.export("full.wav", format="wav")
         return result
-
-    @socketio.on('connect')
-    def handle_connect():
-        print('Client connected')
-
-    @socketio.on('disconnect')
-    def handle_disconnect():
-        print('Client disconnected')
-
-    @socketio.on('send_audio')
-    def handle_send_audio(data):
-        print(data)
-        parts = data['_parts']
-        audio_part = next((part for part in parts if part[0] == 'audio'), None)
-        print(audio_part)
-        file_data = audio_part[1].get('uri')
-        print(file_data)
-        #file_data = data['audio']
-        audio = AudioSegment.from_file(file_data, format='wav')
-        recordings.append(audio)
-        audio_wav = io.BytesIO()
-        audio.export(audio_wav, format="wav")
-        audio_wav.seek(0)
-        with sr.AudioFile(audio_wav) as source:
-            audio_data = recognizer.record(source)
-            text = recognizer.recognize_google(audio_data, language='iw-IL')
-            emit('audio_transcription', {'text': text})
