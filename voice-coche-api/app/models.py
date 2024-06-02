@@ -90,7 +90,6 @@ class Project(db.Model):
         self.created_at = datetime.utcnow()
     
     def simpleSerialize(self):
-        print(self.sample_lines if self.sample_lines is not None else "")
         return {
             'id': self.id,
             'parasha': self.parasha,

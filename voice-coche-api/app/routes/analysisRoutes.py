@@ -20,9 +20,7 @@ aai.settings.api_key = "0dc55bacc27c4f6786439e81b735f87a"
 
 def init_analysis_routes(app):
     @app.route("/analysis/<int:session_id>", methods=["GET"])
-    @jwt_required()
-    @authenticate
-    def forAnalysis(current_user, session_id):
+    def forAnalysis(session_id):
         return getAnalysis(session_id)
         
                     
@@ -39,6 +37,7 @@ def getAnalysis(session_id):
 
 
     words = get_words_by_google(session.recording, duration_seconds)
+    print(words)
     description = ""
     project = Project.query.get(session.project_id)
     user_lines = session.session_lines.split(',')
@@ -74,13 +73,12 @@ def getAnalysis(session_id):
         wordsMismatch.extend(line_wordsMismatch)
         wordsDescription = wordsDescription + line_wordsDescription + '\n'
 
-    '''
-    with tempfile.NamedTemporaryFile(delete=True, suffix=".wav") as tmpfile:
-        tmpfile.write(session.recording)
-        tmpfile.flush()
+    print("teamim")
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file:
+        temp_wav_file.write(session.recording)
 
         # URL of the file to transcribe
-        FILE_URL = tmpfile.name
+        FILE_URL = temp_wav_file.name
 
         config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
         transcriber = aai.Transcriber(config=config)
@@ -93,9 +91,9 @@ def getAnalysis(session_id):
                 end_time = word.end/1000
                 word_text = word.text
                 stamps_array.append({'text': word.text, 'start': start_time, 'end': end_time})
+            print(stamps_array)
         elif transcript.status == aai.TranscriptStatus.failed:
             return jsonify("transciption failed"), 401
-        '''
     return jsonify({"words" : wordsMismatch, "teamim" : "", "description" : wordsDescription}), 200
         
 

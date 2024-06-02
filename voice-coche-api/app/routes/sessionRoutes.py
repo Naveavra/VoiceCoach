@@ -119,7 +119,7 @@ def init_session_routes(app, socketio):
         else:
             return jsonify({"error": "received unsupported file"}), 401
 
-    @app.route('/files/download/<session_url>', methods=['GET'])
+    @app.route('/session/download/<session_url>', methods=['GET'])
     def download_session(session_url):
         session = Session.query.filter_by(url=session_url).first()
         if not session:
