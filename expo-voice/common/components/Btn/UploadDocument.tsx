@@ -1,11 +1,9 @@
 import * as DocumentPicker from 'expo-document-picker';
 import React, { useState } from 'react';
 import { ActivityIndicator, Text, Alert, TouchableOpacity } from 'react-native';
-import { noAuthApiClient } from '../../api/apiClient';
 import { API_URL } from '../../config';
 import { setSampleUrl } from '../../redux/projectsReducer';
 import { ProjectData } from '../../types/systemTypes';
-import { AudioRecord } from '../AudioRecord';
 import { useUtilities } from '../../hooks';
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';

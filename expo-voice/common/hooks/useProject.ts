@@ -22,7 +22,6 @@ export const useProject = ({ token, project_id }: useProjectProps) => {
 
     useEffect(() => {
         if (token && sessions.length == 0 && project_id != -1) {
-            console.log('fetching project data');
             dispatch(getProjectData({ token: token, project_id: project_id }));
         }
     }, [dispatch, project_id]);

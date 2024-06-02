@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, Pressable, StyleSheet, Dimensions } from "react-native";
-import { Audio, AVPlaybackStatus } from "expo-av";
+import { View, Text, TouchableOpacity, Pressable, StyleSheet } from "react-native";
+import { Audio } from "expo-av";
 import Slider from "@react-native-community/slider";
 import { FontAwesome5 } from "@expo/vector-icons";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
@@ -8,17 +8,19 @@ import * as FileSystem from 'expo-file-system';
 import { API_URL } from "../../common/config";
 import { AntDesign } from '@expo/vector-icons';
 import { useUtilities } from "../hooks";
-import { setDeviceUri } from "../redux/projectsReducer";
-import { ProjectData } from "../types/systemTypes";
+// import { setDeviceUri } from "../redux/projectsReducer";
+import { saveAsync } from "../utils";
 
 interface AudioRecordProps {
-    project: ProjectData
+    device_uri: string;
+    url: string;
+    path: string;
     is_sample: boolean
 }
 
 const primaryColor = "#0ea5e9";
 
-export const AudioRecord: React.FC<AudioRecordProps> = ({ project, is_sample }) => {
+export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sample, path }) => {
     const { dispatch } = useUtilities();
     const [playing, setPlaying] = useState<boolean>(false);
     const [speedRate, setSpeedRate] = useState<0.5 | 1.0 | 1.5>(1.0);
@@ -27,11 +29,11 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ project, is_sample }) 
     const [position, setPosition] = useState(0);
 
     const [voice, setVoice] = useState<Audio.Sound | null>(null);
-    const [uri, setUri] = useState<string>(project.device_uri || '');
-    const [hasAudio, setHasAudio] = useState<boolean>(project.device_uri != '' && project.device_uri != undefined ? true : false);
+    const [uri, setUri] = useState<string>(device_uri || '');
+    const [hasAudio, setHasAudio] = useState<boolean>(device_uri != '' && device_uri != undefined ? true : false);
     const handleSetUri = (uri: string) => {
         setUri(uri);
-        dispatch(setDeviceUri(uri));
+        saveAsync(path, uri);
     };
 
     const setPlaybackRate = async () => {
@@ -43,26 +45,10 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ project, is_sample }) 
     };
 
     const downloadSampleResumable = FileSystem.createDownloadResumable(
-        `${API_URL}/files/download/${project.sample_url}`,
-        FileSystem.documentDirectory + `recording_${project.id}.wav`,
+        is_sample ? `${API_URL}/files/download/${url}` : `${API_URL}/session/download/sample`,
+        FileSystem.documentDirectory + `${path}.wav`,
     );
 
-    // const get = async () => {
-    //     try {
-    //         setIsLoading(true);
-    //         const downloadResult = await downloadSampleResumable.downloadAsync();
-    //         if (downloadResult) {
-    //             const { uri } = downloadResult;
-    //             handleSetUri(uri);
-    //             setIsLoading(false);
-    //             return uri;
-    //         }
-    //     } catch (e) {
-    //         setIsLoading(false);
-    //         console.error(e);
-    //     }
-    //     return '';
-    // };
 
     const onPlaybackStatusUpdate = (status: any) => {
         if (status.isLoaded) {
@@ -74,7 +60,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ project, is_sample }) 
     const createSound = async () => {
         try {
             let localUri = uri;
-            if (!localUri) {
+            if (localUri == '') {
                 setIsLoading(true);
                 const downloadResult = await downloadSampleResumable.downloadAsync();
                 if (downloadResult) {
@@ -84,7 +70,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ project, is_sample }) 
                 }
             }
 
-            if (localUri) {
+            if (localUri! = '') {
                 const { sound } = await Audio.Sound.createAsync({ uri: localUri }, { shouldPlay: false }, onPlaybackStatusUpdate);
                 setVoice(sound);
                 setHasAudio(true);
@@ -156,7 +142,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ project, is_sample }) 
         if (voice) {
             await voice.unloadAsync();
             FileSystem.deleteAsync(uri);
-            dispatch(setDeviceUri(''));
+            //dispatch(setDeviceUri(''));
             setVoice(null);
             setHasAudio(false);
             setUri('');

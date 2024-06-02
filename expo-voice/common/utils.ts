@@ -1,5 +1,6 @@
 import { AxiosResponse } from 'axios';
 import { ApiResponse, ApiResponseListData } from './types/apiTypes';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const apiErrorHandlerWrapper = (promise: Promise<AxiosResponse>): Promise<ApiResponseListData<any> | ApiResponse<any>> => {
     return promise
@@ -37,4 +38,21 @@ export const formatDate = (input: string): string => {
 export const delay = (milliseconds: number | undefined) => {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
 };
+
+export const saveAsync = async (key: string, value: any) => {
+    try {
+        await AsyncStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+        console.error("Error saving data:", error);
+    }
+}
+
+export const getAsync = async (key: string) => {
+    try {
+        const value = await AsyncStorage.getItem(key)
+        return value ? JSON.parse(value) : null;
+    } catch (error) {
+        console.error("Error getting data:", error);
+    }
+}
 

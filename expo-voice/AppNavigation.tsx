@@ -4,11 +4,13 @@ import { AddProjectScreen } from './Screens/AddProjectScreen';
 import { HomeScreen } from './Screens/HomeScreen';
 import { LogInScreen } from './Screens/LogInScreen';
 import { ProjectScreen } from './Screens/ProjectScreen'; // Make sure to import ProjectScreen
-import { ProjectData, SessionData } from './common/types/systemTypes';
+import { Analysis, ProjectData, SessionData } from './common/types/systemTypes';
 import { AddRecordingScreen } from './Screens/AddRecordingPage';
 import { RegisterScreen } from './Screens/RegisterScreen';
 import { useEffect } from 'react';
 import { initializeDetails } from './common/redux/authReducer';
+import { AnalysisScreen } from './Screens/AnalysisScreen';
+import { SessionScreen } from './Screens/SessionScreen';
 
 export type RootStackParamList = {
     LogIn: undefined;
@@ -16,8 +18,9 @@ export type RootStackParamList = {
     Home: undefined;
     AddProject: undefined;
     Project: { id: number };
-    Session: { id: number };
+    Session: { session: SessionData };
     AddRecord: { project: ProjectData, reloadData: () => void };
+    Analysis: { session_id: number, analysis: Analysis };
 };
 
 const NavigationStack = createNativeStackNavigator<RootStackParamList>();
@@ -40,6 +43,8 @@ export const AppNavigation = () => {
                     <NavigationStack.Screen name="AddProject" component={AddProjectScreen} />
                     <NavigationStack.Screen name="Project" component={ProjectScreen} />
                     <NavigationStack.Screen name="AddRecord" component={AddRecordingScreen} />
+                    <NavigationStack.Screen name="Analysis" component={AnalysisScreen} />
+                    <NavigationStack.Screen name="Session" component={SessionScreen} />
                 </>
             ) : (
                 <>

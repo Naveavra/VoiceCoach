@@ -1,23 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, SafeAreaView } from "react-native";
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from "react-native";
 import Checkbox from 'expo-checkbox';
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 // import { Navigation } from 'react-native-navigation';
-
 
 import { RootStackParamList } from "../AppNavigation";
 import { defaultTheme } from "../common/ui/defaultTheme";
 import { AppLoader } from "../common/components/Loader";
 import { UITextField, UIButton } from "../common/ui/components";
 import { useAuth, useUtilities } from "../common/hooks";
-import { logIn } from "../common/redux/authReducer";
+import { cleanError, logIn } from "../common/redux/authReducer";
 import AppPageContainer from "../common/components/AppPageContainer";
 import { Title } from "../common/components/Title";
 
 type LogInScreenProps = NativeStackScreenProps<RootStackParamList, 'LogIn'>;
-
-
 
 export const LogInScreen = ({ navigation }: LogInScreenProps) => {
     const { dispatch } = useUtilities();
@@ -30,23 +27,17 @@ export const LogInScreen = ({ navigation }: LogInScreenProps) => {
         return <AppLoader />
     }
 
-
-
-   
-
-
     return (
         <AppPageContainer style={styles.pageContainer}>
             <>
                 <View style={styles.panelContainer}>
-                    <Title title={'enter credentials'} subtitle="" />
+                    <Title title={'Enter Credentials'} subtitle="" />
                     <UITextField
                         value={email}
                         onChangeText={setEmail}
-                        placeholder={"email"}
+                        placeholder={"Email"}
                         style={styles.email}
                         error={error}
-
                     />
                     <UITextField
                         value={password}
@@ -55,35 +46,32 @@ export const LogInScreen = ({ navigation }: LogInScreenProps) => {
                         secureTextEntry={true}
                         style={styles.password}
                         error={error}
-
                     />
                     <View style={styles.section}>
-                        <Checkbox style={styles.checkbox} value={remember_me} onValueChange={setRememberMe} />
+                        <Checkbox
+                            style={styles.checkbox}
+                            value={remember_me}
+                            onValueChange={setRememberMe}
+                        />
                         <Text style={styles.paragraph}>Remember me</Text>
-
+                        <TouchableOpacity onPress={() => console.log('[DEBUG] forget password!')}>
+                            <Text style={styles.forgetPasswordText}>Forget password?</Text>
+                        </TouchableOpacity>
                     </View>
 
                     <UIButton
                         title={'Log In'}
                         onClick={() => {
                             console.log('[DEBUG] Log In!');
-                            // console.log('[DEBUG] userName: ' + userName);
                             dispatch(logIn({ email: email, password: password, remember_me: remember_me }));
                         }}
                         style={styles.menuButton}
                     />
                     <UIButton
-                        title={'forget password?'}
-                        onClick={() => {
-                            console.log('[DEBUG] forget password!');
-                        }}
-                        style={styles.forgetPassword}
-                    />
-
-                    <UIButton
                         title={'Register'}
                         onClick={() => {
                             console.log('[DEBUG] Register!');
+                            dispatch(cleanError());
                             navigation.navigate('Register');
                         }}
                         style={styles.menuButton}
@@ -91,11 +79,8 @@ export const LogInScreen = ({ navigation }: LogInScreenProps) => {
                 </View>
             </>
         </AppPageContainer>
-
     );
 }
-
-
 
 const styles = StyleSheet.create({
     container: {
@@ -103,8 +88,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    
-   
     pageContainer: {
         display: 'flex',
         justifyContent: 'center',
@@ -114,7 +97,6 @@ const styles = StyleSheet.create({
         display: 'flex',
         width: '100%',
         marginBottom: 150,
-
     },
     section: {
         flexDirection: 'row',
@@ -122,6 +104,7 @@ const styles = StyleSheet.create({
     },
     paragraph: {
         fontSize: 15,
+        marginRight: 80,
     },
     email: {
         // marginTop: defaultTheme.shape.spacing.small
@@ -132,17 +115,12 @@ const styles = StyleSheet.create({
     menuButton: {
         marginTop: defaultTheme.shape.spacing.large
     },
-    forgetPassword: {
-        marginTop: defaultTheme.shape.spacing.small
+    forgetPasswordText: {
+        fontSize: 15,
+        color: 'black', // Adjust the color as needed
+
     },
     checkbox: {
         margin: 8,
     },
 });
-
-
-
-
-
-
-

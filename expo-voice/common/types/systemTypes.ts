@@ -19,7 +19,6 @@ export interface ProjectData {
     aliyah: string;
     description: string;
     sample_url: string;
-    device_uri: string;
     created_at: string;
     clean_text: string;
     mark_text: string;
