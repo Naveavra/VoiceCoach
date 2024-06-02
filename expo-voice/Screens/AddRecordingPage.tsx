@@ -26,7 +26,6 @@ type AddRecordingScreenProps = NativeStackScreenProps<RootStackParamList, 'AddRe
 let recording: Audio.Recording;
 let index = 0;
 
-const text = "בראשית ברא אלוהים את השמיים ואת הארץ והארץ הייתה תוהו ובוהו וחושך על פני תהום ורוח אלוהים מרחפת על פני המים "
 //todo: add pause recording option
 export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProps) => {
     const { dispatch, useAppSelector } = useUtilities();
@@ -42,10 +41,12 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const selected_session = useAppSelector((state) => state.project.selectedSession);
     const { reloadData } = route.params;
 
-
+    console.log(selectedProject);
     const [currentWord, setCurrentWord] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [wordColors, setWordColors] = useState<string[]>(selectedProject.clean_text.split(" ").map(() => 'black'));
+    const scrollY = useSharedValue(0);
+
 
     const errorAlert = () => {
         Alert.alert('error', 'something went wrong', [
@@ -72,20 +73,54 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     //         opacity: opacity.value,
     //     };
     // });
+    const sendAudioData = async (recording: Audio.Recording | undefined, done: boolean) => {
+        try {
+            const url = `${API_URL}/upload/${selected_session.id}`;
+            if (recording) {
+                const uri = recording.getURI();
+                const formData = new FormData();
+                formData.append('audio', {
+                    uri: uri,
+                    name: 'audio.wav',
+                    type: 'audio/wav',
+                });
+
+                const config = {
+                    headers: {
+                        'content-type': 'multipart/form-data',
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
+                formData.append('done', done ? 'true' : 'false');
+
+                await axios.post(url, formData, config)
+                    .then((response) => {
+                        handleTranscript(response.data);
+                    })
+                    .catch((error) => {
+                        console.log('error', error);
+                        stopLoop();
+                    });
+            }
+            // setTranscript(result.data);
+        } catch (error) {
+            errorAlert();
+        }
+    }
 
 
     const handleTranscript = (data: any) => {
         setTranscript((prev) => prev + data + ' ');
         data.split(" ").forEach((word: string) => {
-            console.log(word, text.split(" ")[index]);
-            if (word === text.split(" ")[index]) {
+            console.log(word, selectedProject.clean_text.split(" ")[index]);
+            if (word === selectedProject.clean_text.split(" ")[index]) {
                 setWordColors((prev) => {
                     const newColors = [...prev];
                     newColors[index] = 'green';
                     return newColors;
                 });
             }
-            else if (word === text.split(" ")[index + 1]) {
+            else if (word === selectedProject.clean_text.split(" ")[index + 1]) {
                 setWordColors((prev) => {
                     const newColors = [...prev];
                     newColors[index] = 'red';
@@ -94,6 +129,17 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     return newColors;
                 });
             }
+            //maybe find the closet matches word in the text
+            // else if (word === selectedProject.clean_text.split(" ")[index + 2]) {
+            //     setWordColors((prev) => {
+            //         const newColors = [...prev];
+            //         newColors[index] = 'red';
+            //         newColors[index + 1] = 'red';
+            //         newColors[index + 2] = 'green';
+            //         index += 2;
+            //         return newColors;
+            //     });
+            // }
 
             else {
                 setWordColors((prev) => {
@@ -102,7 +148,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     return newColors;
                 });
             }
-            setCurrentWord((prev) => (prev + 1) % text.split(" ").length);
+            setCurrentWord((prev) => (prev + 1) % selectedProject.clean_text.split(" ").length);
             index++;
         })
     }
@@ -158,7 +204,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 await delay(5000);
                 if (record) {
                     await stopRecording(record);
-                    sendAudioData(record);
+                    sendAudioData(record, false);
                 }
             }
         }
@@ -185,14 +231,21 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         }
         if (recording) {
             await stopRecording(recording);
-            sendAudioData(recording).then(() => {
+            sendAudioData(recording, true).then(() => {
                 setIsLoading(false);
                 console.log('done');
-                //todo fetch analyze and move to analsis page , then set isloading to false
+                axios.get(`${API_URL}/analysis/${selected_session.id}`, { headers: { 'Authorization': `Bearer ${token}` } }).
+                    then((response) => {
+                        console.log(response.data);
+                        navigation.navigate('Analysis', {
+                            analysis: response.data,
+                            session_id: selected_session.id
+                        });
+                    });
             });
-        }
 
-        index = 0;
+            index = 0;
+        }
     };
     // Animation shared values and styles
     const fadeIn = useSharedValue(0);
@@ -226,40 +279,19 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         }
     }, [isLoading]);
 
-    const sendAudioData = async (recording: Audio.Recording | undefined) => {
-        try {
-            const url = `${API_URL}/upload/${selected_session.id}`;
-            if (recording) {
-                const uri = recording.getURI();
-                const formData = new FormData();
-                formData.append('audio', {
-                    uri: uri,
-                    name: 'audio.wav',
-                    type: 'audio/wav',
-                });
-
-                const config = {
-                    headers: {
-                        'content-type': 'multipart/form-data',
-                        'Authorization': `Bearer ${token}`
-                    }
-                }
-
-                await axios.post(url, formData, config).then
-                    ((response) => {
-                        handleTranscript(response.data);
-                    }).catch((error) => {
-                        console.log('error', error);
-                        stopLoop();
-                    });
-
-
-            }
-            // setTranscript(result.data);
-        } catch (error) {
-            errorAlert();
+    useEffect(() => {
+        if (currentWord > 0 && currentWord % 10 === 0) {
+            scrollY.value = withTiming(scrollY.value - 30, { duration: 1000, easing: Easing.linear });
         }
-    }
+    }, [currentWord]);
+
+
+    const animatedStyles = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateY: scrollY.value }],
+        };
+    });
+
 
     return (
         <>
@@ -272,29 +304,22 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     <Text>{transcript}</Text>}
 
                 <SafeAreaView style={styles.safeContainer}>
-                    <View style={styles.textContainer}>
-                        {text.split(" ").map((word, index) => {
-                            // let color = 'black';
-                            // if (index < transcript?.split(" ").length) {
-                            //     color = word === transcript.split(" ")[index] ? 'green' : 'red';
-                            // }
-
+                    <Animated.View style={[styles.textContainer, animatedStyles]}>
+                        {selectedProject.clean_text.split(" ").map((word, index) => {
                             return (
-                                <Animated.Text
+                                <Text
                                     key={index}
                                     style={[
                                         styles.word,
                                         { color: wordColors[index] },
-                                        // currentWord === index && animatedStyles,
                                         currentWord === index && styles.highlight,
                                     ]}
-
                                 >
                                     {word}{' '}
-                                </Animated.Text>
+                                </Text>
                             );
                         })}
-                    </View>
+                    </Animated.View>
                 </SafeAreaView>
                 <View style={styles.mainContainer}>
                     {status == '' ?
@@ -357,7 +382,9 @@ const styles = StyleSheet.create({
     },
     safeContainer: {
         position: 'absolute',
-        top: 100,
+        top: 150,
+        overflow: 'hidden',
+        height: 200,
     },
     textStyle: {
         fontSize: 28,

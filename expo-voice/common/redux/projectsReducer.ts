@@ -91,18 +91,19 @@ export const projectsReducer = createSlice({
                 });
             }
         },
-        setDeviceUri: (state, action) => {
-            if (state.selectedProject) {
-                state.selectedProject.device_uri = action.payload;
-                //set device uri in the selected project in the projects state
-                state.projects = state.projects.map(p => {
-                    if (p.id === state.selectedProject.id) {
-                        p.device_uri = action.payload;
-                    }
-                    return p;
-                });
-            }
-        },
+        // setDeviceUri: (state, action) => {
+        //     //todo : put in async storage ?
+        //     if (state.selectedProject) {
+        //         state.selectedProject.device_uri = action.payload;
+        //         //set device uri in the selected project in the projects state
+        //         state.projects = state.projects.map(p => {
+        //             if (p.id === state.selectedProject.id) {
+        //                 p.device_uri = action.payload;
+        //             }
+        //             return p;
+        //         });
+        //     }
+        // },
         clearSelectedProject: (state) => {
             state.selectedProject = emptyProject;
         },
@@ -154,4 +155,4 @@ export const projectsReducer = createSlice({
     },
 });
 
-export const { cleanProjectsState, selectProject, setDeviceUri, setSampleUrl, clearSelectedProject } = projectsReducer.actions;
+export const { cleanProjectsState, selectProject, setSampleUrl, clearSelectedProject } = projectsReducer.actions;

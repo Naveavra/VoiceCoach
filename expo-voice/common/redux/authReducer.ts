@@ -84,6 +84,9 @@ export const authReducer = createSlice({
             state.error = null;
             AsyncStorage.removeItem('token');
             AsyncStorage.removeItem('user');
+        },
+        cleanError: (state) => {
+            state.error = null;
         }
     },
     extraReducers: (builder) => {
@@ -128,6 +131,6 @@ export const authReducer = createSlice({
     },
 });
 
-export const { logout, initState } = authReducer.actions;
+export const { logout, initState, cleanError } = authReducer.actions;
 
 export const authSlice = authReducer.reducer;

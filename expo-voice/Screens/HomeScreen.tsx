@@ -8,14 +8,15 @@ import { RootStackParamList } from "../AppNavigation";
 import { Title } from "../common/components/Title";
 import { AntDesign } from '@expo/vector-icons';
 import { logout } from "../common/redux/authReducer";
-type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigationState } from '@react-navigation/native';
 import { cleanProjectsState, clearSelectedProject, deleteProject, selectProject } from "../common/redux/projectsReducer";
 import { deleteAsync } from "expo-file-system";
 import AppProjectCard from "../common/components/AppProjectCard";
 import { SimpleLineIcons } from '@expo/vector-icons';
+import { getAsync } from "../common/utils";
 
+type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export const HomeScreen = ({ navigation }: HomeScreenProps) => {
     const { user, token } = useAuth({});
@@ -36,9 +37,9 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
         ]);
     }
 
-    const cleanState = async () => {
-        projects.map((project) => {
-            deleteAsync(project.device_uri, { idempotent: true });
+    const cleanState = () => {
+        projects.map(async (project) => {
+            deleteAsync(await getAsync(`${project.id}_${project.created_at}`), { idempotent: true });
         })
         dispatch(cleanProjectsState())
     }
@@ -84,7 +85,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
     return (
         <>
             <View style={styles.container}>
-                <Title title={`hi ${user?.name}`} subtitle="this is your projects" />
+                <Title title={`hi ${user?.name}`} subtitle="Your Projects" />
                 <View style={{
                     flexDirection: 'row',
                     justifyContent: 'space-between',
