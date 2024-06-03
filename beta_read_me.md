@@ -4,7 +4,7 @@
 
 ### Option 1: Using ZIP File
 1. Extract the files from the `.zip` folder.
-2. Open the project folder via your favorite IDE (we recommend using VS Code).
+2. Open the project folder (expo-voice) via your favorite IDE (we recommend using VS Code).
 3. Open the IDE terminal and run the following command to install the dependencies:
     ```
     npm install
