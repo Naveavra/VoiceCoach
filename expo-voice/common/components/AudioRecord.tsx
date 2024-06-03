@@ -70,7 +70,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
                 }
             }
 
-            if (localUri! = '') {
+            if (localUri != '') {
                 const { sound } = await Audio.Sound.createAsync({ uri: localUri }, { shouldPlay: false }, onPlaybackStatusUpdate);
                 setVoice(sound);
                 setHasAudio(true);

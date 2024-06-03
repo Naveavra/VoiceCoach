@@ -7,13 +7,18 @@ from decorators import authenticate
 from utils import generate_hash
 from models import User , Project
 from init import db
+
 import speech_recognition as sr
 from pydub import AudioSegment
 import filetype
 import tempfile
+import json
+import assemblyai as aai
+import difflib
+
+aai.settings.api_key = "0dc55bacc27c4f6786439e81b735f87a"
 
 def init_file_routes(app):
-    
     @app.route('/projects/<int:project_id>/uploade_sample', methods=['POST'])
     @jwt_required()
     @authenticate
@@ -55,6 +60,12 @@ def init_file_routes(app):
                             #now we get the words from the sample
                             words = get_words_by_google(wav_content, duration_seconds)
                             project.sample_lines = words
+                            print("here")
+                            teamim = getTeamim(wav_content)
+                            print("here2")
+                            teamim = fixTeamimWithWords(teamim, words)
+                            print(teamim)
+                            project.sample_teamim = json.dumps(teamim)
 
                         else:
                             return jsonify({"error": "received unsupported file"}), 401
@@ -134,7 +145,50 @@ def get_words_by_google(audio_file, duration):
     except Exception as e:
         print(e)
     return ans
-        #return get_words_by_google(audio_file)
+
+
+def getTeamim(audio_data):
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file:
+        temp_wav_file.write(audio_data)
+
+        # URL of the file to transcribe
+        FILE_URL = temp_wav_file.name
+
+        config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
+        transcriber = aai.Transcriber(config=config)
+        transcript = transcriber.transcribe(FILE_URL)
+
+        stamps_array = []
+        if transcript.status == aai.TranscriptStatus.completed:
+            for word in transcript.words:
+                start_time = word.start/1000
+                end_time = word.end/1000
+                word_text = word.text
+                stamps_array.append({'text': word.text, 'start': start_time, 'end': end_time})
+
+        return stamps_array
+
+def fixTeamimWithWords(teamim, words):
+    word_list = words.split()
+    # Replace words in places with the most similar ones from the word list within one position off
+    len_teamim = len(teamim)
+    for i, place in enumerate(teamim):
+        if not i>len(word_list)-1:
+            if i == len_teamim-1:
+                place['text'] = find_best_match(place['text'], word_list, i, "")
+            else:
+                place['text'] = find_best_match(place['text'], word_list, i, teamim[i+1]['text'])
+    return teamim
     
 
-    
+def find_best_match(word, word_list, current_index, next_word):
+    if current_index == len(word_list)-1:
+        return word_list[current_index]
+
+    # Consider words within one position off
+    infront_score = difflib.SequenceMatcher(None, word, word_list[current_index]).ratio()
+    next_score = difflib.SequenceMatcher(None, word, word_list[current_index+1]).ratio()
+    if next_score > infront_score and next_score > difflib.SequenceMatcher(None, next_word, word_list[current_index+1]).ratio():
+        return word_list[current_index+1]
+    else:
+        return word_list[current_index]

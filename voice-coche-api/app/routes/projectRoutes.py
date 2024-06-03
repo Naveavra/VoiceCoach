@@ -61,7 +61,8 @@ def init_project_routes(app, socketio):
         if project.creator_email != current_user.email:
             return jsonify({"message": "Unauthorized"}), 401
         return jsonify({
-            'sessions': [session.simpleSerialize() for session in Session.query.filter_by(project_id=project_id).all()]
+            'sessions': [session.simpleSerialize() for session in Session.query.filter_by(project_id=project_id).all()],
+            'project': project.simpleSerialize()
         }), 200
 
     @app.route('/process', methods=['GET'])
