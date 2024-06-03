@@ -63,7 +63,6 @@ export const AddProjectScreen = ({ navigation }: AddProjectScreenProps) => {
                 <UIButton
                     title={'Add Project'}
                     onClick={() => {
-                        console.log('[DEBUG] Add Project!');
                         dispatch(addProject({ parasha: parasha, aliyah: aliyah, description: description, token: token })).then(() => {
                             //reloadData();
                             navigation.navigate('Home');

@@ -3,17 +3,14 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../AppNavigation";
 import { useAuth, useUtilities } from "../common/hooks";
-import axios from "axios";
-import { API_URL } from "../common/config";
 import AppFlatList from "../common/components/AppFlatList";
 import { AntDesign, SimpleLineIcons, Ionicons } from '@expo/vector-icons';
 import { LogBox } from 'react-native';
 import { AudioRecord } from "../common/components/AudioRecord";
 import { UploadDocument } from "../common/components/Btn/UploadDocument";
 import { AppLoader } from "../common/components/Loader";
-import { addSession, cleanStateMsg, deleteSession, selectSession } from "../common/redux/projectReducer";
-import { selectProject } from "../common/redux/projectsReducer";
-import { getAsync } from "../common/utils";
+import { addSession, cleanStateMsg, deleteSession } from "../common/redux/projectReducer";
+import { formatDate, getAsync } from "../common/utils";
 import AppSessionCard from "../common/components/AppSessionCard";
 import { useProject } from "../common/hooks/useProject";
 
@@ -27,9 +24,10 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
     const { useAppSelector, dispatch } = useUtilities();
     const { token } = useAuth({});
     const selectedProject = useAppSelector((state) => state.projects.selectedProject);
-    const { isLoadingProject, sessions, error, msg, reloadData } = useProject({ token: token, project_id: selectedProject?.id || 0 });
+    const { isLoadingProject, project, sessions, error, msg, reloadData } = useProject({ token: token, project_id: selectedProject.id });
     const [deviceUrl, setDeviceUrl] = useState<string>('');
     const [loadingUri, setLoadingUri] = useState<boolean>(true);
+
     useEffect(() => {
         const fetchSampleUri = async () => {
             if (selectedProject?.sample_url) {
@@ -61,8 +59,12 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
             <AppSessionCard
                 key={index}
                 session={session}
-                onPress={() => {
-                    navigation.navigate('Session', { session: session });
+                onPress={async () => {
+                    const path_to_uri = `${session.id}_${formatDate(session.created_at, true)}`;
+                    await getAsync(path_to_uri).then((res: any) => {
+                        navigation.navigate('Session', { session: session, local_uri: res })
+                    })
+
                 }}
                 onDelete={() => dispatch(deleteSession({ session_id: session.id, token: token }))}
                 onEdit={() => { console.log("Function not implemented."); }}
@@ -99,7 +101,7 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
                         () => {
                             dispatch(addSession({ project_id: selectedProject.id, token: token })).then((res: any) => {
                                 navigation.navigate('AddRecord', {
-                                    project: selectedProject,
+                                    project: project,
                                     reloadData: reloadData,
                                 });
                             }).catch((err: any) => {

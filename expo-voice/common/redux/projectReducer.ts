@@ -4,7 +4,7 @@ import { addSessionData, deleteSessionData, getVersionsData as getSessionsData }
 import { ProjectData, SessionData } from "../types/systemTypes";
 import { projectApi } from "../api/projectApi";
 import { sessionApi } from "../api/sessionApi";
-import { emptySession } from "../data/consts";
+import { emptyProject, emptySession } from "../data/consts";
 
 
 
@@ -13,6 +13,7 @@ const reducerName = 'project';
 
 interface projectState {
     sessions: SessionData[];
+    project: ProjectData;
     isLoadingProject: boolean;
     error: string | null;
     msg: string | null;
@@ -21,6 +22,7 @@ interface projectState {
 
 const initialState: projectState = {
     sessions: [],
+    project: emptyProject,
     isLoadingProject: false,
     error: null,
     msg: null,
@@ -29,14 +31,14 @@ const initialState: projectState = {
 
 
 export const getProjectData = createAsyncThunk<
-    { sessions: ApiListData<SessionData> },
+    { project: ProjectData, sessions: ApiListData<SessionData> },
     getSessionsData,
     { rejectValue: ApiError }
 >(`${reducerName}/getVersions`,
     async (params, thunkApi) => {
         return projectApi
             .getData(params)
-            .then((res) => thunkApi.fulfillWithValue(res as { sessions: ApiListData<SessionData> }))
+            .then((res) => thunkApi.fulfillWithValue(res as { project: ProjectData, sessions: ApiListData<SessionData> }))
             .catch((res) => thunkApi.rejectWithValue(res as ApiError));
     });
 
@@ -95,6 +97,7 @@ export const projectReducer = createSlice({
         builder.addCase(getProjectData.fulfilled, (state, { payload }) => {
             state.isLoadingProject = false;
             state.sessions = payload.sessions;
+            state.project = payload.project;
         });
         builder.addCase(getProjectData.rejected, (state, action) => {
             state.isLoadingProject = false;

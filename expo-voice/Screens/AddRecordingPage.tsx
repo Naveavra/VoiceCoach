@@ -3,7 +3,7 @@ import axios from "axios";
 import { Audio } from "expo-av";
 import { Recording } from "expo-av/build/Audio";
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator, Switch } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../AppNavigation";
 import { API_URL } from "../common/config";
@@ -13,7 +13,6 @@ import { FontAwesome } from '@expo/vector-icons';
 import { defaultTheme } from "../common/ui/defaultTheme";
 import { Entypo } from '@expo/vector-icons';
 import { useAuth, useUtilities } from "../common/hooks";
-import { Feather } from '@expo/vector-icons';
 import { LogBox } from 'react-native';
 import { delay } from "../common/utils";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
@@ -39,6 +38,9 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
 
     const selected_session = useAppSelector((state) => state.project.selectedSession);
     const { project, reloadData } = route.params;
+    const [help, setHelp] = useState(false);
+    const toggleSwitch = () => setHelp(previousState => !previousState);
+
 
     const [currentWord, setCurrentWord] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
@@ -74,10 +76,11 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
 
                 await axios.post(url, formData, config)
                     .then((response) => {
-                        handleTranscript(response.data);
+                        if (!done) {
+                            handleTranscript(response.data);
+                        }
                     })
                     .catch((error) => {
-                        console.log('error', error);
                         stopLoop();
                     });
             }
@@ -91,41 +94,44 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const handleTranscript = (data: any) => {
         setTranscript((prev) => prev + data + ' ');
         data.split(" ").forEach((word: string) => {
-            console.log(word, project.clean_text.split(" ")[index]);
-            if (word === project.clean_text.split(" ")[index]) {
-                setWordColors((prev) => {
-                    const newColors = [...prev];
-                    newColors[index] = 'green';
-                    return newColors;
-                });
-            }
-            else if (word === project.clean_text.split(" ")[index + 1]) {
-                setWordColors((prev) => {
-                    const newColors = [...prev];
-                    newColors[index] = 'red';
-                    newColors[index + 1] = 'green';
-                    index += 1;
-                    return newColors;
-                });
-            }
-            //maybe find the closet matches word in the text
-            // else if (word === selectedProject.clean_text.split(" ")[index + 2]) {
-            //     setWordColors((prev) => {
-            //         const newColors = [...prev];
-            //         newColors[index] = 'red';
-            //         newColors[index + 1] = 'red';
-            //         newColors[index + 2] = 'green';
-            //         index += 2;
-            //         return newColors;
-            //     });
-            // }
+            const word_from_text = project.clean_text.split(" ")[index];
+            const next_word = project.clean_text.split(" ")[index + 1];
+            if (wordColors[index] == 'black') {
+                if (word === word_from_text) {
+                    setWordColors((prev) => {
+                        const newColors = [...prev];
+                        newColors[index] = 'green';
+                        return newColors;
+                    });
+                }
+                else if (word === next_word) {
+                    setWordColors((prev) => {
+                        const newColors = [...prev];
+                        newColors[index] = 'red';
+                        newColors[index + 1] = 'green';
+                        index += 1;
+                        return newColors;
+                    });
+                }
+                //maybe find the closet matches word in the text
+                // else if (word === selectedProject.clean_text.split(" ")[index + 2]) {
+                //     setWordColors((prev) => {
+                //         const newColors = [...prev];
+                //         newColors[index] = 'red';
+                //         newColors[index + 1] = 'red';
+                //         newColors[index + 2] = 'green';
+                //         index += 2;
+                //         return newColors;
+                //     });
+                // }
 
-            else {
-                setWordColors((prev) => {
-                    const newColors = [...prev];
-                    newColors[index] = 'red';
-                    return newColors;
-                });
+                else {
+                    setWordColors((prev) => {
+                        const newColors = [...prev];
+                        newColors[index] = 'red';
+                        return newColors;
+                    });
+                }
             }
             setCurrentWord((prev) => (prev + 1) % project.clean_text.split(" ").length);
             index++;
@@ -211,27 +217,34 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         if (recording) {
             await stopRecording(recording);
             sendAudioData(recording, true).then(() => {
-                setIsLoading(false);
-                console.log('done');
                 axios.get(`${API_URL}/analysis/${selected_session.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
                     .then((response) => {
+                        setIsLoading(false);
+                        index = 0;
                         navigation.navigate('Analysis', {
                             analysis: response.data,
                             session_id: selected_session.id
-                        });
+                        },
+
+                        );
                     });
             });
 
-            index = 0;
+
         }
     };
 
 
     useEffect(() => {
         if (currentWord > 0 && currentWord % 10 === 0) {
-            scrollY.value = withTiming(scrollY.value - 30, { duration: 1000, easing: Easing.linear });
+            scrollY.value = withTiming(scrollY.value - 20, { duration: 1000, easing: Easing.linear });
         }
     }, [currentWord]);
+    useEffect(() => {
+        return () => {
+            index = 0;
+        }
+    }, []);
 
     const animatedStyles = useAnimatedStyle(() => {
         return {
@@ -247,12 +260,21 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     <Text style={styles.projectName}>{project.parasha} - {project.aliyah}</Text>
                     <Text style={styles.projectDescription}>{project.description}</Text>
                 </View>
-                {transcript &&
-                    <Text>{transcript}</Text>}
-
+                <View style={styles.switchContainer}>
+                    <Switch
+                        trackColor={{ false: '#767577', true: '#1976d2' }}
+                        thumbColor={help ? 'white' : 'white'}
+                        ios_backgroundColor="#3e3e3e"
+                        onValueChange={toggleSwitch}
+                        value={help}
+                        style={{ marginBottom: 10 }}
+                    />
+                    <Text>{help ? 'עם טעמים' : 'בלי טעמים'}</Text>
+                </View>
                 <SafeAreaView style={styles.safeContainer}>
                     <Animated.View style={[styles.textContainer, animatedStyles]}>
-                        {project.clean_text.split(" ").map((word, index) => {
+
+                        {help ? project.mark_text.split(" ").map((word, index) => {
                             return (
                                 <Text
                                     key={index}
@@ -265,9 +287,30 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                     {word}{' '}
                                 </Text>
                             );
-                        })}
+                        })
+                            :
+                            project.clean_text.split(" ").map((word, index) => {
+                                return (
+                                    <Text
+                                        key={index}
+                                        style={[
+                                            styles.word,
+                                            { color: wordColors[index] },
+                                            currentWord === index && styles.highlight,
+                                        ]}
+                                    >
+                                        {word}{' '}
+                                    </Text>
+                                );
+                            })
+                        }
                     </Animated.View>
                 </SafeAreaView>
+                {transcript &&
+                    <View style={styles.transcriptContainer}>
+                        <Text>{transcript}</Text>
+                    </View>
+                }
                 <View style={styles.mainContainer}>
                     {status == '' ?
                         <>
@@ -296,13 +339,14 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                             </>
                             :
                             status == 'stopped' ?
-                                <View style={styles.itemsContainer}>
+                                <>
                                     {isLoading ?
-                                        <Feather name="cpu" size={24} color="black" />
-                                        :
-                                        <AntDesign name="dotchart" size={24} color="black" />
+                                        <View style={styles.itemsContainer}>
+                                            <ActivityIndicator animating={true} color={"#1976d2"} size={80} />
+                                        </View>
+                                        : null
                                     }
-                                </View>
+                                </>
                                 :
                                 null
                     }
@@ -323,11 +367,31 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    switchContainer: {
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'absolute',
+        top: 100,
+    },
     safeContainer: {
         position: 'absolute',
         top: 150,
         overflow: 'hidden',
-        height: 200,
+        height: 150,
+        marginTop: 20,
+    },
+    transcriptContainer: {
+        position: 'absolute',
+        top: 350,
+        width: '90%',
+        padding: 10,
+        borderRadius: 10,
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
+        direction: 'rtl',
     },
     textStyle: {
         fontSize: 28,
