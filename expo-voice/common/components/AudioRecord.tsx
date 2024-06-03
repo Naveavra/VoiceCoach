@@ -9,10 +9,10 @@ import { API_URL } from "../../common/config";
 import { AntDesign } from '@expo/vector-icons';
 import { useUtilities } from "../hooks";
 // import { setDeviceUri } from "../redux/projectsReducer";
-import { saveAsync } from "../utils";
+import { alertError, getAsync, saveAsync } from "../utils";
 
 interface AudioRecordProps {
-    device_uri: string;
+    device_uri: string | null;
     url: string;
     path: string;
     is_sample: boolean
@@ -21,7 +21,6 @@ interface AudioRecordProps {
 const primaryColor = "#0ea5e9";
 
 export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sample, path }) => {
-    const { dispatch } = useUtilities();
     const [playing, setPlaying] = useState<boolean>(false);
     const [speedRate, setSpeedRate] = useState<0.5 | 1.0 | 1.5>(1.0);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -45,10 +44,9 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
     };
 
     const downloadSampleResumable = FileSystem.createDownloadResumable(
-        is_sample ? `${API_URL}/files/download/${url}` : `${API_URL}/session/download/sample`,
+        is_sample ? `${API_URL}/files/download/${url}` : `${API_URL}/session/download/${url}`,
         FileSystem.documentDirectory + `${path}.wav`,
     );
-
 
     const onPlaybackStatusUpdate = (status: any) => {
         if (status.isLoaded) {
@@ -60,23 +58,27 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
     const createSound = async () => {
         try {
             let localUri = uri;
-            if (localUri == '') {
+            if (!localUri) {
+                localUri = await getAsync(path);
+            }
+            if (localUri == null || localUri == '') {
+                //need to download
                 setIsLoading(true);
                 const downloadResult = await downloadSampleResumable.downloadAsync();
                 if (downloadResult) {
                     localUri = downloadResult.uri;
                     handleSetUri(localUri);
-                    setIsLoading(false);
                 }
             }
-
-            if (localUri! = '') {
-                const { sound } = await Audio.Sound.createAsync({ uri: localUri }, { shouldPlay: false }, onPlaybackStatusUpdate);
-                setVoice(sound);
-                setHasAudio(true);
-            }
+            // success fetch from async storage
+            const { sound } = await Audio.Sound.createAsync({ uri: localUri }, { shouldPlay: false }, onPlaybackStatusUpdate);
+            setVoice(sound);
+            setIsLoading(false);
+            setHasAudio(true);
         } catch (error) {
-            console.error(error);
+            setIsLoading(false);
+            setHasAudio(false);
+            alertError(String(error) ?? "Error fetching audio data");
         }
     };
 
@@ -142,7 +144,6 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
         if (voice) {
             await voice.unloadAsync();
             FileSystem.deleteAsync(uri);
-            //dispatch(setDeviceUri(''));
             setVoice(null);
             setHasAudio(false);
             setUri('');
@@ -157,7 +158,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
     };
 
     useEffect(() => {
-        if (uri) {
+        if (uri && uri != '') {
             createSound();
         }
         return () => {
@@ -170,7 +171,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
 
     return (
         <>
-            {hasAudio ? (
+            {hasAudio ?
                 <View style={styles.container}>
                     <Slider
                         style={styles.slider}
@@ -206,23 +207,25 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
 
                     </View>
                 </View>
-            ) : (
+                :
                 <>
-                    {isLoading ? (
+                    {isLoading ?
                         <>
                             <MaterialIcons name="downloading" size={24} color="black" />
                             <Text>Downloading...</Text>
                         </>
-                    ) : (
+                        :
                         <>
-                            <TouchableOpacity onPress={createSound}>
-                                <Ionicons name="cloud-download-outline" size={24} color="black" />
-                            </TouchableOpacity>
-                            <Text>{is_sample ? 'Download sample' : 'Download version'}</Text>
+                            <View style={styles.doanloadButton}>
+                                <TouchableOpacity onPress={createSound}>
+                                    <Ionicons name="cloud-download-outline" size={24} color="black" />
+                                </TouchableOpacity>
+                                <Text>{is_sample ? 'Download sample' : 'Download session'}</Text>
+                            </View>
                         </>
-                    )}
+                    }
                 </>
-            )}
+            }
         </>
     );
 };
@@ -233,6 +236,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         flexDirection: 'column',
+        direction: 'ltr',
     },
     slider: {
         width: '100%',
@@ -262,5 +266,10 @@ const styles = StyleSheet.create({
     speedText: {
         fontSize: 16,
         color: primaryColor,
+    },
+    doanloadButton: {
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

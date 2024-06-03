@@ -1,6 +1,7 @@
 import { AxiosResponse } from 'axios';
 import { ApiResponse, ApiResponseListData } from './types/apiTypes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
 export const apiErrorHandlerWrapper = (promise: Promise<AxiosResponse>): Promise<ApiResponseListData<any> | ApiResponse<any>> => {
     return promise
@@ -21,7 +22,7 @@ export const apiErrorHandlerWrapper = (promise: Promise<AxiosResponse>): Promise
         });
 }
 
-export const formatDate = (input: string): string => {
+export const formatDate = (input: string, return_seconds: boolean): string => {
     const date = new Date(input);
 
     const day = date.getUTCDate().toString().padStart(2, '0');
@@ -31,7 +32,9 @@ export const formatDate = (input: string): string => {
     const hours = date.getUTCHours().toString().padStart(2, '0');
     const minutes = date.getUTCMinutes().toString().padStart(2, '0');
     const seconds = date.getUTCSeconds().toString().padStart(2, '0');
-
+    if (return_seconds) {
+        return `${day}-${month}-${year}-${hours}:${minutes}:${seconds}`;
+    }
     return `${day}-${month}-${year} ${hours}:${minutes}`;
 }
 
@@ -54,5 +57,15 @@ export const getAsync = async (key: string) => {
     } catch (error) {
         console.error("Error getting data:", error);
     }
+}
+
+export const alertError = (msg: string) => {
+    Alert.alert('Error', msg, [
+        {
+            text: 'OK',
+            onPress: () => { },
+            style: 'cancel',
+        },
+    ]);
 }
 

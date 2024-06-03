@@ -7,7 +7,7 @@ import { noAuthApiClient } from "./apiClient";
 export const projectApi = {
 
 
-    getData: (data: getSessionsData): Promise<{ sessions: ApiResponseListData<SessionData>}> =>
+    getData: (data: getSessionsData): Promise<{ project: ProjectData, sessions: ApiResponseListData<SessionData> }> =>
         apiErrorHandlerWrapper(noAuthApiClient.get(`/projects/${data.project_id}`, {
             headers: {
                 'Content-Type': 'application/json',
