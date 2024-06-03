@@ -2,7 +2,20 @@
 
 ## On your Local Machine
 
-### Cloning the Repository
+### Option 1: Using ZIP File
+1. Extract the files from the `.zip` folder.
+2. Open the project folder via your favorite IDE (we recommend using VS Code).
+3. Open the IDE terminal and run the following command to install the dependencies:
+    ```
+    npm install
+    ```
+    LOADING...
+4. Once the installation is complete, start the project by running:
+    ```
+    npm run start
+    ```
+
+### Option 2: Cloning the Repository
 1. Open your terminal.
 2. Navigate to the directory where you want to clone the repository.
 3. Run the following command to clone the repository:
@@ -13,15 +26,13 @@
     ```
     cd VoiceCoach
     ```
-
-### Setting Up the Project
-1. Open the project folder via your favorite IDE (we recommend using VS Code).
-2. Open the IDE terminal and run the following command to install the dependencies:
+5. Open the project folder via your favorite IDE (we recommend using VS Code).
+6. Open the IDE terminal and run the following command to install the dependencies:
     ```
     npm install
     ```
     LOADING...
-3. Once the installation is complete, start the project by running:
+7. Once the installation is complete, start the project by running:
     ```
     npm run start
     ```
