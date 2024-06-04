@@ -9,7 +9,7 @@ from models import Project, Session, Analysis
 from init import db
 from pydub import AudioSegment
 from utils import generate_hash
-from .fileRoutes import get_words_by_google
+from .fileRoutes import get_words_by_google, getTeamim, fixTeamimWithWords
 from .analysisRoutes import getAnalysis
 
 import io
@@ -107,12 +107,14 @@ def init_session_routes(app, socketio):
                     recording_words[session_id] = recording_words[session_id] + ',' + words
                     #session.session_lines = session.session_lines + ',' + words
                 if done == "true":
-                    session.session_lines = recording_words[session_id]
+                    audio_file_like = io.BytesIO(session.recording)
+                    audio = AudioSegment.from_file(audio_file_like)
+                    audio.export("test.wav", format = "wav")
+                    duration_seconds = audio.duration_seconds
+
+                    words = get_words_by_google(session.recording, duration_seconds)
+                    session.session_lines = words
                 db.session.commit()
-                
-                if done == "true":
-                    print("here")
-                    getAnalysis(session_id)
                 return words
             else:
                 return jsonify({"error": "received unsupported file"}), 401

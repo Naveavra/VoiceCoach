@@ -13,7 +13,7 @@ FLASK_DEBUG = os.getenv("FLASK_DEBUG", True)
 POSTGRES_USER = os.getenv("POSTGRES_USER", "Bigboss0304")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "Adminos2022")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "postgres")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "voicedb.chosaq2kqik5.eu-north-1.rds.amazonaws.com")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "voicedb2.chosaq2kqik5.eu-north-1.rds.amazonaws.com")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", 5432)
 SQLALCHEMY_DATABASE_URI = os.getenv(
     "DATABASE_URL",
