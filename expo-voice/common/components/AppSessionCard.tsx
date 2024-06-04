@@ -47,7 +47,7 @@ const AppSessionCard: React.FC<AppProjectCardProps> = ({ session, onPress, onDel
         >
             <UIButton
                 to_tap={true}
-                title={`${formatDate(session.created_at)}`}
+                title={`${formatDate(session.created_at, false)}`}
                 onClick={onPress}
                 style={styles.card}
             />

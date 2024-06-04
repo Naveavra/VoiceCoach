@@ -62,7 +62,6 @@ export const LogInScreen = ({ navigation }: LogInScreenProps) => {
                     <UIButton
                         title={'Log In'}
                         onClick={() => {
-                            console.log('[DEBUG] Log In!');
                             dispatch(logIn({ email: email, password: password, remember_me: remember_me }));
                         }}
                         style={styles.menuButton}
@@ -70,7 +69,6 @@ export const LogInScreen = ({ navigation }: LogInScreenProps) => {
                     <UIButton
                         title={'Register'}
                         onClick={() => {
-                            console.log('[DEBUG] Register!');
                             dispatch(cleanError());
                             navigation.navigate('Register');
                         }}

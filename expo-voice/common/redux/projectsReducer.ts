@@ -5,7 +5,6 @@ import { ProjectData } from "../types/systemTypes";
 import { baseCredentials } from "../types/requestTypes";
 import { addProjectPostData, deleteProjectData } from "../types/requestTypes";
 import { emptyProject } from "../data/consts";
-import { cleanStateMsg } from "./projectReducer";
 
 const reducerName = 'projects';
 
@@ -146,6 +145,9 @@ export const projectsReducer = createSlice({
         builder.addCase(deleteProject.fulfilled, (state, action) => {
             state.isLoadingProjects = false;
             state.projects = state.projects.filter(p => p.id !== action.payload.id);
+            if (state.selectedProject.id === action.payload.id) {
+                state.selectedProject = emptyProject;
+            }
             state.msg = "Project deleted successfully";
         });
         builder.addCase(deleteProject.rejected, (state, action) => {
