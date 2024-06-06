@@ -17,12 +17,14 @@ import assemblyai as aai
 import difflib
 
 aai.settings.api_key = "0dc55bacc27c4f6786439e81b735f87a"
+subclip_size = 60.0
 
 def init_file_routes(app):
     @app.route('/projects/<int:project_id>/uploade_sample', methods=['POST'])
     @jwt_required()
     @authenticate
     def add_sample(current_user,project_id):
+        print("here")
         #cipher_suite = Fernet(app.config['SECRET_KEY'])
         if request.method == 'POST':
             project = Project.query.filter_by(id=project_id).first()
@@ -33,6 +35,7 @@ def init_file_routes(app):
                     audio_file = request.files['audio']
                     content = audio_file.read()
                     kind = filetype.guess(content)
+                    print("here2")
                     if not kind is None:
                         print(kind.mime, kind.extension)
                         #supported audio files
@@ -60,9 +63,9 @@ def init_file_routes(app):
                             #now we get the words from the sample
                             words = get_words_by_google(wav_content, duration_seconds)
                             project.sample_lines = words
-                            print("here")
-                            teamim = getTeamim(wav_content)
-                            print("here2")
+                            print("finished words")
+                            teamim = getTeamim(wav_content, duration_seconds)
+                            print("finished teamim")
                             teamim = fixTeamimWithWords(teamim, words)
                             print(teamim)
                             project.sample_teamim = json.dumps(teamim)
@@ -109,7 +112,7 @@ def init_file_routes(app):
     def download_file(sample_url):
         project = Project.query.filter_by(sample_url=sample_url).first()
         if not project:
-            return jsonify({"msg": "Project not found"}), 404
+            return jsonify({"error": "Project not found"}), 404
         #decrypted_content = cipher_suite.decrypt(project.sample_clip)
         return send_file(BytesIO(project.sample_clip), 
                          download_name="sample.wav",  # Specify the download name
@@ -119,6 +122,7 @@ def init_file_routes(app):
         # upload = None#AudioFile.query.filter_by(id=upload_id).first()
         # return send_file(BytesIO(upload.content), attachment_filename=upload.filename, as_attachment=True)
 def get_words_by_google(audio_file, duration):
+    global subclip_size
     ans = ""
     try:
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file:
@@ -133,10 +137,10 @@ def get_words_by_google(audio_file, duration):
             count = 0
             while count <= duration:
                 with song as source:
-                    song_aud = recognizer.record(song, duration=min(30.0, duration - count), offset=count)
+                    song_aud = recognizer.record(song, duration=min(subclip_size, duration - count), offset=count)
                     song_txt = recognizer.recognize_google(song_aud, language="iw-IL")
                     print(song_txt)
-                count = count + 30
+                count = count + min(subclip_size, duration - count)
                 if len(ans) == 0:
                     ans = song_txt
                 else:
@@ -147,29 +151,41 @@ def get_words_by_google(audio_file, duration):
     return ans
 
 
-def getTeamim(audio_data):
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file:
-        temp_wav_file.write(audio_data)
+def getTeamim(audio_data, duration_seconds):
+    global subclip_size
+    ans = []
+    audio = AudioSegment.from_file(io.BytesIO(audio_data))
+    offset = 0.0
+    while offset < duration_seconds:
+        subclip = audio[float(offset)* 1000:float(min(offset + subclip_size, duration_seconds))* 1000]
 
-        # URL of the file to transcribe
-        FILE_URL = temp_wav_file.name
+        wav_io = io.BytesIO()
+        subclip.export(wav_io, format="wav")
+        wav_content = wav_io.getvalue()
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file:
+            temp_wav_file.write(wav_content)
 
-        config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
-        transcriber = aai.Transcriber(config=config)
-        transcript = transcriber.transcribe(FILE_URL)
+            # URL of the file to transcribe
+            FILE_URL = temp_wav_file.name
 
-        stamps_array = []
-        if transcript.status == aai.TranscriptStatus.completed:
-            for word in transcript.words:
-                start_time = word.start/1000
-                end_time = word.end/1000
-                word_text = word.text
-                stamps_array.append({'text': word.text, 'start': start_time, 'end': end_time})
+            config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
+            transcriber = aai.Transcriber(config=config)
+            transcript = transcriber.transcribe(FILE_URL)
 
-        return stamps_array
+            stamps_array = []
+            if transcript.status == aai.TranscriptStatus.completed:
+                for word in transcript.words:
+                    start_time = word.start/1000
+                    end_time = word.end/1000
+                    word_text = word.text
+                    stamps_array.append({'text': word.text, 'start': start_time+offset, 'end': end_time+offset})
+                ans.extend(stamps_array)
+        offset = offset + min(subclip_size, duration_seconds - offset)
+    return ans
 
 def fixTeamimWithWords(teamim, words):
-    word_list = words.split()
+    tmp_words = words.replace(',', '')
+    word_list = tmp_words.split()
     # Replace words in places with the most similar ones from the word list within one position off
     len_teamim = len(teamim)
     for i, place in enumerate(teamim):

@@ -1,4 +1,4 @@
-from flask import request, jsonify, send_file
+from flask import request, jsonify, send_file, render_template
 from flask_jwt_extended import jwt_required
 from decorators import authenticate
 from flask_socketio import emit
@@ -17,6 +17,7 @@ import base64
 import wave
 import filetype
 import tempfile
+from io import BytesIO
 
 check = 0
 recordings = {}
@@ -109,7 +110,6 @@ def init_session_routes(app, socketio):
                 if done == "true":
                     audio_file_like = io.BytesIO(session.recording)
                     audio = AudioSegment.from_file(audio_file_like)
-                    audio.export("test.wav", format = "wav")
                     duration_seconds = audio.duration_seconds
 
                     words = get_words_by_google(session.recording, duration_seconds)
@@ -125,10 +125,10 @@ def init_session_routes(app, socketio):
     def download_session(session_url):
         session = Session.query.filter_by(url=session_url).first()
         if not session:
-            return jsonify({"msg": "Session not found"}), 401
+            return jsonify({"error": "Session not found"}), 401
         #decrypted_content = cipher_suite.decrypt(project.sample_clip)
         return send_file(BytesIO(session.recording), 
-                         download_name="session.wav",  # Specify the download name
+                         download_name="sample.wav",  # Specify the download name
                          as_attachment=True, 
                          mimetype='audio/wav')
     
