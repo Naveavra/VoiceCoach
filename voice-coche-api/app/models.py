@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 import json
+import re
 
 db = SQLAlchemy()
 
@@ -98,13 +99,21 @@ class Project(db.Model):
         self.created_at = datetime.utcnow()
     
     def simpleSerialize(self):
+        clean_txt = ""
+        if self.parasha_ref is not None:
+            parasha_records = Parasha.query.filter_by(parasha=self.parasha, aliya=self.aliyah, clean = True).all()
+            if parasha_records:
+                for record in parasha_records:
+                    if record.clean:
+                        record.text = re.sub(' +', ' ', record.text.replace('\t', '').replace('\n', '')).strip()
+                        clean_txt = record.text
         return {
             'id': self.id,
             'parasha': self.parasha,
             'aliyah': self.aliyah,
             'description': self.description,
-            'clean_text': self.sample_lines if self.sample_lines is not None else "",
-            'mark_text': "בראשית ברא אלוהים",
+            'clean_text': clean_txt,
+            'mark_text': self.parasha_ref.text if self.parasha_ref is not None else "",
             'created_at': self.created_at,
             'sample_url': self.sample_url
         } 

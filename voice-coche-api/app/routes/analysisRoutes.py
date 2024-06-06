@@ -37,7 +37,6 @@ def init_analysis_routes(app):
     @authenticate
     def forAnalysis(current_user, session_id):
         return getAnalysis(session_id)
-    #def forAnalysis(session_id):
                     
 
 def getAnalysis(session_id):
@@ -67,7 +66,8 @@ def getAnalysis(session_id):
 
     print("teamim")
     if session.session_teamim is None:
-        teamim = getTeamim(session.recording)
+        audio = AudioSegment.from_file(io.BytesIO(session.recording))
+        teamim = getTeamim(session.recording, audio.duration_seconds)
         teamim = fixTeamimWithWords(teamim, words)
         session.session_teamim = json.dumps(teamim)
         db.session.commit()
@@ -94,7 +94,7 @@ def getAnalysis(session_id):
         print(row)
         row['review'] = 'MISSING'
         ans_teamim.append(row)
-    analysis = Analysis(json.dumps(words), json.dumps(ans_teamim))
+    analysis = Analysis(json.dumps(wordsMismatch), json.dumps(ans_teamim))
     session.analysis = analysis
     session.analysis_id = analysis.id
     db.session.add(analysis)
