@@ -1,6 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import React, { useState } from 'react';
-import { ActivityIndicator, Text, Alert, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Text, Alert, TouchableOpacity, StyleSheet } from 'react-native';
 import { API_URL } from '../../config';
 import { setSampleUrl } from '../../redux/projectsReducer';
 import { ProjectData } from '../../types/systemTypes';
@@ -8,19 +8,15 @@ import { useUtilities } from '../../hooks';
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 
-
 export interface uploadDocumentProps {
     token: string | null;
     selectedProject: ProjectData;
     reloadData: () => void;
-    styles: any;
 }
 
-
-export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedProject, reloadData, styles }) => {
+export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedProject, reloadData }) => {
     const { dispatch } = useUtilities();
     const [isLoading, setIsLoading] = useState(false);
-
 
     const errorAlert = (error: string) => {
         Alert.alert('something went wrong', error, [
@@ -31,7 +27,6 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
             },
         ]);
     }
-
 
     const openDocumentPicker = async () => {
         let document: any;
@@ -50,7 +45,7 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
                 });
 
                 // Set your API URL
-                const url = `${API_URL}/projects/${selectedProject.id}/uploade_sample`
+                const url = `${API_URL}/projects/${selectedProject.id}/uploade_sample`;
 
                 // Set headers for multipart/form-data
                 const config = {
@@ -61,20 +56,19 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
                 };
 
                 // Send the document using Axios POST request
-                //todo :put the res and err in alerts
                 setIsLoading(true);
-                await axios.post(url, formData, config).
-                    then((response) => {
+                await axios.post(url, formData, config)
+                    .then((response) => {
                         const sampleUrl = response.data.sample_url;
                         dispatch(setSampleUrl(sampleUrl));
                         setIsLoading(false);
                         reloadData();
                     })
                     .catch((error) => {
+                        console.error('Failed to upload sample:', error);
                         setIsLoading(false);
                         errorAlert('Failed to upload sample');
-                    }
-                    );
+                    });
             }
         } catch (error) {
             if (!document.canceled) {
@@ -96,6 +90,20 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
                     </TouchableOpacity>
             }
         </>
-    )
+    );
+};
 
-}
+const styles = StyleSheet.create({
+    addSampleContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        alignSelf: 'center',
+        padding: 10,
+    },
+    addSampleText: {
+        marginTop: 10,
+        fontSize: 16,
+        color: '#1976d2',
+        textAlign: 'center',
+    },
+});

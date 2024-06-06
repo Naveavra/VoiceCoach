@@ -25,7 +25,6 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
     const routeNames = useNavigationState(state => state.routeNames);
     const index = useNavigationState(state => state.index);
     const currentRouteName = routeNames[index];
-
     const AddProjectAlert = () => {
         Alert.alert('No projects found', '', [
             {
@@ -66,8 +65,10 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
                 dispatch(selectProject(project.id))
                 navigation.navigate('Project', { id: project.id })
             }
-
-            } onDelete={() => deleteProjectAlert(project.id)} onEdit={() => console.log('edit')} />
+            } onDelete={() => {
+                deleteProjectAlert(project.id)
+            }
+            } onEdit={() => console.log('edit')} />
         )
     })
 
@@ -95,10 +96,9 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
                     <Ionicons style={{
                         alignSelf: 'center',
                         color: '#1976d2',
-
                     }} name="add-circle-outline" size={40} color="black" onPress={() => navigation.navigate('AddProject')} />
 
-                    <SimpleLineIcons name="refresh" size={34} color="#1976d2" onPress={reloadData} />
+                    <SimpleLineIcons name="refresh" size={35} color="#1976d2" onPress={reloadData} />
 
                 </View>
 

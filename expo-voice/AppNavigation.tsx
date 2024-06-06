@@ -18,7 +18,7 @@ export type RootStackParamList = {
     Home: undefined;
     AddProject: undefined;
     Project: { id: number };
-    Session: { session: SessionData };
+    Session: { session: SessionData, local_uri: string };
     AddRecord: { project: ProjectData, reloadData: () => void };
     Analysis: { session_id: number, analysis: Analysis };
 };

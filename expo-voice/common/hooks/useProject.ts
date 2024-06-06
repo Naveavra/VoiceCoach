@@ -11,6 +11,7 @@ interface useProjectProps {
 export const useProject = ({ token, project_id }: useProjectProps) => {
     const { dispatch, useAppSelector } = useUtilities();
     const sessions = useAppSelector((state) => state.project.sessions);
+    const project = useAppSelector((state) => state.project.project);
     const isLoadingProject = useAppSelector((state) => state.project.isLoadingProject);
     const error = useAppSelector((state) => state.project.error);
     const msg = useAppSelector((state) => state.project.msg);
@@ -21,11 +22,11 @@ export const useProject = ({ token, project_id }: useProjectProps) => {
     }, [dispatch]);
 
     useEffect(() => {
-        if (token && sessions.length == 0 && project_id != -1) {
+        if (token && project_id != -1) {
             dispatch(getProjectData({ token: token, project_id: project_id }));
         }
     }, [dispatch, project_id]);
 
-    return { isLoadingProject, sessions, error, msg, reloadData };
+    return { isLoadingProject, project, sessions, error, msg, reloadData };
 
 }
