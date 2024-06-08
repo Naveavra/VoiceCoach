@@ -38,6 +38,9 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
                 }
                 // Handle the selected document (e.g., display its details)
                 const formData = new FormData();
+                // formData.append('audio', document['assets'][0]['uri']);
+                // formData.append('name', document['assets'][0]['name']);
+                // formData.append('type', document['assets'][0]['mimeType']);r
                 formData.append('audio', {
                     uri: document['assets'][0]['uri'],
                     name: document['assets'][0]['name'],
@@ -53,8 +56,8 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
                         'Content-Type': 'multipart/form-data',
                         'Authorization': `Bearer ${token}`
                     },
-                };
 
+                };
                 // Send the document using Axios POST request
                 setIsLoading(true);
                 await axios.post(url, formData, config)

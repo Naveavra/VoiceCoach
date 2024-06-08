@@ -12,7 +12,6 @@ import { AntDesign } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Feather } from '@expo/vector-icons';
 import { formatDate } from "../common/utils";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
 
 type SessionScreenProps = NativeStackScreenProps<RootStackParamList, 'Session'>;
 
@@ -75,7 +74,7 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
         <>
             {isLoading ? <AppLoader /> :
                 !analysis ? <Text>No data available.</Text> :
-                    <ScrollView contentContainerStyle={styles.container}>
+                    <View style={styles.container}>
                         <View style={styles.sampleContainer}>
                             <AudioRecord
                                 url={session.url}
@@ -91,13 +90,19 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                             <AntDesign name="warning" size={35} color="#f44336" onPress={failAlert} />
                         </View>
 
+
                         <ScrollView style={styles.scrollViewContainer}>
                             <View style={styles.goodWordsContainer}>
                                 {analysis.words.filter((word) => word[1] != 2).map((word, index) => {
                                     const status = word[1];
-                                    const wordColor = status === 0 ? '#4caf50' : status === 1 ? '#ffc107' : status === 2 ? '#f44336' : '#2196f3';
+                                    const wordColor = status === 0 ? '#4caf50' : status === 1 ? '#ffc107' : '#2196f3';
                                     const word_been_said = word[0];
                                     const word_to_say = word[2];
+                                    if (status === 0) {
+                                        return (
+                                            <Text key={index} style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
+                                        )
+                                    }
                                     return (
                                         <TouchableOpacity key={index} onPress={() => handleWordClick(index, word_been_said, word_to_say, status)}>
                                             <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
@@ -107,54 +112,67 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                             </View>
                         </ScrollView>
 
-                        <ScrollView style={styles.scrollViewContainer}>
-                            <View style={styles.badWordsContainer}>
-                                {analysis.words.filter((word) => word[1] === 2).map((word, index) => {
-                                    const status = word[1];
-                                    const wordColor = status === 0 ? '#4caf50' : status === 1 ? '#ffc107' : status === 2 ? '#f44336' : '#2196f3';
-                                    const word_been_said = word[0];
-                                    const word_to_say = word[2];
-                                    return (
-                                        <TouchableOpacity key={index} onPress={() => handleWordClick(index, word_been_said, word_to_say, status)}>
-                                            <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
-                                        </TouchableOpacity>
-                                    )
-                                })}
-                            </View>
-                        </ScrollView>
 
                         {selectedWordIndex !== null &&
                             <Modal visible={true} transparent={true} animationType="fade">
                                 <TouchableWithoutFeedback onPress={handleScreenClick}>
                                     <View style={styles.modalContainer}>
-                                        {selectedWordStatus === 0 ?
-                                            <View style={{ ...styles.timeContainer, backgroundColor: '#4caf50' }}>
-                                                <Text style={{ marginBottom: 10 }}>You said: {"\"" + selectedWord + "\""}</Text>
-                                                <Text style={{ marginBottom: 10 }}> {analysis.teamim[selectedWordIndex].start} - {analysis.teamim[selectedWordIndex].end}</Text>
-                                                <Text>Review: {analysis.teamim[selectedWordIndex].review}</Text>
+                                        {selectedWordStatus === 1 ?
+                                            <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#ffc107' }}>
+                                                <Text style={{ marginBottom: 10 }}>You said: {"\"" + selectedWord + "\""} not in the right place</Text>
+                                                <Text style={{ marginBottom: 10 }}>Should be: {"\"" + selectedWordToSay + "\""} </Text>
                                             </View>
                                             :
-                                            selectedWordStatus === 1 ?
-                                                <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#ffc107' }}>
-                                                    <Text style={{ marginBottom: 10 }}>You said: {"\"" + selectedWord + "\""} not in the right place</Text>
-                                                    <Text style={{ marginBottom: 10 }}>Should be: {"\"" + selectedWordToSay + "\""} </Text>
+                                            selectedWordStatus === 2 ?
+                                                <View style={{ ...styles.redTimeContainer, backgroundColor: '#f44336' }}>
+                                                    <Text style={{ marginBottom: 5 }}>This word is not in the sample</Text>
+                                                    <Text>You said: {"\"" + selectedWord + "\""}</Text>
                                                 </View>
-                                                :
-                                                selectedWordStatus === 2 ?
-                                                    <View style={{ ...styles.redTimeContainer, backgroundColor: '#f44336' }}>
-                                                        <Text style={{ marginBottom: 5 }}>This word is not in the sample</Text>
-                                                        <Text>You said: {"\"" + selectedWord + "\""}</Text>
-                                                    </View>
-                                                    :
+                                                : selectedWordStatus === 3 ?
                                                     <View style={{ ...styles.timeContainer, backgroundColor: '#2196f3' }}>
                                                         <Text style={{ marginBottom: 10 }}>You missed that word: {"\"" + selectedWordToSay + "\""}</Text>
                                                     </View>
+                                                    : null
                                         }
                                     </View>
                                 </TouchableWithoutFeedback>
                             </Modal>
                         }
-                    </ScrollView>
+
+
+
+                        <ScrollView style={styles.scrollViewContainer}>
+                            <View style={styles.badWordsContainer}>
+                                {analysis.words.filter((word) => word[1] === 2).map((word, index) => {
+                                    const status = word[1];
+                                    const word_been_said = word[0];
+                                    const word_to_say = word[2];
+                                    return (
+                                        <TouchableOpacity key={index} onPress={() => handleWordClick(index, word_been_said, word_to_say, status)}>
+                                            <Text style={[styles.word, { color: '#f44336' }]}>{`${word_been_said}`}</Text>
+                                        </TouchableOpacity>
+                                    )
+                                })}
+                            </View>
+                        </ScrollView>
+
+                        <ScrollView style={styles.scrollViewContainer}>
+                            <View style={styles.teamimContainer}>
+                                {analysis.teamim.map((taam, index) => {
+                                    const wordColor = taam.review === "GOOD" ? '#4caf50' : taam.review === "BAD" ? '#ffc107' : '#f44336';
+                                    return (
+                                        <TouchableOpacity key={index} >
+                                            <View style={{ ...styles.timeContainer, backgroundColor: wordColor }}>
+                                                <Text style={[styles.word]}>{`${taam.text} , ${taam.end} - ${taam.start}`}</Text>
+                                                <Text style={[styles.word]}>{`${taam.exp}`}</Text>
+                                            </View>
+
+                                        </TouchableOpacity>
+                                    )
+                                })}
+                            </View>
+                        </ScrollView>
+                    </View>
             }
         </>
     );
@@ -193,12 +211,10 @@ const styles = StyleSheet.create({
         marginTop: 16,
         padding: 8,
         borderRadius: 4,
-        width: 200,
-        height: 200,
+        width: '100%',
         justifyContent: 'center',
         alignItems: 'center',
         flexDirection: 'column',
-        margin: 10,
     },
     redTimeContainer: {
         marginTop: 16,
@@ -227,8 +243,18 @@ const styles = StyleSheet.create({
         flexWrap: "wrap",
         justifyContent: 'center',
         alignContent: 'center',
+        flex: 1,
+        marginBottom: 20
     },
     badWordsContainer: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        position: 'relative',
+        justifyContent: 'center',
+        alignContent: 'center',
+        height: 200,
+    },
+    teamimContainer: {
         flexDirection: "row",
         flexWrap: "wrap",
         position: 'relative',

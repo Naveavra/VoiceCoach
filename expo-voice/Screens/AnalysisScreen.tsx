@@ -55,22 +55,11 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
     }
 
     const handleWordClick = (index: number, word_been_said: string, word_to_say: string, status: number) => {
-        if (status == 3) {
-            for (let i = 0; i < analysis.words.length; i++) {
-                if (analysis.words[i][0] == word_been_said) {
-                    index = i;
-                    word_to_say = analysis.words[i][2];
-                    status = analysis.words[i][1];
-                    break;
-                }
-            }
-        }
         setSelectedWordIndex(index);
         setSelectedWord(word_been_said);
         setSelectedWordToSay(word_to_say);
         setSelectedWordStatus(status);
     };
-    //[["בראשית", 2, "בראשית"], ["ברא", 2, "ברא"], ["אלוהים", 2, "אלוהים"], ["את", 2, "את"], ["השמיים", 2, "השמיים"], ["ואת", 2, "ואת"], ["הארץ", 2, "הארץ"], ["והארץ", 2, "והארץ"], ["הייתה", 2, "הייתה"], ["תוהו", 2, "תוהו"], ["עכשיו", 3, "עכשיו"], ["ננסה", 3, "ננסה"], ["להקליט", 3, "להקליט"], ["משהו", 3, "משהו"], ["הרבה", 3, "הרבה"], ["יותר", 3, "יותר"], ["קל", 3, "קל"], ["כדי", 3, "כדי"], ["שזה", 3, "שזה"], ["יעבוד", 3, "יעבוד"]]}
     const handleScreenClick = () => {
         setSelectedWordIndex(null);
     };
@@ -86,6 +75,7 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                         <Feather name="info" size={35} color="#2196f3" onPress={missedAlert} />
                         <AntDesign name="warning" size={35} color="#f44336" onPress={failAlert} />
                     </View>
+                    <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 10, marginTop: 10 }}> ניתוח מילים</Text>
                     <ScrollView style={styles.scrollViewContainer}>
                         <View style={styles.goodWordsContainer}>
                             {analysis.words.filter((word) => word[1] != 2).map((word, index) => {
@@ -93,6 +83,11 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                                 const wordColor = status === 0 ? '#4caf50' : status === 1 ? '#ffc107' : status === 2 ? '#f44336' : '#2196f3';
                                 const word_been_said = word[0];
                                 const word_to_say = word[2];
+                                if (status === 0) {
+                                    return (
+                                        <Text key={index} style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
+                                    )
+                                }
                                 return (
                                     <TouchableOpacity key={index} onPress={() => handleWordClick(index, word_been_said, word_to_say, status)}>
                                         <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
@@ -102,55 +97,65 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                         </View>
                     </ScrollView>
 
-                    <ScrollView style={styles.scrollViewContainer}>
-                        <View style={styles.badWordsContainer}>
-                            {analysis.words.filter((word) => word[1] === 2).map((word, index) => {
-                                const status = word[1];
-                                const wordColor = status === 0 ? '#4caf50' : status === 1 ? '#ffc107' : status === 2 ? '#f44336' : '#2196f3';
-                                const word_been_said = word[0];
-                                const word_to_say = word[2];
-                                return (
-                                    <TouchableOpacity key={index} onPress={() => handleWordClick(index, word_been_said, word_to_say, status)}>
-                                        <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
-                                    </TouchableOpacity>
-                                )
-                            })}
-                        </View>
-                    </ScrollView>
                     {selectedWordIndex !== null &&
-                        <Modal visible={true} transparent={true} animationType="fade" >
+                        <Modal visible={true} transparent={true} animationType="fade">
                             <TouchableWithoutFeedback onPress={handleScreenClick}>
                                 <View style={styles.modalContainer}>
-                                    {selectedWordStatus == 0 ?
-                                        <View style={{ ...styles.timeContainer, backgroundColor: '#4caf50' }}>
-                                            <Text style={{ marginBottom: 2 }}> u said : {"\"" + selectedWord + "\""}</Text>
-                                            <Text style={{ marginBottom: 2 }}> {analysis.teamim[selectedWordIndex].start} - {analysis.teamim[selectedWordIndex].end}</Text>
-                                            <Text>Review: {analysis.teamim[selectedWordIndex].review}</Text>
+                                    {selectedWordStatus === 1 ?
+                                        <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#ffc107' }}>
+                                            <Text style={{ marginBottom: 10 }}>You said: {"\"" + selectedWord + "\""} not in the right place</Text>
+                                            <Text style={{ marginBottom: 10 }}>Should be: {"\"" + selectedWordToSay + "\""} </Text>
                                         </View>
                                         :
-                                        selectedWordStatus == 1 ?
-                                            <View style={{ ...styles.timeContainer, backgroundColor: '#ffc107' }}>
-                                                <Text style={{ marginBottom: 2 }}> u said : {"\"" + selectedWord + "\""}</Text>
-                                                <Text style={{ marginBottom: 2 }}> u should said : {"\"" + selectedWordToSay + "\""}</Text>
+                                        selectedWordStatus === 2 ?
+                                            <View style={{ ...styles.redTimeContainer, backgroundColor: '#f44336' }}>
+                                                <Text style={{ marginBottom: 5 }}>This word is not in the sample</Text>
+                                                <Text>You said: {"\"" + selectedWord + "\""}</Text>
                                             </View>
-                                            :
-                                            selectedWordStatus == 2 ?
-                                                <View style={{ ...styles.redTimeContainer, backgroundColor: '#f44336' }}>
-                                                    <Text style={{ marginBottom: 5 }}>this word not in the sample</Text>
-                                                    <Text> u said : {"\"" + selectedWord + "\""}</Text>
-                                                </View>
-                                                :
+                                            : selectedWordStatus === 3 ?
                                                 <View style={{ ...styles.timeContainer, backgroundColor: '#2196f3' }}>
-                                                    <Text>Review: {analysis.teamim[selectedWordIndex].review}</Text>
+                                                    <Text style={{ marginBottom: 10 }}>You missed that word: {"\"" + selectedWordToSay + "\""}</Text>
                                                 </View>
-
+                                                : null
                                     }
                                 </View>
                             </TouchableWithoutFeedback>
                         </Modal>
                     }
+
+                    <ScrollView style={styles.scrollViewContainer}>
+                        <View style={styles.badWordsContainer}>
+                            {analysis.words.filter((word) => word[1] === 2).map((word, index) => {
+                                const wordColor = '#ffc107';
+                                const word_been_said = word[0];
+                                return (
+                                    <TouchableOpacity key={index} >
+                                        <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
+                                    </TouchableOpacity>
+                                )
+                            })}
+                        </View>
+                    </ScrollView>
+                    <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 10, marginTop: 10 }}> ניתוח טעמים</Text>
+
+                    <ScrollView style={styles.scrollViewContainer}>
+                        <View style={styles.teamimContainer}>
+                            {analysis.teamim.map((taam, index) => {
+                                const wordColor = taam.review === "GOOD" ? '#4caf50' : taam.review === "BAD" ? '#ffc107' : '#f44336';
+                                return (
+                                    <TouchableOpacity key={index} >
+                                        <View style={{ ...styles.timeContainer, backgroundColor: wordColor }}>
+                                            <Text style={[styles.word]}>{`${taam.text} , ${taam.end} - ${taam.start}`}</Text>
+                                            <Text style={[styles.word]}>{`${taam.exp}`}</Text>
+                                        </View>
+
+                                    </TouchableOpacity>
+                                )
+                            })}
+                        </View>
+                    </ScrollView>
                 </View>
-            </TouchableWithoutFeedback>
+            </TouchableWithoutFeedback >
             <TouchableOpacity style={styles.itemContainer} onPress={() => {
                 navigation.goBack()
                 navigation.goBack()
@@ -195,15 +200,21 @@ const styles = StyleSheet.create({
     timeContainer: {
         marginTop: 16,
         padding: 8,
-        backgroundColor: "#f0f0f0",
         borderRadius: 4,
-        //make it bigger
-        width: 200,
-        height: 200,
+        width: '100%',
         justifyContent: 'center',
         alignItems: 'center',
         flexDirection: 'column',
-        //make space between 
+    },
+    yellowTimeContainer: {
+        marginTop: 16,
+        backgroundColor: "#f0f0f0",
+        borderRadius: 4,
+        width: 300,
+        height: 200,
+        alignItems: 'center',
+        flexDirection: 'column',
+        justifyContent: 'center',
         margin: 10
     },
     redTimeContainer: {
@@ -217,6 +228,22 @@ const styles = StyleSheet.create({
         flexDirection: 'column',
         justifyContent: 'center',
         margin: 10
+    },
+    badWordsContainer: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        position: 'relative',
+        justifyContent: 'center',
+        alignContent: 'center',
+        height: 200,
+    },
+    goodWordsContainer: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        justifyContent: 'center',
+        alignContent: 'center',
+        flex: 1,
+        marginBottom: 20
     },
     timeText: {
         fontSize: 14,
@@ -233,13 +260,8 @@ const styles = StyleSheet.create({
         padding: 20,
         borderRadius: 10,
     },
-    goodWordsContainer: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        justifyContent: 'center',
-        alignContent: 'center',
-    },
-    badWordsContainer: {
+
+    teamimContainer: {
         flexDirection: "row",
         flexWrap: "wrap",
         position: 'relative',
@@ -293,3 +315,42 @@ const styles = StyleSheet.create({
         marginBottom: 100,
     },
 });
+
+
+
+// {selectedWordIndex !== null &&
+//     <Modal visible={true} transparent={true} animationType="fade" >
+//         <TouchableWithoutFeedback onPress={handleScreenClick}>
+//             <View style={styles.modalContainer}>
+//                 {selectedWordStatus == 0 ?
+//                     <View style={{ ...styles.timeContainer, backgroundColor: '#4caf50' }}>
+//                         <Text style={{ marginBottom: 2 }}> u said : {"\"" + selectedWord + "\""}</Text>
+//                         <Text style={{ marginBottom: 2 }}> {analysis.teamim[selectedWordIndex].start} - {analysis.teamim[selectedWordIndex].end}</Text>
+//                         <Text>Review: {analysis.teamim[selectedWordIndex].review}</Text>
+//                         <Text> Taam : {analysis.teamim[selectedWordIndex].exp}</Text>
+//                     </View>
+//                     :
+//                     selectedWordStatus == 1 ?
+//                         <View style={{ ...styles.timeContainer, backgroundColor: '#ffc107' }}>
+//                             <Text style={{ marginBottom: 2 }}> u said : {"\"" + selectedWord + "\""}</Text>
+//                             <Text style={{ marginBottom: 2 }}> u should said : {"\"" + selectedWordToSay + "\""}</Text>
+//                             <Text> Taam : {analysis.teamim[selectedWordIndex].exp}</Text>
+//                         </View>
+//                         :
+//                         selectedWordStatus == 2 ?
+//                             <View style={{ ...styles.redTimeContainer, backgroundColor: '#f44336' }}>
+//                                 <Text style={{ marginBottom: 5 }}>this word not in the sample</Text>
+//                                 <Text> u said : {"\"" + selectedWord + "\""}</Text>
+//                                 <Text> Taam : {analysis.teamim[selectedWordIndex].exp}</Text>
+//                             </View>
+//                             :
+//                             <View style={{ ...styles.timeContainer, backgroundColor: '#2196f3' }}>
+//                                 <Text>Review: {analysis.teamim[selectedWordIndex].review}</Text>
+//                                 <Text> Taam : {analysis.teamim[selectedWordIndex].exp}</Text>
+//                             </View>
+
+//                 }
+//             </View>
+//         </TouchableWithoutFeedback>
+//     </Modal>
+// }

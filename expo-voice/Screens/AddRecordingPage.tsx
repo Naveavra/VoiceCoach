@@ -1,5 +1,4 @@
 import axios from "axios";
-
 import { Audio } from "expo-av";
 import { Recording } from "expo-av/build/Audio";
 import React, { useEffect, useRef, useState } from "react";
@@ -16,40 +15,45 @@ import { useAuth, useUtilities } from "../common/hooks";
 import { LogBox } from 'react-native';
 import { delay } from "../common/utils";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
+import Slider from '@react-native-community/slider';
 
 LogBox.ignoreLogs([
     'Non-serializable values were found in the navigation state',
 ]);
+
 type AddRecordingScreenProps = NativeStackScreenProps<RootStackParamList, 'AddRecord'>;
 
 let recording: Audio.Recording;
 let index = 0;
+let send = true;
 
-//todo: add pause recording option
 export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProps) => {
     const { dispatch, useAppSelector } = useUtilities();
     const { token } = useAuth({});
+    const selected_session = useAppSelector((state) => state.project.selectedSession);
+    const { project, reloadData } = route.params;
+
 
     const loopRunning = useRef<boolean>(false);
     const [permissionResponse, requestPermission] = Audio.usePermissions();
     const [loopPromise, setLoopPromise] = useState<Promise<void> | null>(null);
     const [transcript, setTranscript] = useState<string>('');
     const [status, setStatus] = useState<string>('');
+    const [recordingTime, setRecordingTime] = useState<number>(0);
+    const [currentPosition, setCurrentPosition] = useState<number>(0);
+    const [timerInterval, setTimerInterval] = useState<NodeJS.Timer | null>(null);
 
-    const selected_session = useAppSelector((state) => state.project.selectedSession);
-    const { project, reloadData } = route.params;
     const [help, setHelp] = useState(false);
     const toggleSwitch = () => setHelp(previousState => !previousState);
-
 
     const [currentWord, setCurrentWord] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [wordColors, setWordColors] = useState<string[]>(project.clean_text.split(" ").map(() => 'black'));
     const scrollY = useSharedValue(0);
     const errorAlert = () => {
-        Alert.alert('error', 'something went wrong', [
+        Alert.alert('Error', 'Something went wrong', [
             {
-                text: 'okay', onPress: () => navigation.goBack()
+                text: 'Okay', onPress: () => navigation.goBack()
             },
         ]);
     }
@@ -64,7 +68,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     uri: uri,
                     name: 'audio.wav',
                     type: 'audio/wav',
-                });
+                } as any);
 
                 const config = {
                     headers: {
@@ -73,29 +77,29 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     }
                 }
                 formData.append('done', done ? 'true' : 'false');
-
-                await axios.post(url, formData, config)
-                    .then((response) => {
-                        if (!done) {
-                            handleTranscript(response.data);
-                        }
-                    })
-                    .catch((error) => {
-                        stopLoop();
-                    });
+                if (send) {
+                    await axios.post(url, formData, config)
+                        .then((response) => {
+                            if (!done) {
+                                handleTranscript(response.data);
+                            }
+                        })
+                        .catch((error) => {
+                            stopLoop();
+                        });
+                }
             }
-            // setTranscript(result.data);
         } catch (error) {
             errorAlert();
         }
     }
-
 
     const handleTranscript = (data: any) => {
         setTranscript((prev) => prev + data + ' ');
         data.split(" ").forEach((word: string) => {
             const word_from_text = project.clean_text.split(" ")[index];
             const next_word = project.clean_text.split(" ")[index + 1];
+            const next_next_word = project.clean_text.split(" ")[index + 2];
             if (wordColors[index] == 'black') {
                 if (word === word_from_text) {
                     setWordColors((prev) => {
@@ -103,8 +107,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         newColors[index] = 'green';
                         return newColors;
                     });
-                }
-                else if (word === next_word) {
+                } else if (word === next_word) {
                     setWordColors((prev) => {
                         const newColors = [...prev];
                         newColors[index] = 'red';
@@ -113,19 +116,16 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         return newColors;
                     });
                 }
-                //maybe find the closet matches word in the text
-                // else if (word === selectedProject.clean_text.split(" ")[index + 2]) {
-                //     setWordColors((prev) => {
-                //         const newColors = [...prev];
-                //         newColors[index] = 'red';
-                //         newColors[index + 1] = 'red';
-                //         newColors[index + 2] = 'green';
-                //         index += 2;
-                //         return newColors;
-                //     });
-                // }
-
-                else {
+                else if (word === next_next_word) {
+                    setWordColors((prev) => {
+                        const newColors = [...prev];
+                        newColors[index] = 'red';
+                        newColors[index + 1] = 'red';
+                        newColors[index + 2] = 'green';
+                        index += 2;
+                        return newColors;
+                    });
+                } else {
                     setWordColors((prev) => {
                         const newColors = [...prev];
                         newColors[index] = 'red';
@@ -138,8 +138,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         })
     }
 
-
-    const startRecording = async () => {
+    const startRecording = async (): Promise<Audio.Recording | undefined> => {
         try {
             if (permissionResponse && permissionResponse.status !== 'granted') {
                 await requestPermission();
@@ -158,20 +157,41 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             console.error('Failed to start recording', err);
         }
     }
+
     const pauseRecording = async () => {
         try {
             const status = await recording.getStatusAsync();
             if (status.canPause) {
                 await recording.pauseAsync();
             }
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+            send = false;
+            console.log('Recording paused', send);
             setStatus('paused');
+            console.log('Recording time', recordingTime);
         } catch (error) {
             console.error('Failed to pause recording:', error);
         }
     };
 
-    async function stopRecording(record: Recording) {
-        // setRecording(recording);
+    const resumeRecording = async () => {
+        try {
+            await recording.startAsync();
+            send = true;
+            console.log('Recording resumed', send);
+            const timer = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+            setTimerInterval(timer);
+            setStatus('recording');
+        } catch (error) {
+            console.error('Failed to resume recording:', error);
+        }
+    }
+
+    async function stopRecording(record: Recording): Promise<string | null> {
         await record.stopAndUnloadAsync();
         await Audio.setAudioModeAsync(
             {
@@ -184,7 +204,12 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const loop = async () => {
         if (!loopRunning.current) {
             loopRunning.current = true;
-            while (loopRunning.current) {
+            setRecordingTime(0);
+            const timer = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+            setTimerInterval(timer);
+            while (loopRunning.current && send) {
                 const record = await startRecording();
                 await delay(5000);
                 if (record) {
@@ -192,11 +217,15 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     sendAudioData(record, false);
                 }
             }
+            clearInterval(timer);
         }
     }
 
     const stopLoop = () => {
         loopRunning.current = false;
+        if (timerInterval) {
+            clearInterval(timerInterval);
+        }
     };
 
     const handleStartButtonClick = () => {
@@ -207,7 +236,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
 
     const handleStopButtonClick = async () => {
         setStatus('stopped');
-        setIsLoading(true)
+        setIsLoading(true);
         stopLoop();
         if (loopPromise) {
             loopPromise.then(() => {
@@ -224,22 +253,18 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         navigation.navigate('Analysis', {
                             analysis: response.data,
                             session_id: selected_session.id
-                        },
-
-                        );
+                        });
                     });
             });
-
-
         }
     };
-
 
     useEffect(() => {
         if (currentWord > 0 && currentWord % 10 === 0) {
             scrollY.value = withTiming(scrollY.value - 20, { duration: 1000, easing: Easing.linear });
         }
     }, [currentWord]);
+
     useEffect(() => {
         return () => {
             index = 0;
@@ -252,6 +277,11 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         };
     });
 
+    const formatTime = (seconds: number): string => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
 
     return (
         <>
@@ -273,7 +303,6 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 </View>
                 <SafeAreaView style={styles.safeContainer}>
                     <Animated.View style={[styles.textContainer, animatedStyles]}>
-
                         {help ? project.mark_text.split(" ").map((word, index) => {
                             return (
                                 <Text
@@ -319,36 +348,81 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                     <FontAwesome name="microphone" size={24} color="black" />
                                     <Text style={defaultTheme.components.text}>Start Recording</Text>
                                 </TouchableOpacity>
-
                             </View>
                         </>
                         :
                         status == 'recording' ?
                             <>
-                                <View style={styles.itemsContainer}>
-                                    <View style={styles.itemContainer}>
-                                        <AntDesign name="pause" size={24} color="black" onPress={pauseRecording} />
-                                        <Text>Pause Recording</Text>
+                                <View style={{
+                                    flex: 1,
+                                    flexDirection: "column",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                }}>
+                                    <View style={styles.itemsContainer}>
+                                        <View style={styles.itemContainer}>
+                                            <AntDesign name="pause" size={24} color="black" onPress={pauseRecording} />
+                                            <Text>Pause Recording</Text>
+                                        </View>
+                                        <View style={styles.itemContainer}>
+                                            <Entypo name="controller-stop" size={24} color="black" onPress={handleStopButtonClick} />
+                                            <Text>Stop Recording</Text>
+                                        </View>
                                     </View>
-                                    <View style={styles.itemContainer}>
-                                        <Entypo name="controller-stop" size={24} color="black" onPress={handleStopButtonClick} />
-                                        <Text>Stop Recording</Text>
+                                    <View style={styles.timerContainer}>
+                                        <Text>Recording Time: {formatTime(recordingTime)}</Text>
                                     </View>
                                 </View>
-
                             </>
                             :
-                            status == 'stopped' ?
+                            status == 'paused' ?
                                 <>
-                                    {isLoading ?
+                                    <View style={{
+                                        flex: 1,
+                                        flexDirection: "column",
+                                        justifyContent: "center",
+                                        alignItems: "center"
+                                    }}>
+
                                         <View style={styles.itemsContainer}>
-                                            <ActivityIndicator animating={true} color={"#1976d2"} size={80} />
+                                            <View style={styles.itemContainer}>
+                                                <Entypo name="controller-play" size={24} color="black" onPress={resumeRecording} />
+                                                <Text>Resume Recording</Text>
+                                            </View>
+                                            <View style={styles.itemContainer}>
+                                                <Entypo name="controller-stop" size={24} color="black" onPress={handleStopButtonClick} />
+                                                <Text>Stop Recording</Text>
+                                            </View>
                                         </View>
-                                        : null
-                                    }
+                                        <View style={styles.itemsContainer}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <Slider
+                                                    style={{ width: 200, height: 40 }}
+                                                    minimumValue={0}
+                                                    maximumValue={recordingTime}
+                                                    value={currentPosition}
+                                                    onValueChange={setCurrentPosition}
+                                                    minimumTrackTintColor="#1976d2"
+                                                    maximumTrackTintColor="#000000"
+                                                    step={1}
+                                                />
+                                                <Text>{formatTime(currentPosition)}</Text>
+                                            </View>
+                                        </View>
+                                    </View>
                                 </>
                                 :
-                                null
+                                status == 'stopped' ?
+                                    <>
+                                        {isLoading ?
+                                            <View style={styles.itemsContainer}>
+                                                <ActivityIndicator animating={true} color={"#1976d2"} size={80} />
+                                            </View>
+                                            : null
+                                        }
+                                    </>
+                                    :
+                                    null
                     }
                 </View>
             </View >
@@ -358,8 +432,6 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         </>
     );
 }
-
-
 
 const styles = StyleSheet.create({
     container: {
@@ -406,7 +478,7 @@ const styles = StyleSheet.create({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 10, // Adjust spacing between elements
+        marginBottom: 10,
         position: 'absolute',
         top: 0,
     },
@@ -424,7 +496,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginHorizontal: 10,
-
     },
     itemsContainer: {
         flex: 1,
@@ -461,5 +532,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         direction: 'rtl',
+    },
+    timerContainer: {
+        marginLeft: 20,
     },
 });
