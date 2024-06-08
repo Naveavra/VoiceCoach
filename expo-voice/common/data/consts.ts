@@ -19,3 +19,5 @@ export const emptySession: SessionData = {
     analysis: null
 
 }
+
+

@@ -25,8 +25,9 @@ export interface ProjectData {
 }
 
 export interface Analysis {
-    teamim: { text: string, start: string, end: string, review: string }[]
+    teamim: { text: string, start: string, end: string, review: string, exp: string }[]
     words: [string, number, string][] //[word,typeof,correct_word][]
+
 }
 //0 good - #4caf50
 //1 exist but not in right place - #ffc107
