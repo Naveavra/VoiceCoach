@@ -8,7 +8,7 @@ from init import db
 from pydub import AudioSegment
 import json
 import assemblyai as aai
-from .fileRoutes import get_words_by_google, fixTeamimWithWords, getWordsAndTeamim
+from .fileRoutes import fixTeamimWithWords, getWordsAndTeamim
 
 import io
 import base64
@@ -202,7 +202,6 @@ def analyze_recording(audio, audio2, obj_1, obj_2):
                 return {'text': text_1, 'start': start_time_1, 'end': end_time_1, 'review': review, 'exp': exp, 'score': similarity_rank}
     except Exception as e:
         print(e)
-        print(f"Error analyzing segment '{text_1}': {e}")
         # reviews.append({'text': text_1, 'review': 'ERROR', 'error': str(e)})
         return {'text': text_1, 'start': start_time_1, 'end': end_time_1, 'exp': e, 'review': 'ERROR'}
 
@@ -213,19 +212,10 @@ def analyze_recordings(recording_1, recording_2, json_array_1, json_array_2):
     audio = AudioSegment.from_file(io.BytesIO(recording_1))
     audio2 = AudioSegment.from_file(io.BytesIO(recording_2))
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = {
-            executor.submit(analyze_recording, audio, audio2, json_array_1[i], json_array_2[i]): i
-            for i in range(len(json_array_1))
+    for i in range(len(json_array_1)):
+        review = analyze_recording(audio, audio2, json_array_1[i], json_array_2[i])
+        reviews.append(review)
             #for obj_1, obj_2 in zip(json_array_1, json_array_2)
-        }
-
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                review = future.result()
-                reviews.append(review)
-            except Exception as e:
-                print(e)
     return reviews
 
 

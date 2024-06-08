@@ -35,7 +35,7 @@ def init_file_routes(app):
             if project != None:
                 if project.creator_email == current_user.email:
                     if 'audio' not in request.files:
-                        return jsonify({"error": "No audio file part"}), 400
+                        return jsonify({"error": "No audio file part"}), 401
                     audio_file = request.files['audio']
                     content = audio_file.read()
                     kind = filetype.guess(content)
@@ -149,26 +149,48 @@ def find_best_match(word, word_list, current_index, next_word):
 
 def transcribe_subclip_google(audio_file_path, start_time, subclip_duration):
     with sr.AudioFile(audio_file_path) as source:
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.record(source, duration=subclip_duration, offset=start_time)
-        return recognizer.recognize_google(audio, language="iw-IL")
+        try:
+            recognizer.adjust_for_ambient_noise(source)
+            audio = recognizer.record(source, duration=subclip_duration, offset=start_time)
+            return recognizer.recognize_google(audio, language="iw-IL")
+        except:
+            print(e)
+            recognizer.adjust_for_ambient_noise(source)
+            audio = recognizer.record(source, duration=subclip_duration, offset=start_time)
+            return recognizer.recognize_google(audio, language="iw-IL")
 
 def transcribe_subclip(temp_wav_file_path, offset):
     FILE_URL = temp_wav_file_path
-    config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
-    transcriber = aai.Transcriber(config=config)
-    transcript = transcriber.transcribe(FILE_URL)
-
     stamps_array = []
-    if transcript.status == aai.TranscriptStatus.completed:
-        for word in transcript.words:
-            start_time_word = word.start / 1000
-            end_time_word = word.end / 1000
-            stamps_array.append({
-                'text': word.text, 
-                'start': start_time_word + offset, 
-                'end': end_time_word + offset
-            })
+    try:
+        config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
+        transcriber = aai.Transcriber(config=config)
+        transcript = transcriber.transcribe(FILE_URL)
+
+        if transcript.status == aai.TranscriptStatus.completed:
+            for word in transcript.words:
+                start_time_word = word.start / 1000
+                end_time_word = word.end / 1000
+                stamps_array.append({
+                    'text': word.text, 
+                    'start': start_time_word + offset, 
+                    'end': end_time_word + offset
+                })
+    except:
+        print(e)
+        config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
+        transcriber = aai.Transcriber(config=config)
+        transcript = transcriber.transcribe(FILE_URL)
+
+        if transcript.status == aai.TranscriptStatus.completed:
+            for word in transcript.words:
+                start_time_word = word.start / 1000
+                end_time_word = word.end / 1000
+                stamps_array.append({
+                    'text': word.text, 
+                    'start': start_time_word + offset, 
+                    'end': end_time_word + offset
+                })
     return stamps_array
 
 def subClipAnalysis(path, start_time, duration):
