@@ -107,11 +107,13 @@ class Project(db.Model):
                     if record.clean:
                         record.text = re.sub(' +', ' ', record.text.replace('\t', '').replace('\n', '')).strip()
                         clean_txt = record.text
+        
         return {
             'id': self.id,
             'parasha': self.parasha,
             'aliyah': self.aliyah,
             'description': self.description,
+            #'clean_text': self.sample_lines if not self.sample_lines is "" else "",
             'clean_text': clean_txt,
             'mark_text': self.parasha_ref.text if self.parasha_ref is not None else "",
             'created_at': self.created_at,

@@ -15,9 +15,13 @@ import tempfile
 import json
 import assemblyai as aai
 import difflib
+import concurrent.futures
 
+# Configure AssemblyAI settings
 aai.settings.api_key = "0dc55bacc27c4f6786439e81b735f87a"
+
 subclip_size = 60.0
+recognizer = sr.Recognizer()
 
 def init_file_routes(app):
     @app.route('/projects/<int:project_id>/uploade_sample', methods=['POST'])
@@ -61,13 +65,10 @@ def init_file_routes(app):
                             project.sample_clip = wav_content
                             
                             #now we get the words from the sample
-                            words = get_words_by_google(wav_content, duration_seconds)
+                            words, teamim = getWordsAndTeamim(wav_content, duration_seconds)
                             project.sample_lines = words
-                            print("finished words")
-                            teamim = getTeamim(wav_content, duration_seconds)
-                            print("finished teamim")
-                            teamim = fixTeamimWithWords(teamim, words)
-                            print(teamim)
+                            print("finished words: ", words)
+                            print("finished teamim: ", teamim)
                             project.sample_teamim = json.dumps(teamim)
 
                         else:
@@ -119,8 +120,117 @@ def init_file_routes(app):
                          as_attachment=True, 
                          mimetype='audio/wav')
       
-        # upload = None#AudioFile.query.filter_by(id=upload_id).first()
-        # return send_file(BytesIO(upload.content), attachment_filename=upload.filename, as_attachment=True)
+
+def fixTeamimWithWords(teamim, words):
+    tmp_words = words.replace(',', '')
+    word_list = tmp_words.split()
+    # Replace words in places with the most similar ones from the word list within one position off
+    len_teamim = len(teamim)
+    for i, place in enumerate(teamim):
+        if not i>len(word_list)-1:
+            if i == len_teamim-1:
+                place['text'] = find_best_match(place['text'], word_list, i, "")
+            else:
+                place['text'] = find_best_match(place['text'], word_list, i, teamim[i+1]['text'])
+    return teamim
+    
+
+def find_best_match(word, word_list, current_index, next_word):
+    if current_index == len(word_list)-1:
+        return word_list[current_index]
+
+    # Consider words within one position off
+    infront_score = difflib.SequenceMatcher(None, word, word_list[current_index]).ratio()
+    next_score = difflib.SequenceMatcher(None, word, word_list[current_index+1]).ratio()
+    if next_score > infront_score and next_score > difflib.SequenceMatcher(None, next_word, word_list[current_index+1]).ratio():
+        return word_list[current_index+1]
+    else:
+        return word_list[current_index]
+
+def transcribe_subclip_google(audio_file_path, start_time, subclip_duration):
+    with sr.AudioFile(audio_file_path) as source:
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.record(source, duration=subclip_duration, offset=start_time)
+        return recognizer.recognize_google(audio, language="iw-IL")
+
+def transcribe_subclip(temp_wav_file_path, offset):
+    FILE_URL = temp_wav_file_path
+    config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
+    transcriber = aai.Transcriber(config=config)
+    transcript = transcriber.transcribe(FILE_URL)
+
+    stamps_array = []
+    if transcript.status == aai.TranscriptStatus.completed:
+        for word in transcript.words:
+            start_time_word = word.start / 1000
+            end_time_word = word.end / 1000
+            stamps_array.append({
+                'text': word.text, 
+                'start': start_time_word + offset, 
+                'end': end_time_word + offset
+            })
+    return stamps_array
+
+def subClipAnalysis(path, start_time, duration):
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_google = executor.submit(transcribe_subclip_google, path, 0.0, duration)
+        future_teamim = executor.submit(transcribe_subclip, path, start_time)
+
+        words = future_google.result()
+        stamps_array = future_teamim.result()
+        teamim = executor.submit(fixTeamimWithWords, stamps_array, words)
+        return start_time, words, teamim
+
+def processSubClip(audio, start_time, subclip_duration):
+    subclip = audio[float(start_time) * 1000 : float(start_time + subclip_duration) * 1000]
+
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file:
+        subclip.export(temp_wav_file, format="wav")
+        temp_wav_file_path = temp_wav_file.name
+
+    return subClipAnalysis(temp_wav_file_path, start_time, subclip_duration)
+
+def getWordsAndTeamim(audio_data, duration):
+    audio = AudioSegment.from_file(io.BytesIO(audio_data))
+    subclip_durations = [
+        (i, min(subclip_size, duration - i))
+        for i in range(0, int(duration + subclip_size), int(subclip_size))
+    ]
+
+    if (duration, 0.0) in subclip_durations:
+        subclip_durations.remove((duration, 0.0))
+
+    ans_dict = {}
+    txt_dict = {}
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {
+            executor.submit(processSubClip, audio, start_time, subclip_duration): (start_time, subclip_duration)
+            for start_time, subclip_duration in subclip_durations
+        }
+
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                time, words, teamim = future.result()
+                stamps_array = teamim.result()
+                txt_dict[time] = words
+                ans_dict[time] = stamps_array
+            except Exception as e:
+                print(e)
+
+    # Combine results in order
+    sorted_times = sorted(txt_dict.keys())
+    ans = []
+    txt = ""
+    for time in sorted_times:
+        ans.extend(ans_dict[time])
+        if txt == "":
+            txt = txt_dict[time]
+        else:
+            txt = txt + ','+txt_dict[time]
+    return txt, ans
+
+
 def get_words_by_google(audio_file, duration):
     global subclip_size
     ans = ""
@@ -149,62 +259,3 @@ def get_words_by_google(audio_file, duration):
     except Exception as e:
         print(e)
     return ans
-
-
-def getTeamim(audio_data, duration_seconds):
-    global subclip_size
-    ans = []
-    audio = AudioSegment.from_file(io.BytesIO(audio_data))
-    offset = 0.0
-    while offset < duration_seconds:
-        subclip = audio[float(offset)* 1000:float(min(offset + subclip_size, duration_seconds))* 1000]
-
-        wav_io = io.BytesIO()
-        subclip.export(wav_io, format="wav")
-        wav_content = wav_io.getvalue()
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file:
-            temp_wav_file.write(wav_content)
-
-            # URL of the file to transcribe
-            FILE_URL = temp_wav_file.name
-
-            config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
-            transcriber = aai.Transcriber(config=config)
-            transcript = transcriber.transcribe(FILE_URL)
-
-            stamps_array = []
-            if transcript.status == aai.TranscriptStatus.completed:
-                for word in transcript.words:
-                    start_time = word.start/1000
-                    end_time = word.end/1000
-                    word_text = word.text
-                    stamps_array.append({'text': word.text, 'start': start_time+offset, 'end': end_time+offset})
-                ans.extend(stamps_array)
-        offset = offset + min(subclip_size, duration_seconds - offset)
-    return ans
-
-def fixTeamimWithWords(teamim, words):
-    tmp_words = words.replace(',', '')
-    word_list = tmp_words.split()
-    # Replace words in places with the most similar ones from the word list within one position off
-    len_teamim = len(teamim)
-    for i, place in enumerate(teamim):
-        if not i>len(word_list)-1:
-            if i == len_teamim-1:
-                place['text'] = find_best_match(place['text'], word_list, i, "")
-            else:
-                place['text'] = find_best_match(place['text'], word_list, i, teamim[i+1]['text'])
-    return teamim
-    
-
-def find_best_match(word, word_list, current_index, next_word):
-    if current_index == len(word_list)-1:
-        return word_list[current_index]
-
-    # Consider words within one position off
-    infront_score = difflib.SequenceMatcher(None, word, word_list[current_index]).ratio()
-    next_score = difflib.SequenceMatcher(None, word, word_list[current_index+1]).ratio()
-    if next_score > infront_score and next_score > difflib.SequenceMatcher(None, next_word, word_list[current_index+1]).ratio():
-        return word_list[current_index+1]
-    else:
-        return word_list[current_index]

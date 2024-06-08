@@ -8,7 +8,7 @@ from init import db
 from pydub import AudioSegment
 import json
 import assemblyai as aai
-from .fileRoutes import get_words_by_google, getTeamim, fixTeamimWithWords
+from .fileRoutes import get_words_by_google, fixTeamimWithWords, getWordsAndTeamim
 
 import io
 import base64
@@ -27,15 +27,14 @@ import pyloudnorm as pyln
 import os
 from scipy.spatial.distance import cdist
 import numpy as np
+import concurrent.futures
 
 #needed for transcription with assemblyai
 aai.settings.api_key = "0dc55bacc27c4f6786439e81b735f87a"
 
 def init_analysis_routes(app):
     @app.route("/analysis/<int:session_id>", methods=["GET"])
-    @jwt_required()
-    @authenticate
-    def forAnalysis(current_user, session_id):
+    def forAnalysis(session_id):
         return getAnalysis(session_id)
                     
 
@@ -45,39 +44,50 @@ def getAnalysis(session_id):
     if  session.analysis_id is not None:
         return jsonify(Analysis.query.get(session.analysis_id).simpleSerialize()), 200
 
-    words = session.session_lines
-    print(words)
-    description = ""
+    audio_file_like = io.BytesIO(session.recording)
+    audio = AudioSegment.from_file(audio_file_like)
+    duration_seconds = audio.duration_seconds
+
+    words, teamim = getWordsAndTeamim(session.recording, duration_seconds)
+    print("words: ", words)
+    print("teamim: ", teamim)
+
+    session.session_lines = words
+    session.session_teamim = json.dumps(teamim)
     project = Project.query.get(session.project_id)
 
+    wordsMismatch, ans_teamim = runAnalysis(words, project.sample_lines, teamim, json.loads(project.sample_teamim),
+     session.recording, project.sample_clip)
+    print("wordsMis: ", wordsMismatch)
+    print("ans_teamim: ", ans_teamim)
 
-    user_lines = words.split(',')
-    sample_lines = project.sample_lines.split(',')
 
-    lines_length = min(len(user_lines), len(sample_lines))
-    wordsMismatch = []
-    google_txt = ""
-    for i in range(0, lines_length):
-        google_txt = google_txt + " " + user_lines[i]
-        line_wordsMismatch = compare_line(user_lines[i], sample_lines[i])
-        wordsMismatch.extend(line_wordsMismatch)
+    analysis = Analysis(json.dumps(wordsMismatch), json.dumps(ans_teamim))
+    session.analysis = analysis
+    session.analysis_id = analysis.id
+    db.session.add(analysis)
+    db.session.commit()
+    # words: (word, result, replace),... | teamim: {word: ,start: ,end: ,review: }
+    return jsonify({"words" : wordsMismatch, "teamim" : ans_teamim}), 200
 
-    print(wordsMismatch)
 
-    print("teamim")
-    if session.session_teamim is None:
-        audio = AudioSegment.from_file(io.BytesIO(session.recording))
-        teamim = getTeamim(session.recording, audio.duration_seconds)
-        teamim = fixTeamimWithWords(teamim, words)
-        session.session_teamim = json.dumps(teamim)
-        db.session.commit()
+def compTeamim(user_wav, sample_wav, user_teamim, sample_teamim):
+    tmp_sample = sample_teamim.copy()
+    matching_elements_session, matching_elements_sample = getMatchTeamim(user_teamim, sample_teamim, tmp_sample)
+    ans_teamim = analyze_recordings(user_wav, sample_wav, matching_elements_session, matching_elements_sample)
+    for row in tmp_sample:
+        row['review'] = 'MISSING'
+        row['score'] = 0.0
+        row['exp'] = "פיספסת את הטעם בזמן הביצוע שלך"
+        ans_teamim.append(row)
+    return ans_teamim
 
-    tmp_sample = json.loads(project.sample_teamim)
+def getMatchTeamim(user_teamim, sample_teamim, tmp_sample):
     matching_elements_session = []
     matching_elements_sample = []
 
     # Iterate over both lists and compare elements at the same position
-    for row in json.loads(session.session_teamim):
+    for row in user_teamim:
         delete = None
         for row2 in tmp_sample:
             if row['text'] == row2['text']:
@@ -88,21 +98,29 @@ def getAnalysis(session_id):
         if delete is not None:
             tmp_sample.remove(delete)
     print("fixed")
+    return matching_elements_session, matching_elements_sample
 
-    ans_teamim = analyze_recordings(session.recording, project.sample_clip, matching_elements_session, matching_elements_sample)
-    for row in tmp_sample:
-        print(row)
-        row['review'] = 'MISSING'
-        ans_teamim.append(row)
-    analysis = Analysis(json.dumps(wordsMismatch), json.dumps(ans_teamim))
-    session.analysis = analysis
-    session.analysis_id = analysis.id
-    db.session.add(analysis)
-    db.session.commit()
-    # words: (word, result, replace),... | teamim: {word: ,start: ,end: ,review: }
-    return jsonify({"words" : wordsMismatch, "teamim" : ans_teamim}), 200
-        
+def compWords(user_words, sample_words):
+    user_lines = user_words.split(',')
+    sample_lines = sample_words.split(',')
 
+    lines_length = min(len(user_lines), len(sample_lines))
+    wordsMismatch = []
+    google_txt = ""
+    for i in range(0, lines_length):
+        google_txt = google_txt + " " + user_lines[i]
+        line_wordsMismatch = compare_line(user_lines[i], sample_lines[i])
+        wordsMismatch.extend(line_wordsMismatch)
+    return wordsMismatch
+
+def runAnalysis(user_words, sample_words, user_teamim, sample_teamim, user_wav, sample_wav):
+    print("started analysis")
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_words = executor.submit(compWords, user_words, sample_words)
+        future_teamim = executor.submit(compTeamim, user_wav, sample_wav, user_teamim, sample_teamim)
+    misWords = future_words.result()
+    misTeamim = future_teamim.result()
+    return misWords, misTeamim
 
 def compare_line(user_line, sample_line):
     user_words = user_line.split(' ')
@@ -141,53 +159,73 @@ def compare_line(user_line, sample_line):
 
     return wordsMismatch
 
+def analyze_recording(audio, audio2, obj_1, obj_2):
+    text_1, start_time_1, end_time_1 = obj_1['text'], obj_1['start'], obj_1['end']
+    text_2, start_time_2, end_time_2 = obj_2['text'], obj_2['start'], obj_2['end']
+    user_time = end_time_1 - start_time_1
+    sample_time = end_time_2 - start_time_2
+    calc = user_time / sample_time
+    if calc < 0.5:
+        return {'text': text_1, 'start': start_time_1, 'end': end_time_1, 'review': 'BAD', 'exp': "תנסה להאריך את הטעם, קצר מדי", 'score': 0.0}
+    elif calc > 2:
+        return {'text': text_1, 'start': start_time_1, 'end': end_time_1, 'review': 'BAD', 'exp': "תנסה לקצר את הטעם, ארוך מדי", 'score': 0.0}
+    try:
+        exp = ""
+        subclip = audio[float(start_time_1)* 1000:float(end_time_1)* 1000]
+        subclip2 = audio2[float(start_time_2)* 1000:float(end_time_2)* 1000]
+
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file2:
+
+                wav_io = io.BytesIO()
+                subclip.export(wav_io, format="wav")
+                wav_content = wav_io.getvalue()
+                temp_wav_file.write(wav_content)
+
+                wav_io = io.BytesIO()
+                subclip2.export(wav_io, format="wav")
+                wav_content = wav_io.getvalue()
+                temp_wav_file2.write(wav_content)
+
+                FILE_URL = temp_wav_file.name
+                FILE_URL2 = temp_wav_file2.name
+
+                similarity_rank = compare(FILE_URL, FILE_URL2)
+
+                # Determine review based on similarity rank
+                if similarity_rank < 110:
+                    review = 'BAD'
+                    exp = "היה הבדל ניכר בין ביצוע הטעם שלך לשל הרב"
+                else:
+                    review = 'GOOD'
+                    exp = "ביצוע הטעם היה כמו של הרב, כל הכבוד"
+                return {'text': text_1, 'start': start_time_1, 'end': end_time_1, 'review': review, 'exp': exp, 'score': similarity_rank}
+    except Exception as e:
+        print(e)
+        print(f"Error analyzing segment '{text_1}': {e}")
+        # reviews.append({'text': text_1, 'review': 'ERROR', 'error': str(e)})
+        return {'text': text_1, 'start': start_time_1, 'end': end_time_1, 'exp': e, 'review': 'ERROR'}
+
 
 #code for analyzing teamim
 def analyze_recordings(recording_1, recording_2, json_array_1, json_array_2):
     reviews = []
-
     audio = AudioSegment.from_file(io.BytesIO(recording_1))
     audio2 = AudioSegment.from_file(io.BytesIO(recording_2))
 
-    for obj_1, obj_2 in zip(json_array_1, json_array_2):
-        text_1, start_time_1, end_time_1 = obj_1['text'], obj_1['start'], obj_1['end']
-        text_2, start_time_2, end_time_2 = obj_2['text'], obj_2['start'], obj_2['end']
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {
+            executor.submit(analyze_recording, audio, audio2, json_array_1[i], json_array_2[i]): i
+            for i in range(len(json_array_1))
+            #for obj_1, obj_2 in zip(json_array_1, json_array_2)
+        }
 
-        try:
-            subclip = audio[float(start_time_1)* 1000:float(end_time_1)* 1000]
-            subclip2 = audio2[float(start_time_2)* 1000:float(end_time_2)* 1000]
-
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file:
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file2:
-
-                    wav_io = io.BytesIO()
-                    subclip.export(wav_io, format="wav")
-                    wav_content = wav_io.getvalue()
-                    temp_wav_file.write(wav_content)
-
-                    wav_io = io.BytesIO()
-                    subclip2.export(wav_io, format="wav")
-                    wav_content = wav_io.getvalue()
-                    temp_wav_file2.write(wav_content)
-
-                    FILE_URL = temp_wav_file.name
-                    FILE_URL2 = temp_wav_file2.name
-
-                    similarity_rank = compare(FILE_URL, FILE_URL2)
-
-                    # Determine review based on similarity rank
-                    if similarity_rank < 110:
-                        review = 'BAD'
-                    else:
-                        review = 'GOOD'
-
-                    reviews.append({'text': text_1, 'start': start_time_1, 'end': end_time_1, 'review': review, 'score': similarity_rank})
-
-        except Exception as e:
-            print(e)
-            print(f"Error analyzing segment '{text_1}': {e}")
-            # reviews.append({'text': text_1, 'review': 'ERROR', 'error': str(e)})
-            reviews.append({'text': text_1, 'review': 'ERROR'})
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                review = future.result()
+                reviews.append(review)
+            except Exception as e:
+                print(e)
     return reviews
 
 
