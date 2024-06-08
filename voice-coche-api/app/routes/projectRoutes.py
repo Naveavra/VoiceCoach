@@ -5,13 +5,14 @@ from flask_socketio import emit
 
 import speech_recognition as sr
 
-from models import Project, Session
+from models import Project, Session, Parasha
 from init import db
 from pydub import AudioSegment
 
 import io
 import base64
 import wave
+import re
 
 recognizer = sr.Recognizer()
 
@@ -33,6 +34,14 @@ def init_project_routes(app, socketio):
         aliyah = data.get("aliyah")
         description = data.get("description")
         project = Project(creator=current_user.email, parasha=parasha,aliyah=aliyah, description=description)
+        parasha_records = Parasha.query.filter_by(parasha=parasha, aliya=aliyah).all()
+        if parasha_records:
+            for record in parasha_records:
+                record.text = re.sub(' +', ' ', record.text.replace('\t', '').replace('\n', '')).strip()
+                if not record.clean:
+                    project.parasha_ref = record
+                    project.parasha_id = record.id
+        
         db.session.add(project)
         db.session.commit()
         return jsonify(project.simpleSerialize()), 201
@@ -45,11 +54,12 @@ def init_project_routes(app, socketio):
         data = request.get_json() if request.is_json else request.values
         project_id = data.get("project_id")
         project = Project.query.get(project_id)
+        ans = project.simpleSerialize()
         if not project:
             return jsonify({"message": "Project not found"}), 404
         db.session.delete(project)
         db.session.commit()
-        return jsonify(project.simpleSerialize()), 200
+        return jsonify(ans), 200
 
     @app.route("/projects/<int:project_id>", methods=["GET"])
     @jwt_required()
@@ -58,10 +68,9 @@ def init_project_routes(app, socketio):
         project = Project.query.get(project_id)
         if not project:
             return jsonify({"message": "Project not found"}), 404
-        if project.creator_email != current_user.email:
-            return jsonify({"message": "Unauthorized"}), 401
         return jsonify({
-            'sessions': [session.simpleSerialize() for session in Session.query.filter_by(project_id=project_id).all()]
+            'sessions': [session.simpleSerialize() for session in Session.query.filter_by(project_id=project_id).all()],
+            'project': project.simpleSerialize()
         }), 200
 
     @app.route('/process', methods=['GET'])

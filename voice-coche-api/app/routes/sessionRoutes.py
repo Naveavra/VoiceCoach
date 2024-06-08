@@ -1,4 +1,4 @@
-from flask import request, jsonify, send_file
+from flask import request, jsonify, send_file, render_template
 from flask_jwt_extended import jwt_required
 from decorators import authenticate
 from flask_socketio import emit
@@ -9,7 +9,7 @@ from models import Project, Session, Analysis
 from init import db
 from pydub import AudioSegment
 from utils import generate_hash
-from .fileRoutes import get_words_by_google
+from .fileRoutes import get_words_by_google, fixTeamimWithWords
 from .analysisRoutes import getAnalysis
 
 import io
@@ -17,10 +17,10 @@ import base64
 import wave
 import filetype
 import tempfile
+from io import BytesIO
 
 check = 0
 recordings = {}
-recording_words = {}
 def init_session_routes(app, socketio):
     @app.route("/sessions/create/<int:project_id>", methods=["POST"])
     @jwt_required()
@@ -50,7 +50,6 @@ def init_session_routes(app, socketio):
     def upload(current_user, session_id):
         global check
         global recordings
-        global recording_words
 
         session = Session.query.get(session_id)
         if session is None:
@@ -96,37 +95,26 @@ def init_session_routes(app, socketio):
 
                     if done == "true":
                         session.recording = recordings[session_id]
+                        db.session.commit()
+                        print("done")
                     #session.recording = wav_io.getvalue()
                 
                 words = get_words_by_google(wav_content, duration_seconds)
-                if not session_id in recording_words:
-                    recording_words[session_id] = words
-                #if session.session_lines is None:
-                #    session.session_lines = words
-                else:
-                    recording_words[session_id] = recording_words[session_id] + ',' + words
                     #session.session_lines = session.session_lines + ',' + words
-                if done == "true":
-                    session.session_lines = recording_words[session_id]
-                db.session.commit()
-                
-                if done == "true":
-                    print("here")
-                    getAnalysis(session_id)
                 return words
             else:
                 return jsonify({"error": "received unsupported file"}), 401
         else:
             return jsonify({"error": "received unsupported file"}), 401
 
-    @app.route('/files/download/<session_url>', methods=['GET'])
+    @app.route('/session/download/<session_url>', methods=['GET'])
     def download_session(session_url):
         session = Session.query.filter_by(url=session_url).first()
         if not session:
-            return jsonify({"msg": "Session not found"}), 401
+            return jsonify({"error": "Session not found"}), 401
         #decrypted_content = cipher_suite.decrypt(project.sample_clip)
         return send_file(BytesIO(session.recording), 
-                         download_name="session.wav",  # Specify the download name
+                         download_name="sample.wav",  # Specify the download name
                          as_attachment=True, 
                          mimetype='audio/wav')
     

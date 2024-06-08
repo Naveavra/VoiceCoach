@@ -7,4 +7,3 @@ interface useTorahProps {
 
 export const useTorah = ({ token, parasha, aliyah, clean }: useTorahProps) => {
     //fetch data from api
-    

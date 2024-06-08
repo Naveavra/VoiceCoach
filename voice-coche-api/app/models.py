@@ -2,6 +2,8 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+import json
+import re
 
 db = SQLAlchemy()
 
@@ -37,7 +39,7 @@ class Session(db.Model):
     analysis_id = db.Column(db.Integer, db.ForeignKey('analysis.id'), nullable=True)
     analysis = db.relationship('Analysis', backref='Session', cascade="all, delete", lazy=True)
     session_lines = db.Column(db.Text, nullable=True)
-    session_syllables = db.Column(db.Text, nullable=True)
+    session_teamim = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
     url = db.Column(db.String(255), nullable=True)
 
@@ -55,15 +57,22 @@ class Session(db.Model):
 
 class Analysis(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    rhytem = db.Column(db.String(255), nullable=True)
-    pitch = db.Column(db.String(255), nullable=True)
-    wordsAndNoteTiming = db.Column(db.String(255), nullable=True)
-    vowelsDeviation = db.Column(db.String(255), nullable=True)
-    wordsMismatch = db.Column(db.String(255), nullable=True)
-    syllablesMismatch = db.Column(db.String(255), nullable=True)
-    teamimMismatch = db.Column(db.String(255), nullable=True)
-    description = db.Column(db.String(255), nullable=True)
+    words = db.Column(db.Text, nullable=True)
+    teamim = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
+
+    def __init__(self, words, teamim):
+        self.words = words
+        self.teamim = teamim
+        self.created_at = datetime.utcnow()
+    
+    def simpleSerialize(self):
+        return {
+            'words': json.loads(self.words),
+            'teamim': json.loads(self.teamim),
+            'created_at': self.created_at
+        }
+
 
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -74,7 +83,7 @@ class Project(db.Model):
     sample_url = db.Column(db.String(255), nullable=True)
     sample_clip = db.Column(db.LargeBinary, nullable=True)
     sample_lines = db.Column(db.Text, nullable=True)
-    sample_syllables = db.Column(db.Text, nullable=True)
+    sample_teamim = db.Column(db.Text, nullable=True)
     sessions = db.relationship('Session', backref='project', cascade="all, delete", lazy=True)
 
     parasha_id = db.Column(db.Integer, db.ForeignKey('parasha.id'), nullable=True)
@@ -90,14 +99,23 @@ class Project(db.Model):
         self.created_at = datetime.utcnow()
     
     def simpleSerialize(self):
-        print(self.sample_lines if self.sample_lines is not None else "")
+        clean_txt = ""
+        if self.parasha_ref is not None:
+            parasha_records = Parasha.query.filter_by(parasha=self.parasha, aliya=self.aliyah, clean = True).all()
+            if parasha_records:
+                for record in parasha_records:
+                    if record.clean:
+                        record.text = re.sub(' +', ' ', record.text.replace('\t', '').replace('\n', '')).strip()
+                        clean_txt = record.text
+        
         return {
             'id': self.id,
             'parasha': self.parasha,
             'aliyah': self.aliyah,
             'description': self.description,
-            'clean_text':self.sample_lines if self.sample_lines is not None else "",
-            'mark_text': "בראשית ברא אלוהים",
+            #'clean_text': self.sample_lines if not self.sample_lines is "" else "",
+            'clean_text': clean_txt,
+            'mark_text': self.parasha_ref.text if self.parasha_ref is not None else "",
             'created_at': self.created_at,
             'sample_url': self.sample_url
         } 
