@@ -19,7 +19,7 @@ export type RootStackParamList = {
     AddProject: undefined;
     Project: { id: number };
     Session: { session: SessionData, local_uri: string };
-    AddRecord: { project: ProjectData, reloadData: () => void };
+    AddRecord: { project: ProjectData };
     Analysis: { session_id: number, analysis: Analysis };
 };
 
@@ -40,15 +40,35 @@ export const AppNavigation = () => {
             {isLoggedIn ? (
                 <>
                     <NavigationStack.Screen name="Home" component={HomeScreen} />
-                    <NavigationStack.Screen name="AddProject" component={AddProjectScreen} />
+                    <NavigationStack.Screen
+                        name="AddProject"
+                        component={AddProjectScreen}
+                        options={{
+                            title: 'Add Project',
+                        }}
+                    />
                     <NavigationStack.Screen name="Project" component={ProjectScreen} />
-                    <NavigationStack.Screen name="AddRecord" component={AddRecordingScreen} />
+                    <NavigationStack.Screen
+                        name="AddRecord"
+                        component={AddRecordingScreen}
+                        options={{
+                            title: 'Add Recording',
+                        }}
+
+                    />
                     <NavigationStack.Screen name="Analysis" component={AnalysisScreen} />
                     <NavigationStack.Screen name="Session" component={SessionScreen} />
                 </>
             ) : (
                 <>
-                    <NavigationStack.Screen name="LogIn" component={LogInScreen} />
+                    <NavigationStack.Screen
+                        name="LogIn"
+                        component={LogInScreen}
+                        options={{
+                            title: 'Log In',
+                        }}
+
+                    />
                     <NavigationStack.Screen name="Register" component={RegisterScreen} />
                 </>
             )}

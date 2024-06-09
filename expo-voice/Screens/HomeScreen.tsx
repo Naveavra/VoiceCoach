@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, TouchableOpacity, View } from "react-native"
+import { Alert, SafeAreaView, StyleSheet, TouchableOpacity, View } from "react-native"
 import { useAuth, useProjects, useUtilities } from "../common/hooks";
 import AppFlatList from "../common/components/AppFlatList";
 import { AppLoader } from "../common/components/Loader";
@@ -15,6 +15,8 @@ import { deleteAsync } from "expo-file-system";
 import AppProjectCard from "../common/components/AppProjectCard";
 import { SimpleLineIcons } from '@expo/vector-icons';
 import { getAsync } from "../common/utils";
+import DateTimePicker from '@react-native-community/datetimepicker';
+import RNDateTimePicker from "@react-native-community/datetimepicker";
 
 type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -83,6 +85,27 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
 
 
+    function getDate(): Date {
+        const date = new Date(0);
+        date.setMinutes(10); // this will be the seconds 
+        date.setHours(0); // this will be the minutes
+        return date;
+    }
+
+    function getMinimumDate(): Date | undefined {
+        const date = new Date(0);
+        date.setMinutes(0); // this will be the seconds 
+        date.setHours(0); // this will be the minutes
+        return date;
+    }
+
+    function getMaximumDate(): Date | undefined {
+        const date = new Date(0);
+        date.setMinutes(30); // this will be the seconds 
+        date.setHours(5); // this will be the minutes
+        return date;
+    }
+
     return (
         <>
             <View style={styles.container}>
@@ -101,7 +124,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
                     <SimpleLineIcons name="refresh" size={35} color="#1976d2" onPress={reloadData} />
 
                 </View>
-
+                
                 {isLoadingProjects ? <AppLoader /> :
                     <AppFlatList isLoading={isLoadingProjects} objects={projects} elements={elements} />
                 }

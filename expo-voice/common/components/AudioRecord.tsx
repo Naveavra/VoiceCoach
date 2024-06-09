@@ -75,7 +75,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
             setVoice(sound);
             setIsLoading(false);
             setHasAudio(true);
-          
+
         } catch (error) {
             setIsLoading(false);
             setHasAudio(false);

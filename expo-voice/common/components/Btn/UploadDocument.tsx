@@ -38,14 +38,11 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
                 }
                 // Handle the selected document (e.g., display its details)
                 const formData = new FormData();
-                // formData.append('audio', document['assets'][0]['uri']);
-                // formData.append('name', document['assets'][0]['name']);
-                // formData.append('type', document['assets'][0]['mimeType']);r
                 formData.append('audio', {
                     uri: document['assets'][0]['uri'],
                     name: document['assets'][0]['name'],
                     type: document['assets'][0]['mimeType'],
-                });
+                } as any);
 
                 // Set your API URL
                 const url = `${API_URL}/projects/${selectedProject.id}/uploade_sample`;
@@ -63,6 +60,7 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
                 await axios.post(url, formData, config)
                     .then((response) => {
                         const sampleUrl = response.data.sample_url;
+                        
                         dispatch(setSampleUrl(sampleUrl));
                         setIsLoading(false);
                         reloadData();

@@ -30,7 +30,7 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
 
     useEffect(() => {
         const fetchSampleUri = async () => {
-            if (selectedProject?.sample_url) {
+            if (selectedProject.sample_url) {
                 try {
                     const res = await getAsync(`${selectedProject.id}_${selectedProject.created_at}`);
                     setDeviceUrl(res ?? '');
@@ -101,8 +101,7 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
                         () => {
                             dispatch(addSession({ project_id: selectedProject.id, token: token })).then((res: any) => {
                                 navigation.navigate('AddRecord', {
-                                    project: project,
-                                    reloadData: reloadData,
+                                    project: project
                                 });
                             }).catch((err: any) => {
                                 console.error("Error adding session:", err);
