@@ -2,7 +2,7 @@ import axios from "axios";
 import { Audio } from "expo-av";
 import { Recording } from "expo-av/build/Audio";
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator, Switch } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator, Switch, BackHandler } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../AppNavigation";
 import { API_URL } from "../common/config";
@@ -26,6 +26,7 @@ type AddRecordingScreenProps = NativeStackScreenProps<RootStackParamList, 'AddRe
 let recording: Audio.Recording;
 let index = 0;
 let send = true;
+let slicePosition = 0;
 
 export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProps) => {
     const { dispatch, useAppSelector } = useUtilities();
@@ -77,7 +78,13 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     }
                 }
                 formData.append('done', done ? 'true' : 'false');
+
                 if (send) {
+                    if (slicePosition != 0) {
+                        formData.append('start', slicePosition.toString());
+                        formData.append('end', recordingTime.toString());
+                        slicePosition = 0;
+                    }
                     await axios.post(url, formData, config)
                         .then((response) => {
                             if (!done) {
@@ -100,6 +107,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             const word_from_text = project.clean_text.split(" ")[index];
             const next_word = project.clean_text.split(" ")[index + 1];
             const next_next_word = project.clean_text.split(" ")[index + 2];
+            //todo handle similar words
             if (wordColors[index] == 'black') {
                 if (word === word_from_text) {
                     setWordColors((prev) => {
@@ -168,9 +176,8 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 clearInterval(timerInterval);
             }
             send = false;
-            console.log('Recording paused', send);
             setStatus('paused');
-            console.log('Recording time', recordingTime);
+            setCurrentPosition(recordingTime);
         } catch (error) {
             console.error('Failed to pause recording:', error);
         }
@@ -191,7 +198,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         }
     }
 
-    async function stopRecording(record: Recording): Promise<string | null> {
+    const stopRecording = async (record: Recording): Promise<string | null> => {
         await record.stopAndUnloadAsync();
         await Audio.setAudioModeAsync(
             {
@@ -265,11 +272,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         }
     }, [currentWord]);
 
-    useEffect(() => {
-        return () => {
-            index = 0;
-        }
-    }, []);
+
 
     const animatedStyles = useAnimatedStyle(() => {
         return {
@@ -281,6 +284,10 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+    const handleSliderChange = (value: number) => {
+        setCurrentPosition(value);
+        slicePosition = value;
     }
 
     return (
@@ -397,11 +404,11 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                         <View style={styles.itemsContainer}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                                 <Slider
-                                                    style={{ width: 200, height: 40 }}
+                                                    style={{ width: 200, height: 40, direction: 'ltr' }}
                                                     minimumValue={0}
                                                     maximumValue={recordingTime}
                                                     value={currentPosition}
-                                                    onValueChange={setCurrentPosition}
+                                                    onValueChange={handleSliderChange}
                                                     minimumTrackTintColor="#1976d2"
                                                     maximumTrackTintColor="#000000"
                                                     step={1}
