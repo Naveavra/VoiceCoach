@@ -121,7 +121,8 @@ def init_file_routes(app):
                          mimetype='audio/wav')
       
 
-def fixTeamimWithWords(teamim, words):
+#teamim - "string represting the paraha and aliya as assembly ai interpetet from the user recording"
+def fixTeamimWithWords(teamim, words, cleanTxt, dirtyTxt): #parasha, aliya
     tmp_words = words.replace(',', '')
     word_list = tmp_words.split()
     # Replace words in places with the most similar ones from the word list within one position off
