@@ -28,7 +28,6 @@ def init_file_routes(app):
     @jwt_required()
     @authenticate
     def add_sample(current_user,project_id):
-        print("here")
         #cipher_suite = Fernet(app.config['SECRET_KEY'])
         if request.method == 'POST':
             project = Project.query.filter_by(id=project_id).first()
@@ -39,9 +38,7 @@ def init_file_routes(app):
                     audio_file = request.files['audio']
                     content = audio_file.read()
                     kind = filetype.guess(content)
-                    print("here2")
                     if not kind is None:
-                        print(kind.mime, kind.extension)
                         #supported audio files
                         format_map = {
                             'mp3': 'mp3',
@@ -65,10 +62,8 @@ def init_file_routes(app):
                             project.sample_clip = wav_content
                             
                             #now we get the words from the sample
-                            words, teamim = getWordsAndTeamim(wav_content, duration_seconds)
+                            words, teamim = getWordsAndTeamim(wav_content, duration_seconds, project.parasha_ref_clean.text, project.parasha_ref_mark.text)
                             project.sample_lines = words
-                            print("finished words: ", words)
-                            print("finished teamim: ", teamim)
                             project.sample_teamim = json.dumps(teamim)
 
                         else:
@@ -121,43 +116,39 @@ def init_file_routes(app):
                          mimetype='audio/wav')
       
 
-def fixTeamimWithWords(teamim, words):
-    tmp_words = words.replace(',', '')
-    word_list = tmp_words.split()
-    # Replace words in places with the most similar ones from the word list within one position off
+def fixTeamimWithWords(teamim, cleanTxt, dirtyTxt):
+    cleaned_words = cleanTxt.split()
+    dirty_words = dirtyTxt.split()
     len_teamim = len(teamim)
+    start_index = 0
+    
     for i, place in enumerate(teamim):
-        if not i>len(word_list)-1:
-            if i == len_teamim-1:
-                place['text'] = find_best_match(place['text'], word_list, i, "")
-            else:
-                place['text'] = find_best_match(place['text'], word_list, i, teamim[i+1]['text'])
+        place['text'], start_index = find_best_match(place['text'], "", cleaned_words, dirty_words, start_index)
+    
     return teamim
     
 
-def find_best_match(word, word_list, current_index, next_word):
-    if current_index == len(word_list)-1:
-        return word_list[current_index]
+def find_best_match(word, next_word, cleaned_words, dirty_words, start_index, max_distance=2, max_soundex_diff=1):
+    if start_index == len(cleaned_words)-1:
+        return cleaned_words[start_index]
 
     # Consider words within one position off
-    infront_score = difflib.SequenceMatcher(None, word, word_list[current_index]).ratio()
-    next_score = difflib.SequenceMatcher(None, word, word_list[current_index+1]).ratio()
-    if next_score > infront_score and next_score > difflib.SequenceMatcher(None, next_word, word_list[current_index+1]).ratio():
-        return word_list[current_index+1]
+    infront_score = difflib.SequenceMatcher(None, word, cleaned_words[start_index]).ratio()
+    next_score = difflib.SequenceMatcher(None, word, cleaned_words[start_index+1]).ratio()
+    if next_score > infront_score and next_score > difflib.SequenceMatcher(None, next_word, cleaned_words[start_index+1]).ratio():
+        return dirty_words[start_index+1], start_index+1
     else:
-        return word_list[current_index]
+        return dirty_words[start_index], start_index
 
-def transcribe_subclip_google(audio_file_path, start_time, subclip_duration):
+def transcribe_subclip_google(audio_file_path, subclip_duration):
     with sr.AudioFile(audio_file_path) as source:
         try:
             recognizer.adjust_for_ambient_noise(source)
-            audio = recognizer.record(source, duration=subclip_duration, offset=start_time)
+            audio = recognizer.record(source, duration=subclip_duration, offset=0.0)
             return recognizer.recognize_google(audio, language="iw-IL")
-        except:
+        except Exception as e:
             print(e)
-            recognizer.adjust_for_ambient_noise(source)
-            audio = recognizer.record(source, duration=subclip_duration, offset=start_time)
-            return recognizer.recognize_google(audio, language="iw-IL")
+            return ""
 
 def transcribe_subclip(temp_wav_file_path, offset):
     FILE_URL = temp_wav_file_path
@@ -173,35 +164,23 @@ def transcribe_subclip(temp_wav_file_path, offset):
                 end_time_word = word.end / 1000
                 stamps_array.append({
                     'text': word.text, 
-                    'start': start_time_word + offset, 
-                    'end': end_time_word + offset
+                    'start': round(start_time_word + offset, 2), 
+                    'end': round(end_time_word + offset, 2)
                 })
-    except:
+    except Exception as e:
         print(e)
-        config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
-        transcriber = aai.Transcriber(config=config)
-        transcript = transcriber.transcribe(FILE_URL)
-
-        if transcript.status == aai.TranscriptStatus.completed:
-            for word in transcript.words:
-                start_time_word = word.start / 1000
-                end_time_word = word.end / 1000
-                stamps_array.append({
-                    'text': word.text, 
-                    'start': start_time_word + offset, 
-                    'end': end_time_word + offset
-                })
+        return []
     return stamps_array
 
 def subClipAnalysis(path, start_time, duration):
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_google = executor.submit(transcribe_subclip_google, path, 0.0, duration)
+        future_google = executor.submit(transcribe_subclip_google, path, duration)
         future_teamim = executor.submit(transcribe_subclip, path, start_time)
 
         words = future_google.result()
         stamps_array = future_teamim.result()
-        teamim = executor.submit(fixTeamimWithWords, stamps_array, words)
-        return start_time, words, teamim
+        # teamim = executor.submit(fixTeamimWithWords, stamps_array, words)
+        return start_time, words, stamps_array
 
 def processSubClip(audio, start_time, subclip_duration):
     subclip = audio[float(start_time) * 1000 : float(start_time + subclip_duration) * 1000]
@@ -210,18 +189,18 @@ def processSubClip(audio, start_time, subclip_duration):
         subclip.export(temp_wav_file, format="wav")
         temp_wav_file_path = temp_wav_file.name
 
-    return subClipAnalysis(temp_wav_file_path, start_time, subclip_duration)
+        return subClipAnalysis(temp_wav_file_path, start_time, subclip_duration)
 
-def getWordsAndTeamim(audio_data, duration):
+def getWordsAndTeamim(audio_data, duration, clean_txt, dirty_txt):
     audio = AudioSegment.from_file(io.BytesIO(audio_data))
     subclip_durations = [
-        (i, min(subclip_size, duration - i))
+        (i, max(0.0, min(subclip_size, duration - i)))
         for i in range(0, int(duration + subclip_size), int(subclip_size))
     ]
 
-    if (duration, 0.0) in subclip_durations:
-        subclip_durations.remove((duration, 0.0))
-
+    subclip_durations = [
+    dur for dur in subclip_durations if dur[1] > 0.0 and dur[0] < duration
+    ]
     ans_dict = {}
     txt_dict = {}
 
@@ -233,8 +212,7 @@ def getWordsAndTeamim(audio_data, duration):
 
         for future in concurrent.futures.as_completed(futures):
             try:
-                time, words, teamim = future.result()
-                stamps_array = teamim.result()
+                time, words, stamps_array = future.result()
                 txt_dict[time] = words
                 ans_dict[time] = stamps_array
             except Exception as e:
@@ -250,6 +228,8 @@ def getWordsAndTeamim(audio_data, duration):
             txt = txt_dict[time]
         else:
             txt = txt + ','+txt_dict[time]
+    ans = fixTeamimWithWords(ans, clean_txt, dirty_txt)
+    print(ans)
     return txt, ans
 
 

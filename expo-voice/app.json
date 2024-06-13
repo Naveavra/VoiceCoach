@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "expo-voice",
+    "name": "voicecoach",
     "slug": "voicecoach",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,7 +15,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package":"voicecoach.todoapp",
+      "package": "voicecoach.todoapp",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -39,12 +39,20 @@
           },
           "ios": {
             "infoPlist": {
-              "NSAppTransportSecurity": { "NSAllowsArbitraryLoads": true }
+              "NSAppTransportSecurity": {
+                "NSAllowsArbitraryLoads": true
+              }
             },
             "supportsTablet": true
           }
         }
       ]
-    ]
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/bf181f55-7cbb-4140-9c6a-c9196d676d98"
+    }
   }
 }

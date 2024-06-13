@@ -86,8 +86,11 @@ class Project(db.Model):
     sample_teamim = db.Column(db.Text, nullable=True)
     sessions = db.relationship('Session', backref='project', cascade="all, delete", lazy=True)
 
-    parasha_id = db.Column(db.Integer, db.ForeignKey('parasha.id'), nullable=True)
-    parasha_ref = db.relationship('Parasha', backref='projects', lazy=True)
+    parasha_id_mark = db.Column(db.Integer, db.ForeignKey('parasha.id'), nullable=True)
+    parasha_ref_mark = db.relationship('Parasha', foreign_keys=[parasha_id_mark], backref='projects_mark', lazy=True)
+
+    parasha_id_clean = db.Column(db.Integer, db.ForeignKey('parasha.id'), nullable=True)
+    parasha_ref_clean = db.relationship('Parasha', foreign_keys=[parasha_id_clean], backref='projects_clean', lazy=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
 
@@ -99,6 +102,7 @@ class Project(db.Model):
         self.created_at = datetime.utcnow()
     
     def simpleSerialize(self):
+        '''
         clean_txt = ""
         if self.parasha_ref is not None:
             parasha_records = Parasha.query.filter_by(parasha=self.parasha, aliya=self.aliyah, clean = True).all()
@@ -107,15 +111,15 @@ class Project(db.Model):
                     if record.clean:
                         record.text = re.sub(' +', ' ', record.text.replace('\t', '').replace('\n', '')).strip()
                         clean_txt = record.text
-        
+        '''
         return {
             'id': self.id,
             'parasha': self.parasha,
             'aliyah': self.aliyah,
             'description': self.description,
-            #'clean_text': self.sample_lines if not self.sample_lines is "" else "",
-            'clean_text': clean_txt,
-            'mark_text': self.parasha_ref.text if self.parasha_ref is not None else "",
+            #'clean_text': clean_txt,
+            'clean_text': self.parasha_ref_clean.text if self.parasha_ref_clean is not None else "",
+            'mark_text': self.parasha_ref_mark.text if self.parasha_ref_mark is not None else "",
             'created_at': self.created_at,
             'sample_url': self.sample_url
         } 

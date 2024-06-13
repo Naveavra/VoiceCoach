@@ -40,7 +40,6 @@ def init_analysis_routes(app):
 
 def getAnalysis(session_id):
     session = Session.query.get(session_id)
-    print(session.analysis_id)
     if  session.analysis_id is not None:
         return jsonify(Analysis.query.get(session.analysis_id).simpleSerialize()), 200
 
@@ -48,18 +47,15 @@ def getAnalysis(session_id):
     audio = AudioSegment.from_file(audio_file_like)
     duration_seconds = audio.duration_seconds
 
-    words, teamim = getWordsAndTeamim(session.recording, duration_seconds)
-    print("words: ", words)
-    print("teamim: ", teamim)
+    project = Project.query.get(session.project_id)
+
+    words, teamim = getWordsAndTeamim(session.recording, duration_seconds, project.parasha_ref_clean.text, project.parasha_ref_mark.text)
 
     session.session_lines = words
     session.session_teamim = json.dumps(teamim)
-    project = Project.query.get(session.project_id)
 
     wordsMismatch, ans_teamim = runAnalysis(words, project.sample_lines, teamim, json.loads(project.sample_teamim),
      session.recording, project.sample_clip)
-    print("wordsMis: ", wordsMismatch)
-    print("ans_teamim: ", ans_teamim)
 
 
     analysis = Analysis(json.dumps(wordsMismatch), json.dumps(ans_teamim))
@@ -97,7 +93,6 @@ def getMatchTeamim(user_teamim, sample_teamim, tmp_sample):
                 break
         if delete is not None:
             tmp_sample.remove(delete)
-    print("fixed")
     return matching_elements_session, matching_elements_sample
 
 def compWords(user_words, sample_words):
@@ -114,7 +109,6 @@ def compWords(user_words, sample_words):
     return wordsMismatch
 
 def runAnalysis(user_words, sample_words, user_teamim, sample_teamim, user_wav, sample_wav):
-    print("started analysis")
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future_words = executor.submit(compWords, user_words, sample_words)
         future_teamim = executor.submit(compTeamim, user_wav, sample_wav, user_teamim, sample_teamim)
@@ -329,7 +323,6 @@ def compare(original_path, compare_path):
             # Compute similarity using DTW on MFCCs
             mfcc_score = compare_mfcc_dtw(mfcc_goal, mfcc_student)
             similarity_rank = calculate_final_similarity(zcr_similarity, spectral_similarity, similarity_score, mfcc_score)
-            print(f"Similarity Rank: {similarity_rank}")
             return similarity_rank
 
     except Exception as e:
