@@ -56,6 +56,10 @@ def init_session_routes(app, socketio):
             return jsonify({"error": "illegal session id"}), 401
         audio_file = request.files['audio']
         done = request.form.get('done')
+        start = request.form.get('start')
+        end = request.form.get('end')
+        if start is not None:
+            print(start, end)
         content = audio_file.read()
         kind = filetype.guess(content)
         if not kind is None:
