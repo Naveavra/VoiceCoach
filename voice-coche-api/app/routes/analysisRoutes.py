@@ -451,9 +451,9 @@ def process_recordings(teacher_audio_data, student_audio_data, teacher_data, stu
 
             feedback, score = give_feedback(teacher_pitch_array, student_pitch_array)
 
-            if score > 70:
+            if score > 90:
                 review = "GOOD"
-            elif score > 50:
+            elif score > 70:
                 review = "MEDIUM"
             else:
                 review = "BAD"
@@ -463,7 +463,8 @@ def process_recordings(teacher_audio_data, student_audio_data, teacher_data, stu
                 'exp': feedback,
                 'review': review,
                 'start':  student_data[i]['start'],
-                'end': student_data[i]['end']
+                'end': student_data[i]['end'],
+                'taam': student_data[i]['taam']
             })
 
     return output

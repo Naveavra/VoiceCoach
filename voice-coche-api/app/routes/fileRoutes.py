@@ -114,7 +114,39 @@ def init_file_routes(app):
                          download_name="sample.wav",  # Specify the download name
                          as_attachment=True, 
                          mimetype='audio/wav')
-      
+code_to_mark = {
+    1425: 'etnach',
+    1426: 'segolta',
+    1427: 'shalshelet',
+    1428: 'zaqef katan', 
+    1429: 'zaqef gadol', 
+    1430: 'sof pasuk', 
+    1431: 'revia', 
+    1433: 'trei kadmin', 
+    1435: 'tevir', 
+    1436: 'gerish', 
+    1438: 'shene gereshin', 
+    1440: 'talsha', 
+    1441: 'pazer gadol', 
+    1447: 'darga', 
+    1448: 'azla', 
+    1454: 'zarqa',
+    1472: 'pasek',
+}  
+def recognizeTeamim(cuurWord):
+    global code_to_mark
+    for char in cuurWord:
+        code = ord(char)
+        if code in code_to_mark :
+            if code == 1430:
+                # then its maarih tarha and not sof pasuk
+                return 'maarih tarha'
+            elif code == 1433 and cuurWord.count(chr(1433)) == 1:
+                #then its kadma and not trei kadmin
+                return 'kadma'
+            else:
+                return code_to_mark.get(code)
+
 
 def fixTeamimWithWords(teamim, cleanTxt, dirtyTxt):
     cleaned_words = cleanTxt.split()
