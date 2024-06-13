@@ -124,6 +124,7 @@ def fixTeamimWithWords(teamim, cleanTxt, dirtyTxt):
     
     for i, place in enumerate(teamim):
         place['text'], start_index = find_best_match(place['text'], "", cleaned_words, dirty_words, start_index)
+        place['taam'] = recognizeTeamim(place['text'])
     
     return teamim
     
@@ -132,7 +133,6 @@ def find_best_match(word, next_word, cleaned_words, dirty_words, start_index, ma
     if start_index == len(cleaned_words)-1:
         return cleaned_words[start_index]
 
-    # Consider words within one position off
     infront_score = difflib.SequenceMatcher(None, word, cleaned_words[start_index]).ratio()
     next_score = difflib.SequenceMatcher(None, word, cleaned_words[start_index+1]).ratio()
     if next_score > infront_score and next_score > difflib.SequenceMatcher(None, next_word, cleaned_words[start_index+1]).ratio():
