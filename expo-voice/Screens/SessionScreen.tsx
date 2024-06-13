@@ -25,6 +25,8 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
     const [selectedWordToSay, setSelectedWordToSay] = useState<string | null>(null);
     const [selectedWordStatus, setSelectedWordStatus] = useState<number | null>(null);
 
+    const [selectedTaam, setSelectedTaam] = useState<number | null>(null)
+
     const successAlert = () => {
         Alert.alert('Success Word', 'You said the right word in the right place', [
             { text: 'OK', onPress: () => { }, style: 'cancel' },
@@ -55,6 +57,7 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
 
     const handleScreenClick = () => {
         setSelectedWordIndex(null);
+        setSelectedTaam(null);
     };
 
     useEffect(() => {
@@ -161,7 +164,8 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                 {analysis.teamim.map((taam, index) => {
                                     const wordColor = taam.review === "GOOD" ? '#4caf50' : taam.review === "BAD" ? '#ffc107' : '#f44336';
                                     return (
-                                        <TouchableOpacity key={index} >
+                                        <TouchableOpacity
+                                            onPress={() => setSelectedTaam(index)} key={index} >
                                             <View style={{ ...styles.timeContainer, backgroundColor: wordColor }}>
                                                 <Text style={[styles.word]}>{`${taam.text} , ${taam.end} - ${taam.start}`}</Text>
                                                 <Text style={[styles.word]}>{`${taam.exp}`}</Text>
@@ -172,6 +176,33 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                 })}
                             </View>
                         </ScrollView>
+                        {selectedTaam !== null &&
+                            <Modal visible={true} transparent={true} animationType="fade">
+                                <TouchableWithoutFeedback onPress={handleScreenClick}>
+                                    <View style={styles.modalContainer}>
+                                        {analysis.teamim[selectedTaam].review === 'GOOD' ?
+                                            <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#4caf50' }}>
+                                                <Text>
+                                                    {analysis.teamim[selectedTaam].exp}
+                                                </Text>
+                                            </View>
+                                            :
+                                            analysis.teamim[selectedTaam].review === 'BAD' ?
+                                                <View style={{ ...styles.redTimeContainer, backgroundColor: '#ffc107' }}>
+                                                    <Text>
+                                                        {analysis.teamim[selectedTaam].exp}
+                                                    </Text>
+                                                </View>
+                                                : <View style={{ ...styles.redTimeContainer, backgroundColor: '#f44336' }}>
+                                                    <Text>
+                                                        {analysis.teamim[selectedTaam].exp}
+                                                    </Text>
+                                                </View>
+                                        }
+                                    </View>
+                                </TouchableWithoutFeedback>
+                            </Modal>
+                        }
                     </View>
             }
         </>

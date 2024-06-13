@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Button } from "react-native";
 import Checkbox from 'expo-checkbox';
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 // import { Navigation } from 'react-native-navigation';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 
 import { RootStackParamList } from "../AppNavigation";
 import { defaultTheme } from "../common/ui/defaultTheme";
@@ -13,8 +15,10 @@ import { useAuth, useUtilities } from "../common/hooks";
 import { cleanError, logIn } from "../common/redux/authReducer";
 import AppPageContainer from "../common/components/AppPageContainer";
 import { Title } from "../common/components/Title";
+import { io } from 'socket.io-client';
 
 type LogInScreenProps = NativeStackScreenProps<RootStackParamList, 'LogIn'>;
+const SERVER_URL = 'http://192.168.68.112:3000';
 
 export const LogInScreen = ({ navigation }: LogInScreenProps) => {
     const { dispatch } = useUtilities();
@@ -22,6 +26,82 @@ export const LogInScreen = ({ navigation }: LogInScreenProps) => {
     const [password, setPassword] = useState<string>('');
     const { isLoadingUser, error, user, token } = useAuth({});
     const [remember_me, setRememberMe] = useState<boolean>(false);
+
+
+    const [recording, setRecording] = useState<Audio.Recording | null>(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const socket = useRef<ReturnType<typeof io> | null>(null);
+
+    useEffect(() => {
+        // Initialize WebSocket connection
+        socket.current = io(SERVER_URL);
+
+        socket.current.on('connect', () => {
+            console.log('WebSocket connection opened');
+        });
+
+        socket.current.on('disconnect', () => {
+            console.log('WebSocket connection closed');
+        });
+
+        return () => {
+            if (socket.current) {
+                socket.current.disconnect();
+            }
+        };
+    }, []);
+
+    const startRecording = async () => {
+        try {
+            console.log('Requesting permissions..');
+            await Audio.requestPermissionsAsync();
+
+            console.log('Starting recording..');
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: true,
+                playsInSilentModeIOS: true,
+            });
+
+            const { recording } = await Audio.Recording.createAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY
+            );
+
+            setRecording(recording);
+            setIsRecording(true);
+
+            recording.setOnRecordingStatusUpdate(async (status) => {
+                if (status.isRecording) {
+
+                }
+            });
+
+            await recording.startAsync();
+        } catch (err) {
+            console.error('Failed to start recording', err);
+        }
+    };
+
+    const stopRecording = async () => {
+        console.log('Stopping recording..');
+        setIsRecording(false);
+        // await recording?.stopAndUnloadAsync();
+        if (recording) {
+            await recording.stopAndUnloadAsync();
+            const uri = recording.getURI();
+            if (uri) {
+                const info = await FileSystem.getInfoAsync(uri);
+                if (info.exists) {
+                    const file = await FileSystem.readAsStringAsync(uri, {
+                        encoding: FileSystem.EncodingType.Base64
+                    });
+                    if (socket.current && socket.current.connected) {
+                        socket.current.emit('audio_data', file); // Send audio data to the server as base64 string
+                    }
+                }
+            }
+        }
+        setRecording(null);
+    };
 
     if (isLoadingUser) {
         return <AppLoader />
@@ -74,6 +154,13 @@ export const LogInScreen = ({ navigation }: LogInScreenProps) => {
                         }}
                         style={styles.menuButton}
                     />
+                </View>
+                <View style={styles.container}>
+                    <Button
+                        title={isRecording ? 'Stop Recording' : 'Start Recording'}
+                        onPress={isRecording ? stopRecording : startRecording}
+                    />
+                    <Text>{isRecording ? 'Recording...' : 'Press the button to start recording'}</Text>
                 </View>
             </>
         </AppPageContainer>

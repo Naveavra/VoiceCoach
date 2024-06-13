@@ -47,7 +47,10 @@ export const AppNavigation = () => {
                             title: 'Add Project',
                         }}
                     />
-                    <NavigationStack.Screen name="Project" component={ProjectScreen} />
+                    <NavigationStack.Screen
+                        name="Project"
+                        component={ProjectScreen}
+                    />
                     <NavigationStack.Screen
                         name="AddRecord"
                         component={AddRecordingScreen}
@@ -56,7 +59,17 @@ export const AppNavigation = () => {
                         }}
 
                     />
-                    <NavigationStack.Screen name="Analysis" component={AnalysisScreen} />
+                    <NavigationStack.Screen
+                        name="Analysis"
+                        component={AnalysisScreen}
+                        options={
+                            {
+                                headerLeft: () => null,
+                                headerBackVisible: false,
+                            }
+                        }
+
+                    />
                     <NavigationStack.Screen name="Session" component={SessionScreen} />
                 </>
             ) : (

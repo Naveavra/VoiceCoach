@@ -7,8 +7,6 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as FileSystem from 'expo-file-system';
 import { API_URL } from "../../common/config";
 import { AntDesign } from '@expo/vector-icons';
-import { useUtilities } from "../hooks";
-// import { setDeviceUri } from "../redux/projectsReducer";
 import { alertError, getAsync, saveAsync } from "../utils";
 
 interface AudioRecordProps {
@@ -97,8 +95,6 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
                     setPosition(0);
                     const { sound } = await Audio.Sound.createAsync({ uri: uri }, { shouldPlay: false }, onPlaybackStatusUpdate);
                     setVoice(sound);
-                    // FileSystem.deleteAsync(uri);
-
                 }
             });
         }
@@ -189,10 +185,17 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
                         <Text style={styles.speedText}>&times;{speedRate.toFixed(1)}</Text>
                     </TouchableOpacity>
                     <View style={styles.controlsContainer}>
-                        <AntDesign name="delete" size={35} color="black" style={{ marginRight: 30 }} />
-                        <TouchableOpacity style={styles.controlButton} onPress={() => handleSkip(-10000)}>
-                            <MaterialIcons name="replay-10" size={35} color="black" />
-                        </TouchableOpacity>
+                        {is_sample ?
+                            <>
+                                <AntDesign name="delete" size={35} color="black" style={{ marginRight: 30 }} />
+                                <TouchableOpacity style={styles.controlButton} onPress={() => handleSkip(-10000)}>
+                                    <MaterialIcons name="replay-10" size={35} color="black" />
+                                </TouchableOpacity>
+                            </>
+                            :
+                            <TouchableOpacity style={{ ...styles.controlButton, marginLeft: 80 }} onPress={() => handleSkip(-10000)}>
+                                <MaterialIcons name="replay-10" size={35} color="black" />
+                            </TouchableOpacity>}
                         <Pressable style={styles.controlButton} onPress={handlePlayPause}>
                             <FontAwesome5
                                 name={playing ? "pause-circle" : "play-circle"}
@@ -217,7 +220,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
                         </>
                         :
                         <>
-                            <View style={styles.doanloadButton}>
+                            <View style={styles.downloadButton}>
                                 <TouchableOpacity onPress={createSound}>
                                     <Ionicons name="cloud-download-outline" size={24} color="black" />
                                 </TouchableOpacity>
@@ -268,7 +271,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: primaryColor,
     },
-    doanloadButton: {
+    downloadButton: {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
