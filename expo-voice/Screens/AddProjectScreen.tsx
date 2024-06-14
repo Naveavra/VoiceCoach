@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useUtilities, useAuth, useProjects } from "../common/hooks";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import AppPageContainer from "../common/components/AppPageContainer";
-import { addProject } from "../common/redux/projectsReducer";
+import { addProject, cleanError } from "../common/redux/projectsReducer";
 import { UITextField, UIButton } from "../common/ui/components";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../AppNavigation";
@@ -17,15 +17,31 @@ export const AddProjectScreen = ({ navigation }: AddProjectScreenProps) => {
 
     const { dispatch } = useUtilities();
     const { token } = useAuth({});
-    const { reloadData } = useProjects({ token: token });
+    const { reloadData, error } = useProjects({ token: token, state: 'Student' });
 
     const [parasha, setParasha] = useState('');
     const [aliyah, setAliyah] = useState('');
     const [description, setDescription] = useState('');
+    const [raby, setRaby] = useState('');
 
     const [showParashaList, setShowParashaList] = useState<boolean>(false); // Initialize showList state
     const [showAliyahList, setShowAliyahList] = useState<boolean>(false); // Initialize showList state
 
+    const ErrorAlert = (msg: string) => {
+        Alert.alert('Error', msg, [
+            {
+                text: 'OK',
+                onPress: () => dispatch(cleanError()),
+                style: 'cancel',
+            }
+        ]);
+    }
+
+    useEffect(() => {
+        if (error) {
+            ErrorAlert(error);
+        }
+    }, [error]);
 
     return (
         <AppPageContainer style={styles.pageContainer}>
@@ -47,6 +63,18 @@ export const AddProjectScreen = ({ navigation }: AddProjectScreenProps) => {
                         data={aliyot}
                         label={"עליה"} />
                 </View>
+                <UITextField
+                    value={raby}
+                    onChangeText={setRaby}
+                    onFocus={() => {
+                        setShowParashaList(false)
+                        setShowAliyahList(false)
+                    }
+                    }
+                    placeholder={"אימייל של הרב"}
+                    style={styles.raby_email}
+                    error={null}
+                />
                 <UITextField
                     value={description}
                     onChangeText={setDescription}
@@ -84,16 +112,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     formContainer: {
-        marginTop: -250, // Adjust this value to move the fields up or down
+        display: 'flex',// Adjust this value to move the fields up or down
         alignItems: 'center', // Center the contents horizontally
+        marginBottom: 100
     },
-    name: {
+    raby_email: {
         width: 300,
         height: 50,
         margin: 10,
         padding: 10,
         backgroundColor: '#fff',
         borderRadius: 10,
+        direction: 'rtl',
     },
     description: {
         width: 300,

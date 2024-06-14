@@ -106,6 +106,9 @@ export const projectsReducer = createSlice({
         clearSelectedProject: (state) => {
             state.selectedProject = emptyProject;
         },
+        cleanError: (state) => {
+            state.error = null;
+        }
     },
     extraReducers: (builder) => {
         // Get Projects
@@ -157,4 +160,4 @@ export const projectsReducer = createSlice({
     },
 });
 
-export const { cleanProjectsState, selectProject, setSampleUrl, clearSelectedProject } = projectsReducer.actions;
+export const { cleanProjectsState, selectProject, setSampleUrl, clearSelectedProject, cleanError } = projectsReducer.actions;

@@ -1,4 +1,4 @@
-import { Alert, SafeAreaView, StyleSheet, TouchableOpacity, View } from "react-native"
+import { Alert, StyleSheet, TouchableOpacity, View } from "react-native"
 import { useAuth, useProjects, useUtilities } from "../common/hooks";
 import AppFlatList from "../common/components/AppFlatList";
 import { AppLoader } from "../common/components/Loader";
@@ -15,18 +15,19 @@ import { deleteAsync } from "expo-file-system";
 import AppProjectCard from "../common/components/AppProjectCard";
 import { SimpleLineIcons } from '@expo/vector-icons';
 import { getAsync } from "../common/utils";
-import DateTimePicker from '@react-native-community/datetimepicker';
-import RNDateTimePicker from "@react-native-community/datetimepicker";
+import AppCleanProjectCard from "../common/components/AppCleanProjectCard";
 
 type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export const HomeScreen = ({ navigation }: HomeScreenProps) => {
     const { user, token } = useAuth({});
-    const { dispatch } = useUtilities();
-    const { isLoadingProjects, projects, selectedProject, error, msg, reloadData } = useProjects({ token: token });
+    const { dispatch, useAppSelector } = useUtilities();
+    const state = useAppSelector((state) => state.global.state);
+    const { isLoadingProjects, projects, error, msg, reloadData } = useProjects({ token: token });
     const routeNames = useNavigationState(state => state.routeNames);
     const index = useNavigationState(state => state.index);
     const currentRouteName = routeNames[index];
+
     const AddProjectAlert = () => {
         Alert.alert('No projects found', '', [
             {
@@ -61,50 +62,46 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
             }
         ]);
     }
-    const elements = projects.map((project, index) => {
+
+    const Myelements = projects.filter((project) => project.created_by == user?.email).map((project) => {
         return (
-            <AppProjectCard project={project} onPress={() => {
-                dispatch(selectProject(project.id))
-                navigation.navigate('Project', { id: project.id })
-            }
-            } onDelete={() => {
-                deleteProjectAlert(project.id)
-            }
-            } onEdit={() => console.log('edit')} />
-        )
-    })
+            <AppProjectCard
+                key={project.id}
+                project={project}
+                onPress={() => {
+                    dispatch(selectProject(project.id));
+                    navigation.navigate('Project', { id: project.id });
+                }}
+                onDelete={() => deleteProjectAlert(project.id)}
+                onEdit={() => console.log('edit')}
+            />
+        );
+    });
+
+    const sharedWithMeElements = projects.filter((project) => project.created_by != user?.email).map((project) => {
+        return (
+            <AppCleanProjectCard
+                key={project.id}
+                project={project}
+                onPress={() => {
+                    dispatch(selectProject(project.id));
+                    navigation.navigate('Project', { id: project.id });
+                }}
+            />
+        );
+    });
 
     useEffect(() => {
         dispatch(clearSelectedProject())
-        if (msg == "No projects found" && currentRouteName === 'Home') {
+        if (msg == "No projects found" && currentRouteName === 'Home' && state === 'MyProjects') {
             if (projects.length === 0) {
                 AddProjectAlert()
             }
         }
-    }, [msg, projects.length]);
+    }, [msg, projects.length, state]);
 
 
 
-    function getDate(): Date {
-        const date = new Date(0);
-        date.setMinutes(10); // this will be the seconds 
-        date.setHours(0); // this will be the minutes
-        return date;
-    }
-
-    function getMinimumDate(): Date | undefined {
-        const date = new Date(0);
-        date.setMinutes(0); // this will be the seconds 
-        date.setHours(0); // this will be the minutes
-        return date;
-    }
-
-    function getMaximumDate(): Date | undefined {
-        const date = new Date(0);
-        date.setMinutes(30); // this will be the seconds 
-        date.setHours(5); // this will be the minutes
-        return date;
-    }
 
     return (
         <>
@@ -124,9 +121,12 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
                     <SimpleLineIcons name="refresh" size={35} color="#1976d2" onPress={reloadData} />
 
                 </View>
-                
+
                 {isLoadingProjects ? <AppLoader /> :
-                    <AppFlatList isLoading={isLoadingProjects} objects={projects} elements={elements} />
+                    state === 'MyProjects' ?
+                        <AppFlatList isLoading={isLoadingProjects} objects={projects} elements={Myelements} />
+                        :
+                        <AppFlatList isLoading={isLoadingProjects} objects={projects} elements={sharedWithMeElements} />
                 }
                 <TouchableOpacity style={styles.itemContainer} onPress={() => {
                     cleanState()

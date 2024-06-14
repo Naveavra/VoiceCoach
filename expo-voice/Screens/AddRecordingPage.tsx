@@ -6,7 +6,6 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, Activity
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../AppNavigation";
 import { API_URL } from "../common/config";
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { AntDesign } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
 import { defaultTheme } from "../common/ui/defaultTheme";
@@ -318,9 +317,16 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     .then((response) => {
                         setIsLoading(false);
                         index = 0;
+                        // get the db url from reaponse 
+                        // download the file and save to async storage
+                        // change the loading msg for the user
+                        // get the uri from async storage or from the downloaded file
+                        // navigate to the analysis page
+                        //
                         navigation.navigate('Analysis', {
                             analysis: response.data,
-                            session_id: selected_session.id
+                            session_id: selected_session.id,
+                            uri: '',
                         });
                     });
             });

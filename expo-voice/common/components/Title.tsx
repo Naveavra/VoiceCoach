@@ -1,11 +1,11 @@
 import { View, StyleSheet, Text } from "react-native";
 
-export const Title = ({ title, subtitle }: { title: string, subtitle: string }) => {
+export const Title = ({ title, subtitle, ...restProps }: { title: string, subtitle: string }) => {
     return (
         <View style={{
         }}>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.subtitle}>{subtitle}</Text>
+            <Text style={[styles.title, restProps]}>{title}</Text>
+            {subtitle != "" && <Text style={styles.subtitle}>{subtitle}</Text>}
         </View>
     );
 }

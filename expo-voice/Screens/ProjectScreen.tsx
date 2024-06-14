@@ -13,6 +13,8 @@ import { addSession, cleanStateMsg, deleteSession } from "../common/redux/projec
 import { formatDate, getAsync } from "../common/utils";
 import AppSessionCard from "../common/components/AppSessionCard";
 import { useProject } from "../common/hooks/useProject";
+import AppCleanSessionCard from "../common/components/AppCleanSessionCard";
+import { SessionData } from "../common/types/systemTypes";
 
 LogBox.ignoreLogs([
     'Non-serializable values were found in the navigation state',
@@ -23,6 +25,7 @@ type ProjectScreenProps = NativeStackScreenProps<RootStackParamList, 'Project'>;
 export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
     const { useAppSelector, dispatch } = useUtilities();
     const { token } = useAuth({});
+    const state = useAppSelector((state) => state.global.state);
     const selectedProject = useAppSelector((state) => state.projects.selectedProject);
     const { isLoadingProject, project, sessions, error, msg, reloadData } = useProject({ token: token, project_id: selectedProject.id });
     const [deviceUrl, setDeviceUrl] = useState<string>('');
@@ -54,24 +57,30 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
         }
     }, [msg]);
 
+    const handlePress = async (session: SessionData) => {
+        const pathToUri = `${session.id}_${formatDate(session.created_at, true)}`;
+        const res = await getAsync(pathToUri);
+        navigation.navigate('Session', { session: session, local_uri: res });
+    };
+
     const elements = sessions.map((session, index) => {
+        const commonProps = {
+            key: index,
+            session: session,
+            onPress: () => handlePress(session),
+        };
+
+        if (state === 'SharedProjects') {
+            return <AppCleanSessionCard {...commonProps} />;
+        }
         return (
             <AppSessionCard
-                key={index}
-                session={session}
-                onPress={async () => {
-                    const path_to_uri = `${session.id}_${formatDate(session.created_at, true)}`;
-                    await getAsync(path_to_uri).then((res: any) => {
-                        navigation.navigate('Session', { session: session, local_uri: res })
-                    })
-
-                }}
-                onDelete={() => dispatch(deleteSession({ session_id: session.id, token: token }))}
-                onEdit={() => { console.log("Function not implemented."); }}
+                {...commonProps}
+                onDelete={() => dispatch(deleteSession({ session_id: session.id, token }))}
+                onEdit={() => console.log("Function not implemented.")}
             />
         );
     });
-
     return (
         <>
             <View style={styles.container}>
@@ -87,7 +96,7 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
                                 loadingUri ?
                                     <AppLoader /> :
                                     <AudioRecord
-                                        device_uri={deviceUrl}
+                                        device_uri={null}
                                         url={selectedProject.sample_url}
                                         path={`${selectedProject.id}_${selectedProject.created_at}`}
                                         is_sample={true} />

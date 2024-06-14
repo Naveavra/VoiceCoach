@@ -6,7 +6,13 @@ export interface LoginPostData {
     remember_me: boolean;
     email: string;
     password: string;
-}export interface addProjectPostData extends baseCredentials {
+}
+export interface RegisterPostData {
+    email: string;
+    password: string;
+}
+
+export interface addProjectPostData extends baseCredentials {
     parasha: string;
     aliyah: string;
     description: string;

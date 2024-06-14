@@ -6,16 +6,15 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AntDesign } from '@expo/vector-icons';
 import { Feather } from '@expo/vector-icons';
 import { Octicons } from '@expo/vector-icons';
+import { AudioSlicePlayer } from "../common/components/AudioSlicePlayer";
 type AnalysisScreenProps = NativeStackScreenProps<RootStackParamList, 'Analysis'>;
 
 export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
-    const { analysis } = route.params;
+    const { analysis, uri } = route.params;
     const [selectedWordIndex, setSelectedWordIndex] = useState<number | null>(null);
     const [selectedWord, setSelectedWord] = useState<string | null>(null);
     const [selectedWordToSay, setSelectedWordToSay] = useState<string | null>(null);
     const [selectedWordStatus, setSelectedWordStatus] = useState<number | null>(null);
-
-    const [selectedTaam, setSelectedTaam] = useState<number | null>(null)
 
     const successAlert = () => {
         Alert.alert('Success word', 'You said the right word in the right place', [
@@ -65,7 +64,6 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
     };
     const handleScreenClick = () => {
         setSelectedWordIndex(null);
-        setSelectedTaam(null);
     };
 
 
@@ -82,21 +80,38 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                     <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 10, marginTop: 10 }}> ניתוח מילים</Text>
                     <ScrollView style={styles.scrollViewContainer}>
                         <View style={styles.goodWordsContainer}>
-                            {analysis.words.filter((word) => word[1] != 2).map((word, index) => {
-                                const status = word[1];
+                            {analysis.analysis.filter((word) => word.word_status != 2).map((word, index) => {
+                                const status = word.word_status;
                                 const wordColor = status === 0 ? '#4caf50' : status === 1 ? '#ffc107' : status === 2 ? '#f44336' : '#2196f3';
-                                const word_been_said = word[0];
-                                const word_to_say = word[2];
+                                const word_been_said = word.text;
+                                const word_to_say = word.word_to_say;
+
+                                let underlineStyle = {};
+                                switch (word.taam_status) {
+                                    case 'GOOD':
+                                        underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#4caf50', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                        break;
+                                    case 'BAD':
+                                        underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#ffc107', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                        break;
+                                    case 'MISSING':
+                                        underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#f44336', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                        break;
+                                    default:
+                                        underlineStyle = {};
+                                }
+
                                 if (status === 0) {
                                     return (
-                                        <Text key={index} style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
-                                    )
+                                        <Text key={index} style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word_been_said}`}</Text>
+                                    );
                                 }
+
                                 return (
                                     <TouchableOpacity key={index} onPress={() => handleWordClick(index, word_been_said, word_to_say, status)}>
-                                        <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
+                                        <Text style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word_been_said}`}</Text>
                                     </TouchableOpacity>
-                                )
+                                );
                             })}
                         </View>
                     </ScrollView>
@@ -106,6 +121,7 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                             <TouchableWithoutFeedback onPress={handleScreenClick}>
                                 <View style={styles.modalContainer}>
                                     {selectedWordStatus === 1 ?
+                                        //word not in the right place
                                         <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#ffc107' }}>
                                             <Text style={{ marginBottom: 10 }}>You said: {"\"" + selectedWord + "\""} not in the right place</Text>
                                             <Text style={{ marginBottom: 10 }}>Should be: {"\"" + selectedWordToSay + "\""} </Text>
@@ -120,7 +136,21 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                                                 <View style={{ ...styles.timeContainer, backgroundColor: '#2196f3' }}>
                                                     <Text style={{ marginBottom: 10 }}>You missed that word: {"\"" + selectedWordToSay + "\""}</Text>
                                                 </View>
-                                                : null
+                                                :
+                                                //good word
+                                                <>
+                                                    {
+                                                        /* 
+                                                           one for the rav on for the student
+                                                           for the rav get the uri from the asynch storage `${selectedProject.id}_${selectedProject.created_at}`
+                                                           if not existed , needs to download the file from the server using project.sampleUrl
+                                                        */
+                                                    }
+                                                    <AudioSlicePlayer uri={uri} startTime={Number(analysis.analysis[selectedWordIndex].start)} endTime={Number(analysis.analysis[selectedWordIndex].end)}></AudioSlicePlayer>
+                                                    <AudioSlicePlayer uri={uri} startTime={Number(analysis.analysis[selectedWordIndex].rav_start)} endTime={Number(analysis.analysis[selectedWordIndex].rav_end)}></AudioSlicePlayer>
+                                                    <Text style={[styles.word]}>{`${analysis.analysis[selectedWordIndex].text} , ${analysis.analysis[selectedWordIndex].end} - ${analysis.analysis[selectedWordIndex].start}`}</Text>
+                                                    <Text>{analysis.analysis[selectedWordIndex].exp}</Text>
+                                                </>
                                     }
                                 </View>
                             </TouchableWithoutFeedback>
@@ -129,9 +159,9 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
 
                     <ScrollView style={styles.scrollViewContainer}>
                         <View style={styles.badWordsContainer}>
-                            {analysis.words.filter((word) => word[1] === 2).map((word, index) => {
+                            {analysis.analysis.filter((word) => word.word_status === 2).map((word, index) => {
                                 const wordColor = '#ffc107';
-                                const word_been_said = word[0];
+                                const word_been_said = word.text;
                                 return (
                                     <TouchableOpacity key={index} >
                                         <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
@@ -144,15 +174,15 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
 
                     <ScrollView style={styles.scrollViewContainer}>
                         <View style={styles.teamimContainer}>
-                            {analysis.teamim.map((taam, index) => {
-                                const wordColor = taam.review === "GOOD" ? '#4caf50' : taam.review === "BAD" ? '#ffc107' : '#f44336';
+                            {analysis.analysis.map((taam, index) => {
+                                const wordColor = taam.taam_status === "GOOD" ? '#4caf50' : taam.taam_status === "BAD" ? '#ffc107' : '#f44336';
                                 return (
                                     <TouchableOpacity
-                                        onPress={() => setSelectedTaam(index)} key={index} >
+                                        onPress={() => setSelectedWordIndex(index)} key={index} >
                                         <View
                                             style={{ ...styles.timeContainer, backgroundColor: wordColor }}>
                                             <Text style={[styles.word]}>{`${taam.text} , ${taam.end} - ${taam.start}`}</Text>
-                                            <Text style={[styles.word]}>{`${taam.exp}`}</Text>
+                                            <Text style={[styles.word]}>{`${taam.exp.slice(0, 3)}`}</Text>
                                         </View>
 
                                     </TouchableOpacity>
@@ -160,33 +190,7 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                             })}
                         </View>
                     </ScrollView>
-                    {selectedTaam !== null &&
-                        <Modal visible={true} transparent={true} animationType="fade">
-                            <TouchableWithoutFeedback onPress={handleScreenClick}>
-                                <View style={styles.modalContainer}>
-                                    {analysis.teamim[selectedTaam].review === 'GOOD' ?
-                                        <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#4caf50' }}>
-                                            <Text>
-                                                {analysis.teamim[selectedTaam].exp}
-                                            </Text>
-                                        </View>
-                                        :
-                                        analysis.teamim[selectedTaam].review === 'BAD' ?
-                                            <View style={{ ...styles.redTimeContainer, backgroundColor: '#ffc107' }}>
-                                                <Text>
-                                                    {analysis.teamim[selectedTaam].exp}
-                                                </Text>
-                                            </View>
-                                            : <View style={{ ...styles.redTimeContainer, backgroundColor: '#f44336' }}>
-                                                <Text>
-                                                    {analysis.teamim[selectedTaam].exp}
-                                                </Text>
-                                            </View>
-                                    }
-                                </View>
-                            </TouchableWithoutFeedback>
-                        </Modal>
-                    }
+
                 </View>
             </TouchableWithoutFeedback >
             <TouchableOpacity style={styles.itemContainer} onPress={() => {

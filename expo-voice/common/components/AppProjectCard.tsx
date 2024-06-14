@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
         backgroundColor: 'red',
         borderRadius: 10,
-        margin: 5,
+        margin: 10,
         padding: 10,
     },
     leftAction: {

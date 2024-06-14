@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, Pressable, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { Audio } from "expo-av";
 import Slider from "@react-native-community/slider";
 import { FontAwesome5 } from "@expo/vector-icons";
@@ -24,10 +24,11 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [duration, setDuration] = useState(0);
     const [position, setPosition] = useState(0);
+    const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
     const [voice, setVoice] = useState<Audio.Sound | null>(null);
     const [uri, setUri] = useState<string>(device_uri || '');
-    const [hasAudio, setHasAudio] = useState<boolean>(device_uri != '' && device_uri != undefined ? true : false);
+    const [hasAudio, setHasAudio] = useState<boolean>(device_uri && device_uri != '' && device_uri != undefined ? true : false);
     const handleSetUri = (uri: string) => {
         setUri(uri);
         saveAsync(path, uri);
@@ -41,9 +42,16 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
         }
     };
 
+    const callback = (downloadProgress: FileSystem.DownloadProgressData) => {
+        const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
+        setDownloadProgress(progress);
+    };
+
     const downloadSampleResumable = FileSystem.createDownloadResumable(
         is_sample ? `${API_URL}/files/download/${url}` : `${API_URL}/session/download/${url}`,
         FileSystem.documentDirectory + `${path}.wav`,
+        {},
+        callback
     );
 
     const onPlaybackStatusUpdate = (status: any) => {
@@ -156,6 +164,8 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
 
     useEffect(() => {
         if (uri && uri != '') {
+            console.log(uri)
+            console.log('creating')
             createSound();
         }
         return () => {
@@ -215,8 +225,8 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
                 <>
                     {isLoading ?
                         <>
-                            <MaterialIcons name="downloading" size={24} color="black" />
-                            <Text>Downloading...</Text>
+                            <ActivityIndicator size="large" color={primaryColor} />
+                            <Text>Downloading... {Math.round(downloadProgress * 100)}%</Text>
                         </>
                         :
                         <>
