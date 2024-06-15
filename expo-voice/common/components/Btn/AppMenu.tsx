@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Button, View, StyleSheet, Modal, TouchableWithoutFeedback } from 'react-native';
 import { useUtilities } from '../../hooks';
 import { setGlobalState } from '../../redux/globalReducer';
-
+import { Feather } from '@expo/vector-icons';
 export const AppMenu = () => {
     const { useAppSelector, dispatch } = useUtilities();
     const state = useAppSelector((state) => state.global.state);
@@ -17,25 +17,25 @@ export const AppMenu = () => {
     return (
         <>
 
-            <Button
-                onPress={() => setVisible(!visible)}
-                title={state}
-                color="#1976d2"
-            />
+            {state === 'MyProjects' ?
+                <Feather name="user" size={30} color="black" onPress={() => setVisible(true)} />
+                :
+                <Feather name="users" size={30} color="black" onPress={() => setVisible(true)} />
+            }
             {visible &&
                 <Modal visible={true} transparent={true} animationType="fade">
                     <TouchableWithoutFeedback onPress={handleScreenClick}>
                         <View style={styles.modalContainer}>
                             <View style={{ width: '80%', backgroundColor: 'white', padding: 20, borderRadius: 10 }}>
                                 <Button
-                                    title="MyProjects"
+                                    title="My Projects"
                                     onPress={
                                         () => {
                                             dispatch(setGlobalState('MyProjects'))
                                             closeMenu()
                                         }
                                     } />
-                                <Button title="SharedProjects" onPress={
+                                <Button title="Shared With Me" onPress={
                                     () => {
                                         dispatch(setGlobalState('SharedProjects'))
                                         closeMenu()
@@ -45,7 +45,6 @@ export const AppMenu = () => {
                         </View>
                     </TouchableWithoutFeedback>
                 </Modal>
-
             }
         </>
     );

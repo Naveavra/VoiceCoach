@@ -1,21 +1,23 @@
-import { Alert, StyleSheet, TouchableOpacity, View } from "react-native"
+import { Alert, Button, Modal, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native"
 import { useAuth, useProjects, useUtilities } from "../common/hooks";
 import AppFlatList from "../common/components/AppFlatList";
 import { AppLoader } from "../common/components/Loader";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../AppNavigation";
 import { Title } from "../common/components/Title";
 import { AntDesign } from '@expo/vector-icons';
-import { logout } from "../common/redux/authReducer";
+import { cleanError, logout } from "../common/redux/authReducer";
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigationState } from '@react-navigation/native';
 import { cleanProjectsState, clearSelectedProject, deleteProject, selectProject } from "../common/redux/projectsReducer";
 import { deleteAsync } from "expo-file-system";
 import AppProjectCard from "../common/components/AppProjectCard";
 import { SimpleLineIcons } from '@expo/vector-icons';
-import { getAsync } from "../common/utils";
+import { alertError, getAsync } from "../common/utils";
 import AppCleanProjectCard from "../common/components/AppCleanProjectCard";
+import { setGlobalState } from "../common/redux/globalReducer";
+import { UITextField } from "../common/ui/components";
 
 type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -27,6 +29,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
     const routeNames = useNavigationState(state => state.routeNames);
     const index = useNavigationState(state => state.index);
     const currentRouteName = routeNames[index];
+    const [visible, setVisible] = useState(false);
 
     const AddProjectAlert = () => {
         Alert.alert('No projects found', '', [
@@ -73,7 +76,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
                     navigation.navigate('Project', { id: project.id });
                 }}
                 onDelete={() => deleteProjectAlert(project.id)}
-                onEdit={() => console.log('edit')}
+                onEdit={() => setVisible(true)}
             />
         );
     });
@@ -91,6 +94,10 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
         );
     });
 
+    const handleScreenClick = () => {
+        setVisible(false);
+    }
+
     useEffect(() => {
         dispatch(clearSelectedProject())
         if (msg == "No projects found" && currentRouteName === 'Home' && state === 'MyProjects') {
@@ -101,7 +108,10 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }, [msg, projects.length, state]);
 
 
-
+    useEffect(() => {
+        if (error)
+            alertError(error, () => cleanError)
+    }, [error]);
 
     return (
         <>
@@ -134,6 +144,20 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
                 }}>
                     <AntDesign name="logout" size={24} color="black" />
                 </TouchableOpacity>
+
+
+
+                {visible &&
+                    <Modal visible={true} transparent={true} animationType="fade">
+                        <TouchableWithoutFeedback onPress={handleScreenClick}>
+                            <View style={styles.modalContainer}>
+                                <View style={{ width: '80%', backgroundColor: 'white', padding: 20, borderRadius: 10 }}>
+                                    //todo : add a UITextField component for project description and title
+                                </View>
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </Modal>
+                }
             </View>
         </>
     );
@@ -144,6 +168,12 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     itemContainer: {
         margin: 5,

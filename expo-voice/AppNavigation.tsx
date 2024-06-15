@@ -11,9 +11,7 @@ import { useEffect } from 'react';
 import { initializeDetails } from './common/redux/authReducer';
 import { AnalysisScreen } from './Screens/AnalysisScreen';
 import { SessionScreen } from './Screens/SessionScreen';
-import { Button } from 'react-native';
 import { AppMenu } from './common/components/Btn/AppMenu';
-import { AppComment } from './common/components/Btn/AppComment';
 
 export type RootStackParamList = {
     LogIn: undefined;

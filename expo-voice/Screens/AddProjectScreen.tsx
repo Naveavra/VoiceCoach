@@ -17,7 +17,7 @@ export const AddProjectScreen = ({ navigation }: AddProjectScreenProps) => {
 
     const { dispatch } = useUtilities();
     const { token } = useAuth({});
-    const { reloadData, error } = useProjects({ token: token, state: 'Student' });
+    const { reloadData, error } = useProjects({ token: token });
 
     const [parasha, setParasha] = useState('');
     const [aliyah, setAliyah] = useState('');
@@ -86,7 +86,6 @@ export const AddProjectScreen = ({ navigation }: AddProjectScreenProps) => {
                     placeholder={"תיאור"}
                     style={styles.description}
                     error={null}
-
                 />
                 <UIButton
                     title={'Add Project'}

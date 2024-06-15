@@ -85,7 +85,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
         } catch (error) {
             setIsLoading(false);
             setHasAudio(false);
-            alertError(String(error) ?? "Error fetching audio data");
+            alertError(String(error) ?? "Error fetching audio data", () => { });
         }
     };
 
