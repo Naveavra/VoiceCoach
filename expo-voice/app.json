@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "expo-voice",
-    "slug": "expo-voice",
+    "name": "voicecoach",
+    "slug": "voicecoach",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,19 +15,44 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "voicecoach.todoapp",
       "adaptiveIcon": {
         "foregroundImage": "./assets/playstore-icon.png",
         "backgroundColor": "#ffffff"
-      },
-      "package": "com.voice.coach"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.ico"
     },
     "extra": {
       "eas": {
-        "projectId": "0ec84965-e575-417b-be98-3a3217ddfc6f"
+        "projectId": "bf181f55-7cbb-4140-9c6a-c9196d676d98"
       }
+    },
+    "owner": "benshime",
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          },
+          "ios": {
+            "infoPlist": {
+              "NSAppTransportSecurity": {
+                "NSAllowsArbitraryLoads": true
+              }
+            },
+            "supportsTablet": true
+          }
+        }
+      ]
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/bf181f55-7cbb-4140-9c6a-c9196d676d98"
     }
   }
 }
