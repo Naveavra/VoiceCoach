@@ -37,7 +37,6 @@ def init_project_routes(app, socketio):
         parasha_records = Parasha.query.filter_by(parasha=parasha, aliya=aliyah).all()
         if parasha_records:
             for record in parasha_records:
-                record.text = re.sub(' +', ' ', record.text.replace('\t', '').replace('\n', '').replace(':', " :").replace('-', '')).strip()
                 if not record.clean:
                     project.parasha_ref_mark = record
                     project.parasha_id_mark = record.id
