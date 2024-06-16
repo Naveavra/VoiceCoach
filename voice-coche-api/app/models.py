@@ -38,7 +38,6 @@ class Session(db.Model):
     recording = db.Column(db.LargeBinary, nullable=True)
     analysis_id = db.Column(db.Integer, db.ForeignKey('analysis.id'), nullable=True)
     analysis = db.relationship('Analysis', backref='Session', cascade="all, delete", lazy=True)
-    session_lines = db.Column(db.Text, nullable=True)
     session_teamim = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
     url = db.Column(db.String(255), nullable=True)
@@ -57,19 +56,16 @@ class Session(db.Model):
 
 class Analysis(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    words = db.Column(db.Text, nullable=True)
     teamim = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
 
-    def __init__(self, words, teamim):
-        self.words = words
+    def __init__(self, teamim):
         self.teamim = teamim
         self.created_at = datetime.utcnow()
     
     def simpleSerialize(self):
         return {
-            'words': json.loads(self.words),
-            'teamim': json.loads(self.teamim),
+            'analysis': json.loads(self.teamim),
             'created_at': self.created_at
         }
 
@@ -82,7 +78,6 @@ class Project(db.Model):
     description = db.Column(db.Text, nullable=True)
     sample_url = db.Column(db.String(255), nullable=True)
     sample_clip = db.Column(db.LargeBinary, nullable=True)
-    sample_lines = db.Column(db.Text, nullable=True)
     sample_teamim = db.Column(db.Text, nullable=True)
     sessions = db.relationship('Session', backref='project', cascade="all, delete", lazy=True)
 
@@ -102,22 +97,11 @@ class Project(db.Model):
         self.created_at = datetime.utcnow()
     
     def simpleSerialize(self):
-        '''
-        clean_txt = ""
-        if self.parasha_ref is not None:
-            parasha_records = Parasha.query.filter_by(parasha=self.parasha, aliya=self.aliyah, clean = True).all()
-            if parasha_records:
-                for record in parasha_records:
-                    if record.clean:
-                        record.text = re.sub(' +', ' ', record.text.replace('\t', '').replace('\n', '')).strip()
-                        clean_txt = record.text
-        '''
         return {
             'id': self.id,
             'parasha': self.parasha,
             'aliyah': self.aliyah,
             'description': self.description,
-            #'clean_text': clean_txt,
             'clean_text': self.parasha_ref_clean.text if self.parasha_ref_clean is not None else "",
             'mark_text': self.parasha_ref_mark.text if self.parasha_ref_mark is not None else "",
             'created_at': self.created_at,
