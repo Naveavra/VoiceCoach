@@ -25,6 +25,7 @@ export const apiErrorHandlerWrapper = (promise: Promise<AxiosResponse>): Promise
 export const formatDate = (input: string, return_seconds: boolean): string => {
     const date = new Date(input);
 
+
     const day = date.getUTCDate().toString().padStart(2, '0');
     const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
     const year = date.getUTCFullYear().toString();
@@ -59,13 +60,19 @@ export const getAsync = async (key: string) => {
     }
 }
 
-export const alertError = (msg: string) => {
+export const alertError = (msg: string, onClick: () => void) => {
     Alert.alert('Error', msg, [
         {
             text: 'OK',
-            onPress: () => { },
+            onPress: onClick,
             style: 'cancel',
         },
     ]);
+}
+
+export const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 

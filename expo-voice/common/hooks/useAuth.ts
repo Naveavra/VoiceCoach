@@ -11,7 +11,6 @@ export const useAuth = ({ }: UseAuthProps) => {
     const user = useAppSelector((state) => state.auth.user);
     const error = useAppSelector((state) => state.auth.error);
 
-
-    return { isLoadingUser, user,error, token };
+    return { isLoadingUser, user, error, token };
 }
 

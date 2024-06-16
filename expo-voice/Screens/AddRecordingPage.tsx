@@ -2,20 +2,20 @@ import axios from "axios";
 import { Audio } from "expo-av";
 import { Recording } from "expo-av/build/Audio";
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator, Switch, BackHandler } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator, Switch, BackHandler, Modal, TouchableWithoutFeedback } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../AppNavigation";
 import { API_URL } from "../common/config";
-
 import { AntDesign } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
 import { defaultTheme } from "../common/ui/defaultTheme";
 import { Entypo } from '@expo/vector-icons';
 import { useAuth, useUtilities } from "../common/hooks";
 import { LogBox } from 'react-native';
-import { delay } from "../common/utils";
+import { delay, formatTime } from "../common/utils";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
 import Slider from '@react-native-community/slider';
+import { punctuation, similarity } from "../common/data/torah";
 
 LogBox.ignoreLogs([
     'Non-serializable values were found in the navigation state',
@@ -25,14 +25,16 @@ type AddRecordingScreenProps = NativeStackScreenProps<RootStackParamList, 'AddRe
 
 let recording: Audio.Recording;
 let index = 0;
+let marked_index = 0;
 let send = true;
-let slicePosition = 0;
+let start = 0;
+let end = 0;
 
 export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProps) => {
     const { dispatch, useAppSelector } = useUtilities();
     const { token } = useAuth({});
     const selected_session = useAppSelector((state) => state.project.selectedSession);
-    const { project, reloadData } = route.params;
+    const { project } = route.params;
 
 
     const loopRunning = useRef<boolean>(false);
@@ -48,8 +50,10 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const toggleSwitch = () => setHelp(previousState => !previousState);
 
     const [currentWord, setCurrentWord] = useState(0);
+    const [currentMarkedWord, setCurrentMarkedWord] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [wordColors, setWordColors] = useState<string[]>(project.clean_text.split(" ").map(() => 'black'));
+    const [markedWordsColors, setMarkedWordsColors] = useState<string[]>(project.mark_text.split(" ").map(() => 'black'));
     const scrollY = useSharedValue(0);
     const errorAlert = () => {
         Alert.alert('Error', 'Something went wrong', [
@@ -80,10 +84,11 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 formData.append('done', done ? 'true' : 'false');
 
                 if (send) {
-                    if (slicePosition != 0) {
-                        formData.append('start', slicePosition.toString());
-                        formData.append('end', recordingTime.toString());
-                        slicePosition = 0;
+                    if (start != 0 && start != recordingTime) {
+                        formData.append('start', start.toString());
+                        formData.append('end', end.toString());
+                        start = 0
+                        end = 0
                     }
                     await axios.post(url, formData, config)
                         .then((response) => {
@@ -92,6 +97,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                             }
                         })
                         .catch((error) => {
+                            console.log('error', error);
                             stopLoop();
                         });
                 }
@@ -107,15 +113,23 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             const word_from_text = project.clean_text.split(" ")[index];
             const next_word = project.clean_text.split(" ")[index + 1];
             const next_next_word = project.clean_text.split(" ")[index + 2];
-            //todo handle similar words
+
             if (wordColors[index] == 'black') {
-                if (word === word_from_text) {
+                if (word === word_from_text || similarity.get(word)?.includes(word_from_text)) {
                     setWordColors((prev) => {
                         const newColors = [...prev];
                         newColors[index] = 'green';
                         return newColors;
                     });
-                } else if (word === next_word) {
+                    setMarkedWordsColors((prev) => {
+                        const newColors = [...prev];
+                        while (punctuation.has(project.mark_text.split(" ")[marked_index])) {
+                            marked_index++;
+                        }
+                        newColors[marked_index] = 'green';
+                        return newColors;
+                    });
+                } else if (word === next_word || similarity.get(word)?.includes(next_word)) {
                     setWordColors((prev) => {
                         const newColors = [...prev];
                         newColors[index] = 'red';
@@ -123,8 +137,17 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         index += 1;
                         return newColors;
                     });
+                    setMarkedWordsColors((prev) => {
+                        const newColors = [...prev];
+                        while (punctuation.has(project.mark_text.split(" ")[marked_index])) {
+                            marked_index++;
+                        }
+                        newColors[marked_index] = 'green';
+                        marked_index++;
+                        return newColors;
+                    });
                 }
-                else if (word === next_next_word) {
+                else if (word === next_next_word || similarity.get(word)?.includes(next_next_word)) {
                     setWordColors((prev) => {
                         const newColors = [...prev];
                         newColors[index] = 'red';
@@ -133,15 +156,34 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         index += 2;
                         return newColors;
                     });
+                    setMarkedWordsColors((prev) => {
+                        const newColors = [...prev];
+                        while (punctuation.has(project.mark_text.split(" ")[marked_index])) {
+                            marked_index++;
+                        }
+                        newColors[marked_index] = 'green';
+                        marked_index += 2;
+                        return newColors;
+                    });
                 } else {
                     setWordColors((prev) => {
                         const newColors = [...prev];
                         newColors[index] = 'red';
                         return newColors;
                     });
+                    setMarkedWordsColors((prev) => {
+                        const newColors = [...prev];
+                        while (punctuation.has(project.mark_text.split(" ")[marked_index])) {
+                            marked_index++;
+                        }
+                        newColors[marked_index] = 'red';
+                        return newColors;
+                    });
                 }
             }
             setCurrentWord((prev) => (prev + 1) % project.clean_text.split(" ").length);
+            setCurrentMarkedWord((prev) => (prev + 1) % project.mark_text.split(" ").length);
+            marked_index++;
             index++;
         })
     }
@@ -168,8 +210,8 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
 
     const pauseRecording = async () => {
         try {
-            const status = await recording.getStatusAsync();
-            if (status.canPause) {
+            const recording_status = await recording.getStatusAsync();
+            if (recording_status.isRecording) {
                 await recording.pauseAsync();
             }
             if (timerInterval) {
@@ -185,9 +227,27 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
 
     const resumeRecording = async () => {
         try {
-            await recording.startAsync();
+            const status = await recording.getStatusAsync();
+            // Check if the recording is in a state where it can be resumed
+            if (status.isDoneRecording) {
+                if (permissionResponse && permissionResponse.status !== 'granted') {
+                    await requestPermission();
+                }
+                await Audio.setAudioModeAsync({
+                    allowsRecordingIOS: true,
+                    playsInSilentModeIOS: true,
+                });
+                recording = new Audio.Recording();
+                await recording.prepareToRecordAsync(
+                    Audio.RecordingOptionsPresets.HIGH_QUALITY
+                );
+            }
             send = true;
-            console.log('Recording resumed', send);
+            end = recordingTime;
+            if (start != recordingTime) {
+                setRecordingTime(start);
+            }
+            await recording.startAsync();
             const timer = setInterval(() => {
                 setRecordingTime(prev => prev + 1);
             }, 1000);
@@ -196,7 +256,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         } catch (error) {
             console.error('Failed to resume recording:', error);
         }
-    }
+    };
 
     const stopRecording = async (record: Recording): Promise<string | null> => {
         await record.stopAndUnloadAsync();
@@ -216,13 +276,15 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 setRecordingTime(prev => prev + 1);
             }, 1000);
             setTimerInterval(timer);
-            while (loopRunning.current && send) {
+            while (loopRunning.current) {
+
                 const record = await startRecording();
                 await delay(5000);
                 if (record) {
                     await stopRecording(record);
                     sendAudioData(record, false);
                 }
+
             }
             clearInterval(timer);
         }
@@ -230,9 +292,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
 
     const stopLoop = () => {
         loopRunning.current = false;
-        if (timerInterval) {
-            clearInterval(timerInterval);
-        }
+        clearInterval(timerInterval);
     };
 
     const handleStartButtonClick = () => {
@@ -257,9 +317,16 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     .then((response) => {
                         setIsLoading(false);
                         index = 0;
+                        // get the db url from reaponse 
+                        // download the file and save to async storage
+                        // change the loading msg for the user
+                        // get the uri from async storage or from the downloaded file
+                        // navigate to the analysis page
+                        //
                         navigation.navigate('Analysis', {
                             analysis: response.data,
-                            session_id: selected_session.id
+                            session_id: selected_session.id,
+                            uri: '',
                         });
                     });
             });
@@ -272,6 +339,12 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         }
     }, [currentWord]);
 
+    useEffect(() => {
+        if (currentMarkedWord > 0 && currentMarkedWord % 10 === 0) {
+            scrollY.value = withTiming(scrollY.value - 20, { duration: 1000, easing: Easing.linear });
+        }
+    }, [currentMarkedWord]);
+
 
 
     const animatedStyles = useAnimatedStyle(() => {
@@ -280,15 +353,14 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         };
     });
 
-    const formatTime = (seconds: number): string => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    }
+
     const handleSliderChange = (value: number) => {
+        value = Number(value.toFixed(2));
+        console.log(value);
         setCurrentPosition(value);
-        slicePosition = value;
+        start = value;
     }
+
 
     return (
         <>
@@ -316,8 +388,8 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                     key={index}
                                     style={[
                                         styles.word,
-                                        { color: wordColors[index] },
-                                        currentWord === index && styles.highlight,
+                                        { color: markedWordsColors[index] },
+                                        currentMarkedWord === index && styles.highlight,
                                     ]}
                                 >
                                     {word}{' '}
@@ -342,11 +414,9 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         }
                     </Animated.View>
                 </SafeAreaView>
-                {transcript &&
-                    <View style={styles.transcriptContainer}>
-                        <Text>{transcript}</Text>
-                    </View>
-                }
+                <View style={styles.transcriptContainer}>
+                    {transcript && <Text>{transcript}</Text>}
+                </View>
                 <View style={styles.mainContainer}>
                     {status == '' ?
                         <>
@@ -411,7 +481,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                                     onValueChange={handleSliderChange}
                                                     minimumTrackTintColor="#1976d2"
                                                     maximumTrackTintColor="#000000"
-                                                    step={1}
+                                                    step={0.1}
                                                 />
                                                 <Text>{formatTime(currentPosition)}</Text>
                                             </View>
@@ -445,6 +515,13 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+
     },
     switchContainer: {
         flexDirection: 'column',
@@ -542,5 +619,16 @@ const styles = StyleSheet.create({
     },
     timerContainer: {
         marginLeft: 20,
+    },
+    timeContainer: {
+        marginTop: 16,
+        backgroundColor: "white",
+        borderRadius: 4,
+        width: 300,
+        height: 200,
+        alignItems: 'center',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        margin: 10
     },
 });

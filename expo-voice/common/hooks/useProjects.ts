@@ -20,7 +20,7 @@ export const useProjects = ({ token }: useProjectsProps) => {
     }, [dispatch]);
 
     useEffect(() => {
-        if (!isLoadingProjects && projects.length === 0 && token) {
+        if (!isLoadingProjects && token) {
             dispatch(getProjects({ token: token }))
         }
     }, [dispatch]);

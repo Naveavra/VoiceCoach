@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Linking } from "react-native";
+import { View, Text, StyleSheet, Linking, Switch } from "react-native";
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-// import { Navigation } from 'react-native-navigation';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Feather from '@expo/vector-icons/Feather';
 
@@ -77,9 +76,9 @@ export const RegisterScreen = ({ navigation }: registerScreenProps) => {
                     <View style={styles.buttonRow}>
                         <Text>
                             <MaterialCommunityIcons name="microsoft-outlook" size={24} color="black" onPress={openOutLook} />
-                            <View style={styles.buttonSpace} /> {/* Add space between buttons */}
+                            <View style={styles.buttonSpace} />
                             <Feather name="message-circle" size={24} color="black" onPress={openImessage} />
-                            <View style={styles.buttonSpace} /> {/* Add space between buttons */}
+                            <View style={styles.buttonSpace} />
                             <MaterialCommunityIcons name="gmail" size={24} color="black" onPress={openGmail} />
                         </Text>
                     </View>
@@ -101,8 +100,14 @@ const styles = StyleSheet.create({
     panelContainer: {
         display: 'flex',
         width: '100%',
-        marginBottom: 150,
-
+        marginBottom: 250,
+    },
+    switchContainer: {
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: defaultTheme.shape.spacing.large,
+        marginTop: 10
     },
     email: {
         // marginTop: defaultTheme.shape.spacing.small

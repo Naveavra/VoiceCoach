@@ -25,6 +25,8 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
     const [selectedWordToSay, setSelectedWordToSay] = useState<string | null>(null);
     const [selectedWordStatus, setSelectedWordStatus] = useState<number | null>(null);
 
+    const [selectedTaam, setSelectedTaam] = useState<number | null>(null)
+
     const successAlert = () => {
         Alert.alert('Success Word', 'You said the right word in the right place', [
             { text: 'OK', onPress: () => { }, style: 'cancel' },
@@ -55,6 +57,7 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
 
     const handleScreenClick = () => {
         setSelectedWordIndex(null);
+        setSelectedTaam(null);
     };
 
     useEffect(() => {
@@ -93,21 +96,38 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
 
                         <ScrollView style={styles.scrollViewContainer}>
                             <View style={styles.goodWordsContainer}>
-                                {analysis.words.filter((word) => word[1] != 2).map((word, index) => {
-                                    const status = word[1];
-                                    const wordColor = status === 0 ? '#4caf50' : status === 1 ? '#ffc107' : '#2196f3';
-                                    const word_been_said = word[0];
-                                    const word_to_say = word[2];
+                                {analysis.analysis.filter((word) => word.word_status != 2).map((word, index) => {
+                                    const status = word.word_status;
+                                    const wordColor = status === 0 ? '#4caf50' : status === 1 ? '#ffc107' : status === 2 ? '#f44336' : '#2196f3';
+                                    const word_been_said = word.text;
+                                    const word_to_say = word.word_to_say;
+
+                                    let underlineStyle = {};
+                                    switch (word.taam_status) {
+                                        case 'GOOD':
+                                            underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#4caf50', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                            break;
+                                        case 'BAD':
+                                            underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#ffc107', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                            break;
+                                        case 'MISSING':
+                                            underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#f44336', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                            break;
+                                        default:
+                                            underlineStyle = {};
+                                    }
+
                                     if (status === 0) {
                                         return (
-                                            <Text key={index} style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
-                                        )
+                                            <Text key={index} style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word_been_said}`}</Text>
+                                        );
                                     }
+
                                     return (
                                         <TouchableOpacity key={index} onPress={() => handleWordClick(index, word_been_said, word_to_say, status)}>
-                                            <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
+                                            <Text style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word_been_said}`}</Text>
                                         </TouchableOpacity>
-                                    )
+                                    );
                                 })}
                             </View>
                         </ScrollView>
@@ -132,24 +152,25 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                                     <View style={{ ...styles.timeContainer, backgroundColor: '#2196f3' }}>
                                                         <Text style={{ marginBottom: 10 }}>You missed that word: {"\"" + selectedWordToSay + "\""}</Text>
                                                     </View>
-                                                    : null
+                                                    :
+                                                    <>
+                                                        <Text style={[styles.word]}>{`${analysis.analysis[selectedWordIndex].text} , ${analysis.analysis[selectedWordIndex].end} - ${analysis.analysis[selectedWordIndex].start}`}</Text>
+                                                        <Text>{analysis.analysis[selectedWordIndex].exp}</Text>
+                                                    </>
                                         }
                                     </View>
                                 </TouchableWithoutFeedback>
                             </Modal>
                         }
 
-
-
                         <ScrollView style={styles.scrollViewContainer}>
                             <View style={styles.badWordsContainer}>
-                                {analysis.words.filter((word) => word[1] === 2).map((word, index) => {
-                                    const status = word[1];
-                                    const word_been_said = word[0];
-                                    const word_to_say = word[2];
+                                {analysis.analysis.filter((word) => word.word_status === 2).map((word, index) => {
+                                    const wordColor = '#ffc107';
+                                    const word_been_said = word.text;
                                     return (
-                                        <TouchableOpacity key={index} onPress={() => handleWordClick(index, word_been_said, word_to_say, status)}>
-                                            <Text style={[styles.word, { color: '#f44336' }]}>{`${word_been_said}`}</Text>
+                                        <TouchableOpacity key={index} >
+                                            <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
                                         </TouchableOpacity>
                                     )
                                 })}
@@ -158,13 +179,15 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
 
                         <ScrollView style={styles.scrollViewContainer}>
                             <View style={styles.teamimContainer}>
-                                {analysis.teamim.map((taam, index) => {
-                                    const wordColor = taam.review === "GOOD" ? '#4caf50' : taam.review === "BAD" ? '#ffc107' : '#f44336';
+                                {analysis.analysis.map((taam, index) => {
+                                    const wordColor = taam.taam_status === "GOOD" ? '#4caf50' : taam.taam_status === "BAD" ? '#ffc107' : '#f44336';
                                     return (
-                                        <TouchableOpacity key={index} >
-                                            <View style={{ ...styles.timeContainer, backgroundColor: wordColor }}>
+                                        <TouchableOpacity
+                                            onPress={() => setSelectedWordIndex(index)} key={index} >
+                                            <View
+                                                style={{ ...styles.timeContainer, backgroundColor: wordColor }}>
                                                 <Text style={[styles.word]}>{`${taam.text} , ${taam.end} - ${taam.start}`}</Text>
-                                                <Text style={[styles.word]}>{`${taam.exp}`}</Text>
+                                                <Text style={[styles.word]}>{`${taam.exp.slice(0, 3)}`}</Text>
                                             </View>
 
                                         </TouchableOpacity>
@@ -172,6 +195,7 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                 })}
                             </View>
                         </ScrollView>
+
                     </View>
             }
         </>
@@ -205,7 +229,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
-
     },
     timeContainer: {
         marginTop: 16,

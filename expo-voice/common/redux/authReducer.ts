@@ -1,6 +1,6 @@
 import { PayloadAction, createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
-import { LoginPostData } from "../types/requestTypes";
+import { LoginPostData, RegisterPostData } from "../types/requestTypes";
 import { AppUserData, RegisterResponse, TokenResponse } from "../types/systemTypes";
 import { authApi } from "../api/authApi";
 import { ApiError, ApiResponse } from "../types/apiTypes";
@@ -24,7 +24,7 @@ const initialState: AuthState = {
     token: null,
     isLoadingUser: false,
     error: null,
-    msg: null
+    msg: null,
 };
 
 // #region |=============================== API CALLS ===============================|
@@ -48,7 +48,7 @@ export const logIn = createAsyncThunk<
 
 export const register = createAsyncThunk<
     RegisterResponse,
-    Omit<LoginPostData, 'remember_me'>,
+    RegisterPostData,
     { rejectValue: ApiError }
 >(`${reducerName}/register`,
     async (credentials, thunkApi) => {
@@ -87,7 +87,7 @@ export const authReducer = createSlice({
         },
         cleanError: (state) => {
             state.error = null;
-        }
+        },
     },
     extraReducers: (builder) => {
 

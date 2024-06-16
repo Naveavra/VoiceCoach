@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, Pressable, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { Audio } from "expo-av";
 import Slider from "@react-native-community/slider";
 import { FontAwesome5 } from "@expo/vector-icons";
@@ -7,8 +7,6 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as FileSystem from 'expo-file-system';
 import { API_URL } from "../../common/config";
 import { AntDesign } from '@expo/vector-icons';
-import { useUtilities } from "../hooks";
-// import { setDeviceUri } from "../redux/projectsReducer";
 import { alertError, getAsync, saveAsync } from "../utils";
 
 interface AudioRecordProps {
@@ -26,10 +24,11 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [duration, setDuration] = useState(0);
     const [position, setPosition] = useState(0);
+    const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
     const [voice, setVoice] = useState<Audio.Sound | null>(null);
     const [uri, setUri] = useState<string>(device_uri || '');
-    const [hasAudio, setHasAudio] = useState<boolean>(device_uri != '' && device_uri != undefined ? true : false);
+    const [hasAudio, setHasAudio] = useState<boolean>(device_uri && device_uri != '' && device_uri != undefined ? true : false);
     const handleSetUri = (uri: string) => {
         setUri(uri);
         saveAsync(path, uri);
@@ -43,9 +42,16 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
         }
     };
 
+    const callback = (downloadProgress: FileSystem.DownloadProgressData) => {
+        const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
+        setDownloadProgress(progress);
+    };
+
     const downloadSampleResumable = FileSystem.createDownloadResumable(
         is_sample ? `${API_URL}/files/download/${url}` : `${API_URL}/session/download/${url}`,
         FileSystem.documentDirectory + `${path}.wav`,
+        {},
+        callback
     );
 
     const onPlaybackStatusUpdate = (status: any) => {
@@ -75,11 +81,11 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
             setVoice(sound);
             setIsLoading(false);
             setHasAudio(true);
-          
+
         } catch (error) {
             setIsLoading(false);
             setHasAudio(false);
-            alertError(String(error) ?? "Error fetching audio data");
+            alertError(String(error) ?? "Error fetching audio data", () => { });
         }
     };
 
@@ -97,8 +103,6 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
                     setPosition(0);
                     const { sound } = await Audio.Sound.createAsync({ uri: uri }, { shouldPlay: false }, onPlaybackStatusUpdate);
                     setVoice(sound);
-                    // FileSystem.deleteAsync(uri);
-
                 }
             });
         }
@@ -160,6 +164,8 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
 
     useEffect(() => {
         if (uri && uri != '') {
+            console.log(uri)
+            console.log('creating')
             createSound();
         }
         return () => {
@@ -189,10 +195,17 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
                         <Text style={styles.speedText}>&times;{speedRate.toFixed(1)}</Text>
                     </TouchableOpacity>
                     <View style={styles.controlsContainer}>
-                        <AntDesign name="delete" size={35} color="black" style={{ marginRight: 30 }} />
-                        <TouchableOpacity style={styles.controlButton} onPress={() => handleSkip(-10000)}>
-                            <MaterialIcons name="replay-10" size={35} color="black" />
-                        </TouchableOpacity>
+                        {is_sample ?
+                            <>
+                                <AntDesign name="delete" size={35} color="black" style={{ marginRight: 30 }} />
+                                <TouchableOpacity style={styles.controlButton} onPress={() => handleSkip(-10000)}>
+                                    <MaterialIcons name="replay-10" size={35} color="black" />
+                                </TouchableOpacity>
+                            </>
+                            :
+                            <TouchableOpacity style={{ ...styles.controlButton, marginLeft: 80 }} onPress={() => handleSkip(-10000)}>
+                                <MaterialIcons name="replay-10" size={35} color="black" />
+                            </TouchableOpacity>}
                         <Pressable style={styles.controlButton} onPress={handlePlayPause}>
                             <FontAwesome5
                                 name={playing ? "pause-circle" : "play-circle"}
@@ -212,12 +225,12 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
                 <>
                     {isLoading ?
                         <>
-                            <MaterialIcons name="downloading" size={24} color="black" />
-                            <Text>Downloading...</Text>
+                            <ActivityIndicator size="large" color={primaryColor} />
+                            <Text>Downloading... {Math.round(downloadProgress * 100)}%</Text>
                         </>
                         :
                         <>
-                            <View style={styles.doanloadButton}>
+                            <View style={styles.downloadButton}>
                                 <TouchableOpacity onPress={createSound}>
                                     <Ionicons name="cloud-download-outline" size={24} color="black" />
                                 </TouchableOpacity>
@@ -268,7 +281,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: primaryColor,
     },
-    doanloadButton: {
+    downloadButton: {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',

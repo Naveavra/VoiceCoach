@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import { initializeDetails } from './common/redux/authReducer';
 import { AnalysisScreen } from './Screens/AnalysisScreen';
 import { SessionScreen } from './Screens/SessionScreen';
+import { AppMenu } from './common/components/Btn/AppMenu';
 
 export type RootStackParamList = {
     LogIn: undefined;
@@ -19,8 +20,8 @@ export type RootStackParamList = {
     AddProject: undefined;
     Project: { id: number };
     Session: { session: SessionData, local_uri: string };
-    AddRecord: { project: ProjectData, reloadData: () => void };
-    Analysis: { session_id: number, analysis: Analysis };
+    AddRecord: { project: ProjectData };
+    Analysis: { session_id: number, analysis: Analysis, uri: string };
 };
 
 const NavigationStack = createNativeStackNavigator<RootStackParamList>();
@@ -29,7 +30,6 @@ export const AppNavigation = () => {
     const { useAppSelector, dispatch } = useUtilities();
     const isLoggedIn = useAppSelector((state) => !!state.auth.token);
 
-
     useEffect(() => {
         dispatch(initializeDetails());
     }, [dispatch]);
@@ -37,21 +37,37 @@ export const AppNavigation = () => {
     return (
 
         <NavigationStack.Navigator>
-            {isLoggedIn ? (
-                <>
-                    <NavigationStack.Screen name="Home" component={HomeScreen} />
-                    <NavigationStack.Screen name="AddProject" component={AddProjectScreen} />
-                    <NavigationStack.Screen name="Project" component={ProjectScreen} />
-                    <NavigationStack.Screen name="AddRecord" component={AddRecordingScreen} />
-                    <NavigationStack.Screen name="Analysis" component={AnalysisScreen} />
-                    <NavigationStack.Screen name="Session" component={SessionScreen} />
-                </>
-            ) : (
-                <>
-                    <NavigationStack.Screen name="LogIn" component={LogInScreen} />
-                    <NavigationStack.Screen name="Register" component={RegisterScreen} />
-                </>
-            )}
+            {
+                isLoggedIn ?
+                    (
+
+                        (
+                            <>
+                                <NavigationStack.Screen name="Home" component={HomeScreen} options={{
+                                    headerRight: () => <AppMenu />
+                                }} />
+                                <NavigationStack.Screen name="AddProject" component={AddProjectScreen} options={{ title: 'Add Project' }} />
+                                <NavigationStack.Screen name="Project" component={ProjectScreen} />
+                                <NavigationStack.Screen name="AddRecord" component={AddRecordingScreen} options={{ title: 'Add Recording' }} />
+                                <NavigationStack.Screen name="Analysis" component={AnalysisScreen} options={{ headerLeft: () => null, headerBackVisible: false }} />
+                                <NavigationStack.Screen name="Session" component={SessionScreen} />
+                            </>
+                        )
+                    )
+                    :
+                    (
+                        <>
+                            <NavigationStack.Screen
+                                name="LogIn"
+                                component={LogInScreen}
+                                options={{
+                                    title: 'Log In',
+                                }}
+
+                            />
+                            <NavigationStack.Screen name="Register" component={RegisterScreen} />
+                        </>
+                    )}
         </NavigationStack.Navigator>
     );
 }
