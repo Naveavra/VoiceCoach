@@ -1,5 +1,7 @@
 import axios from "axios";
 import { Audio } from "expo-av";
+import { io } from 'socket.io-client';
+import * as FileSystem from 'expo-file-system';
 import { Recording } from "expo-av/build/Audio";
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator, Switch, BackHandler, Modal, TouchableWithoutFeedback } from "react-native";
@@ -63,6 +65,85 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         ]);
     }
 
+
+    const [recording, setRecording] = useState<Audio.Recording | null>(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const socket = useRef<ReturnType<typeof io> | null>(null);
+
+    useEffect(() => {
+        // Initialize WebSocket connection
+        socket.current = io(API_URL, {
+            extraHeaders: {
+                authorization: `bearer ${token}`
+            }
+        });
+
+        socket.current.on('connect', () => {
+            console.log('WebSocket connection opened');
+        });
+
+        socket.current.on('disconnect', () => {
+            console.log('WebSocket connection closed');
+        });
+
+        return () => {
+            if (socket.current) {
+                socket.current.disconnect();
+            }
+        };
+    }, []);
+
+    const startRecordingIO = async () => {
+        try {
+            console.log('Requesting permissions..');
+            await Audio.requestPermissionsAsync();
+
+            console.log('Starting recording..');
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: true,
+                playsInSilentModeIOS: true,
+            });
+
+            const { recording } = await Audio.Recording.createAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY
+            );
+
+            setRecording(recording);
+            setIsRecording(true);
+
+            recording.setOnRecordingStatusUpdate(async (status) => {
+                if (status.isRecording) {
+
+                }
+            });
+
+            await recording.startAsync();
+        } catch (err) {
+            console.error('Failed to start recording', err);
+        }
+    };
+
+    const stopRecordingIO = async () => {
+        console.log('Stopping recording..');
+        setIsRecording(false);
+        // await recording?.stopAndUnloadAsync();
+        if (recording) {
+            await recording.stopAndUnloadAsync();
+            const uri = recording.getURI();
+            if (uri) {
+                const info = await FileSystem.getInfoAsync(uri);
+                if (info.exists) {
+                    const file = await FileSystem.readAsStringAsync(uri, {
+                        encoding: FileSystem.EncodingType.Base64
+                    });
+                    if (socket.current && socket.current.connected) {
+                        socket.current.emit('upload_session', file); // Send audio data to the server as base64 string
+                    }
+                }
+            }
+        }
+        setRecording(null);
+    };
     const sendAudioData = async (recording: Audio.Recording | undefined, done: boolean) => {
         try {
             const url = `${API_URL}/upload/${selected_session.id}`;

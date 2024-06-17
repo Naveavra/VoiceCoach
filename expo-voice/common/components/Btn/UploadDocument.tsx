@@ -50,25 +50,28 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
             console.log('file_received', data);
         });
 
+        return () => {
+            socketInstance.disconnect();
+        };
     }, []);
 
 
     const openDocumentPicker = async () => {
 
         let document = await DocumentPicker.getDocumentAsync({});
+        
         if (document && !document.canceled) {
             const fileUri = document['assets'][0].uri;
             const fileInfo = await FileSystem.getInfoAsync(fileUri);
             if (fileInfo.exists) {
                 const fileBase64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
-                //if (socket) {
-                    socket.emit('upload_sample', {
+                if (socket) {
+                    socket.emit('send_file', {
                         name: document['assets'][0]['name'],
                         data: fileBase64,
-                        type: document['assets'][0]['mimeType'],
-                        project_id: selectedProject.id
+                        type: document['assets'][0]['mimeType']
                     });
-                //}
+                }
             }
         }
     };
@@ -92,13 +95,13 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
     //             } as any);
 
     //             // Set your API URL
-    //             const url = ${API_URL}/projects/${selectedProject.id}/uploade_sample;
+    //             const url = `${API_URL}/projects/${selectedProject.id}/uploade_sample`;
 
     //             // Set headers for multipart/form-data
     //             const config = {
     //                 headers: {
     //                     'Content-Type': 'multipart/form-data',
-    //                     'Authorization': Bearer ${token}
+    //                     'Authorization': `Bearer ${token}`
     //                 },
     //             };
 
