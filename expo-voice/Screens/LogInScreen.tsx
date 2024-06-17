@@ -1,11 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Button } from "react-native";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import Checkbox from 'expo-checkbox';
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-// import { Navigation } from 'react-native-navigation';
-import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+
 
 import { RootStackParamList } from "../AppNavigation";
 import { defaultTheme } from "../common/ui/defaultTheme";
@@ -15,7 +13,7 @@ import { useAuth, useUtilities } from "../common/hooks";
 import { cleanError, logIn } from "../common/redux/authReducer";
 import AppPageContainer from "../common/components/AppPageContainer";
 import { Title } from "../common/components/Title";
-import { io } from 'socket.io-client';
+
 
 type LogInScreenProps = NativeStackScreenProps<RootStackParamList, 'LogIn'>;
 

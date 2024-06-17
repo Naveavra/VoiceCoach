@@ -16,6 +16,7 @@ export interface addProjectPostData extends baseCredentials {
     parasha: string;
     aliyah: string;
     description: string;
+    rabbi_email: string;
 }
 
 export interface deleteProjectData extends baseCredentials {
