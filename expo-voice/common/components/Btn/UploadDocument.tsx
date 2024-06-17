@@ -59,7 +59,7 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
     const openDocumentPicker = async () => {
 
         let document = await DocumentPicker.getDocumentAsync({});
-
+        
         if (document && !document.canceled) {
             const fileUri = document['assets'][0].uri;
             const fileInfo = await FileSystem.getInfoAsync(fileUri);

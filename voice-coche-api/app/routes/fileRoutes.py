@@ -28,11 +28,10 @@ aai.settings.api_key = "0dc55bacc27c4f6786439e81b735f87a"
 subclip_size = 60.0
 recognizer = sr.Recognizer()
 
-def init_file_routes(app):
+def init_file_routes(app, socketio):
     @app.route('/projects/<int:project_id>/uploade_sample', methods=['POST'])
     @jwt_required()
     @authenticate
-
     def add_sample(current_user,project_id):
         if request.method == 'POST':
             project = Project.query.filter_by(id=project_id).first()
@@ -154,14 +153,50 @@ def recognizeTeamim(cuurWord):
                 return code_to_mark.get(code)
 
 
+
+def fixTeamimWithGoogle(teamim, words):
+    tmp_words = words.replace(',', '')
+    word_list = tmp_words.split()
+    # Replace words in places with the most similar ones from the word list within one position off
+    len_teamim = len(teamim)
+    for i, place in enumerate(teamim):
+        if not i>len(word_list)-1:
+            if i == len_teamim-1:
+                place['text'] = find_best_match(place['text'], word_list, i, "")
+            else:
+                place['text'] = find_best_match(place['text'], word_list, i, teamim[i+1]['text'])
+    return teamim
+    
+
+def find_best_match(word, word_list, current_index, next_word):
+    if current_index == len(word_list)-1:
+        return word_list[current_index]
+
+    # Consider words within one position off
+    infront_score = similar(word, word_list[current_index]) #SequenceMatcher(None, word, word_list[current_index]).ratio()
+    next_score = similar(word, word_list[current_index+1]) #SequenceMatcher(None, word, word_list[current_index+1]).ratio()
+    if next_score > infront_score and next_score > similar(next_word, word_list[current_index+1]): #SequenceMatcher(None, next_word, word_list[current_index+1]).ratio():
+        return word_list[current_index+1]
+    else:
+        return word_list[current_index]
+
+def transcribe_subclip_google(audio_file_path, start_time, subclip_duration):
+    with sr.AudioFile(audio_file_path) as source:
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.record(source, duration=subclip_duration, offset=start_time)
+        return recognizer.recognize_google(audio, language="iw-IL")
+
+
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
 
-def fixTeamimWithWords(teamim, cleanTxt, dirtyTxt, threshold=0.6):
+def fixTeamimWithWords(teamim, words, cleanTxt, dirtyTxt, threshold=0.6):
     cleanTxt = re.sub(' +', ' ', cleanTxt.replace('\t', '').replace('\n', '').replace(':', " :").replace('-', '').replace('־', ' ').replace('׀', '')).strip()
     dirtyTxt = re.sub(' +', ' ', dirtyTxt.replace('\t', '').replace('\n', '').replace(':', " :").replace('-', '').replace('־', ' ').replace('׀', '')).strip()
     
+    teamim = fixTeamimWithGoogle(teamim, words)
+    print(teamim)
     clean_words = cleanTxt.split()
     dirty_words = dirtyTxt.split()
 
@@ -226,8 +261,15 @@ def processSubClip(audio, start_time, subclip_duration):
         subclip.export(temp_wav_file, format="wav")
         temp_wav_file_path = temp_wav_file.name
 
-        stamps_array = transcribe_subclip(temp_wav_file_path, start_time)
-        return start_time, stamps_array
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future_google = executor.submit(transcribe_subclip_google, temp_wav_file_path, 0.0, subclip_duration)
+            future_teamim = executor.submit(transcribe_subclip, temp_wav_file_path, start_time)
+
+        words = future_google.result()
+        stamps_array = future_teamim.result()
+
+        #stamps_array = transcribe_subclip(temp_wav_file_path, start_time)
+        return start_time, words, stamps_array
 
 
 def getTeamim(audio_data, duration, clean_txt, dirty_txt):
@@ -242,6 +284,8 @@ def getTeamim(audio_data, duration, clean_txt, dirty_txt):
     ]
 
     ans_dict = {}
+    txt_dict = {}
+
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = {
             executor.submit(processSubClip, audio, start_time, subclip_duration): (start_time, subclip_duration)
@@ -250,18 +294,24 @@ def getTeamim(audio_data, duration, clean_txt, dirty_txt):
 
         for future in concurrent.futures.as_completed(futures):
             try:
-                time, stamps_array = future.result()
+                time, words, stamps_array = future.result()
                 ans_dict[time] = stamps_array
+                txt_dict[time] = words
             except Exception as e:
                 print(e)
 
     # Combine results in order
     sorted_times = sorted(ans_dict.keys())
     ans = []
+    txt = ""
     for time in sorted_times:
         ans.extend(ans_dict[time])
+        if txt == "":
+            txt = txt_dict[time]
+        else:
+            txt = txt + ',' + txt_dict[time]
 
-    ans = fixTeamimWithWords(ans, clean_txt, dirty_txt)
+    ans = fixTeamimWithWords(ans, txt, clean_txt, dirty_txt)
     return ans
 
 

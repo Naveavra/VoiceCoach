@@ -21,6 +21,15 @@ from io import BytesIO
 check = 0
 recordings = {}
 def init_session_routes(app, socketio):
+
+    @socketio.on('connect')
+    def handle_connect():
+        print('Client connected')
+
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        print('Client disconnected')
+
     @app.route("/sessions/create/<int:project_id>", methods=["POST"])
     @jwt_required()
     @authenticate
@@ -43,23 +52,36 @@ def init_session_routes(app, socketio):
         db.session.commit()
         return jsonify(session.simpleSerialize()), 200
 
-    @app.route('/upload/<int:session_id>', methods=['POST'])
-    @jwt_required()
-    @authenticate
-    def upload(current_user, session_id):
+    #@app.route('/upload/<int:session_id>', methods=['POST'])
+    @socketio.on('upload_session')
+    #@jwt_required()
+    #@authenticate
+    def handle_session_data(data):
+        print(data)
+        email = data.get('current_user')
+        session_id = data.get('session_id')
+        audio_bytes = base64.b64decode(data.get('audio'))
+        done = data.get('done')
+        start = data.get('start')
+        end = data.get('end')
+        return upload(email, session_id, audio_bytes, done, start, end)
+
+
+    def upload(current_user, session_id, content, done, start, end):
         global check
         global recordings
 
         session = Session.query.get(session_id)
         if session is None:
             return jsonify({"error": "illegal session id"}), 401
-        audio_file = request.files['audio']
-        done = request.form.get('done')
-        start = request.form.get('start')
-        end = request.form.get('end')
+        #audio_file = request.files['audio']
+        #done = request.form.get('done')
+        #start = request.form.get('start')
+        #end = request.form.get('end')
         if start is not None:
             print(start, end)
-        content = audio_file.read()
+
+        #content = audio_file.read()
         kind = filetype.guess(content)
         if not kind is None:
             #supported audio files
@@ -94,10 +116,10 @@ def init_session_routes(app, socketio):
                     combined_audio.export(wav_io, format="wav")
                     recordings[session_id] = wav_io.getvalue()
 
-                    if done == "true":
-                        session.recording = recordings[session_id]
-                        db.session.commit()
-                        print("done")
+                if done == "true":
+                    session.recording = recordings[session_id]
+                    db.session.commit()
+                    print("done")
                 
                 words = get_words_by_google(wav_content, duration_seconds)
                 return words

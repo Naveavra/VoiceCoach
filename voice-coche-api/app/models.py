@@ -73,6 +73,7 @@ class Analysis(db.Model):
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     creator_email = db.Column(db.String(128), db.ForeignKey('user.email'), nullable=False)
+    rabbi_email = db.Column(db.String(128), nullable=True)
     parasha = db.Column(db.String(255), nullable=False)
     aliyah = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -105,6 +106,8 @@ class Project(db.Model):
             'clean_text': self.parasha_ref_clean.text if self.parasha_ref_clean is not None else "",
             'mark_text': self.parasha_ref_mark.text if self.parasha_ref_mark is not None else "",
             'created_at': self.created_at,
+            'created_by': self.creator_email,
+            'rabbi_email': self.rabbi_email,
             'sample_url': self.sample_url
         } 
 
