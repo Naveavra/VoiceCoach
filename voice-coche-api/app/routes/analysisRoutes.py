@@ -38,7 +38,8 @@ def init_analysis_routes(app):
         session = Session.query.get(session_id)
 
         if  session.analysis_id is not None:
-            return jsonify(Analysis.query.get(session.analysis_id).simpleSerialize()), 200
+            analysis = Analysis.query.get(session.analysis_id)
+            return jsonify({"analysis": json.loads(analysis.teamim), 'created_at': analysis.created_at, "url": session.url}), 200
 
         audio_file_like = io.BytesIO(session.recording)
         audio = AudioSegment.from_file(audio_file_like)
@@ -60,7 +61,7 @@ def init_analysis_routes(app):
         db.session.add(analysis)
         db.session.commit()
 
-        return jsonify({"analysis": ans_analysis})
+        return jsonify({"analysis": ans_analysis, "url": session.url})
                     
 
 def getMatchTeamim(user_teamim, sample_teamim):
@@ -92,10 +93,10 @@ def getMatchTeamim(user_teamim, sample_teamim):
                         while sample_teamim[rep]['broken'] and rep > 0:
                             rep = rep - 1
 
-                        row['replacement'] = sample_teamim[rep]['text']
+                        row['word_to_say'] = sample_teamim[rep]['text']
                         offset_words = j-i
                     else:
-                        row['replacement'] = ""
+                        row['word_to_say'] = ""
                         row['word_status'] = 0
 
                     matching_elements_session.append(row)
@@ -115,19 +116,20 @@ def compare(sample_wav, user_wav, user_json, sample_json):
 
     #those jsons are words that were said by the sample but where not found in the user recording
     for row in missing_words:
-        row['word_status'] = 3
-        row['taam_status'] = 'MISSING'
-        row['exp'] = "פיספסת את הטעם בזמן הביצוע שלך"
-        row['replacement'] = ""
-        row['rav_start'] = 0.0
-        row['rav_end'] = 0.0
+        if not row['broken']:
+            row['word_status'] = 3
+            row['taam_status'] = 'MISSING'
+            row['exp'] = "פיספסת את הטעם בזמן הביצוע שלך"
+            row['word_to_say'] = ""
+            row['rav_start'] = 0.0
+            row['rav_end'] = 0.0
         analysis.append(row)
 
     for row in wrong_words:
         row['word_status'] = 2
         row['taam_status'] = ''
         row['exp'] = "המילה שאמרת אינה מופיעה בהקלטת הרב"
-        row['replacement'] = ""
+        row['word_to_say'] = ""
         row['rav_start'] = 0.0
         row['rav_end'] = 0.0
         analysis.append(row)

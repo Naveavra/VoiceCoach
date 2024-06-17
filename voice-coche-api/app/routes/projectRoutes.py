@@ -5,7 +5,7 @@ from flask_socketio import emit
 
 import speech_recognition as sr
 
-from models import Project, Session, Parasha
+from models import Project, Session, Parasha, User
 from init import db
 from pydub import AudioSegment
 
@@ -33,6 +33,11 @@ def init_project_routes(app, socketio):
         parasha = data.get("parasha")
         aliyah = data.get("aliyah")
         description = data.get("description")
+        rabbi_email = data.get("rabbi_email")
+        print("check: ", rabbi_email)
+        if rabbi_email != "" and User.query.filter_by(email=rabbi_email).first() in None:
+            return jsonify({"error: rabbi email given was invalid"}), 401
+
         project = Project(creator=current_user.email, parasha=parasha,aliyah=aliyah, description=description)
         parasha_records = Parasha.query.filter_by(parasha=parasha, aliya=aliyah).all()
         if parasha_records:

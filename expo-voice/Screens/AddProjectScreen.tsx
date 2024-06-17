@@ -22,7 +22,7 @@ export const AddProjectScreen = ({ navigation }: AddProjectScreenProps) => {
     const [parasha, setParasha] = useState('');
     const [aliyah, setAliyah] = useState('');
     const [description, setDescription] = useState('');
-    const [raby, setRaby] = useState('');
+    const [rabbi, setRabbi] = useState('');
 
     const [showParashaList, setShowParashaList] = useState<boolean>(false); // Initialize showList state
     const [showAliyahList, setShowAliyahList] = useState<boolean>(false); // Initialize showList state
@@ -64,15 +64,15 @@ export const AddProjectScreen = ({ navigation }: AddProjectScreenProps) => {
                         label={"עליה"} />
                 </View>
                 <UITextField
-                    value={raby}
-                    onChangeText={setRaby}
+                    value={rabbi}
+                    onChangeText={setRabbi}
                     onFocus={() => {
                         setShowParashaList(false)
                         setShowAliyahList(false)
                     }
                     }
                     placeholder={"אימייל של הרב"}
-                    style={styles.raby_email}
+                    style={styles.rabbi_email}
                     error={null}
                 />
                 <UITextField
@@ -90,10 +90,13 @@ export const AddProjectScreen = ({ navigation }: AddProjectScreenProps) => {
                 <UIButton
                     title={'Add Project'}
                     onClick={() => {
-                        dispatch(addProject({ parasha: parasha, aliyah: aliyah, description: description, token: token })).then(() => {
+                        dispatch(addProject({ parasha: parasha, aliyah: aliyah, description: description, token: token, rabbi_email: rabbi })).then(() => {
                             //reloadData();
                             navigation.navigate('Home');
-                        });
+                        })
+                            .catch((error) => {
+                                ErrorAlert(error.message);
+                            });
                     }}
                     style={styles.menuButton}
                 />
@@ -115,7 +118,7 @@ const styles = StyleSheet.create({
         alignItems: 'center', // Center the contents horizontally
         marginBottom: 100
     },
-    raby_email: {
+    rabbi_email: {
         width: 300,
         height: 50,
         margin: 10,
