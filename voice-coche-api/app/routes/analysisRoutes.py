@@ -31,11 +31,14 @@ from scipy.spatial.distance import euclidean
 aai.settings.api_key = "0dc55bacc27c4f6786439e81b735f87a"
 
 
-def init_analysis_routes(app):
+def init_analysis_routes(app, recordings):
     @app.route("/analysis/<int:session_id>", methods=["GET"])
     def forAnalysis(session_id):
         print("Started")
         session = Session.query.get(session_id)
+        if session.recording is None:
+            session.recording = recordings[session_id]
+            recordings.pop(session_id)
 
         if  session.analysis_id is not None:
             analysis = Analysis.query.get(session.analysis_id)
@@ -89,7 +92,7 @@ def getMatchTeamim(user_teamim, sample_teamim):
                 if row['text'] == row2['text'] and j not in place_check:
                     if j != i + offset_words + nonesense_words and j != i + offset_words - nonesense_words:
                         row['word_status'] = 1
-                        rep = i+offset_words-1
+                        rep = i+offset_words
                         while sample_teamim[rep]['broken'] and rep > 0:
                             rep = rep - 1
 
@@ -115,15 +118,41 @@ def compare(sample_wav, user_wav, user_json, sample_json):
     analysis = process_recordings(sample_wav, user_wav, matching_elements_sample, matching_elements_session)
 
     #those jsons are words that were said by the sample but where not found in the user recording
+    last_place = 0
+    place_not_found = []
+    combined = []
     for row in missing_words:
         if not row['broken']:
             row['word_status'] = 3
             row['taam_status'] = 'MISSING'
             row['exp'] = "פיספסת את הטעם בזמן הביצוע שלך"
             row['word_to_say'] = ""
-            row['rav_start'] = 0.0
-            row['rav_end'] = 0.0
-        analysis.append(row)
+            row['rav_start'] = row['start']
+            row['rav_end'] = row['end']
+            row['start'] = 0.0
+            row['end'] = 0.0
+            found = False
+            for i in range(last_place, len(analysis)):
+                if analysis[i]['word_status'] == 1 and analysis[i]['word_to_say'] == row['text']:
+                    analysis.insert(i, row)
+                    add_forward = 0
+                    add_backword = 0
+                    for word in place_not_found:
+                        if word['rav_end'] == row['rav_start']:
+                            analysis.insert(i-1-add_backword, word)
+                            add_backword = add_backword + 1
+                            combined.append(word)
+                        elif word['rav_start'] == row['rav_end']:
+                            analysis.insert(i+1+add_forward, word)
+                            add_forward = add_forward + 1
+                            combined.append(word)
+
+                    last_place = i
+                    found = True
+                    break
+            if not found:
+                place_not_found.append(row)
+        #analysis.append(row)
 
     for row in wrong_words:
         row['word_status'] = 2

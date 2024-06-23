@@ -16,7 +16,7 @@ import re
 
 recognizer = sr.Recognizer()
 
-def init_project_routes(app, socketio):
+def init_project_routes(app):
     @app.route("/projects/get_all", methods=["GET"])
     @jwt_required()
     @authenticate
