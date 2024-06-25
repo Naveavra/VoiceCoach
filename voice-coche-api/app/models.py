@@ -39,6 +39,7 @@ class Session(db.Model):
     analysis_id = db.Column(db.Integer, db.ForeignKey('analysis.id'), nullable=True)
     analysis = db.relationship('Analysis', backref='Session', cascade="all, delete", lazy=True)
     session_teamim = db.Column(db.Text, nullable=True)
+    rabbi_comments = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
     url = db.Column(db.String(255), nullable=True)
 
@@ -50,6 +51,7 @@ class Session(db.Model):
         return {
             'id': self.id,
             'project_id': self.project_id,
+            'rabbi_comments': json.loads(self.rabbi_comments) if self.rabbi_comments is not None else [],
             'created_at': self.created_at,
             'url': self.url,
         }
@@ -65,7 +67,7 @@ class Analysis(db.Model):
     
     def simpleSerialize(self):
         return {
-            'analysis': json.loads(self.teamim),
+            'analysis': json.loads(self.teamim) if self.teamim is not None else [],
             'created_at': self.created_at
         }
 
@@ -123,7 +125,7 @@ class Notification(db.Model):
 
 
 class Parasha(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     parasha = db.Column(db.String(255), nullable=False)
     clean = db.Column(db.Boolean, nullable=False)
     aliya = db.Column(db.String(255), nullable=False)
