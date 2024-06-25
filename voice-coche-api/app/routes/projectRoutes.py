@@ -22,7 +22,13 @@ def init_project_routes(app):
     @authenticate
     def get_all_projects(current_user):
         projects = Project.query.filter_by(creator_email=current_user.email).all()
-        return jsonify([project.simpleSerialize() for project in projects])
+        shared = Project.query.filter_by(rabbi_email=current_user.email).all()
+        ans = []
+        for project in projects:
+            ans.append(project.simpleSerialize())
+        for project in shared:
+            ans.append(project.simpleSerialize())
+        return jsonify(ans)
 
     @app.route("/projects/create", methods=["POST"])
     @jwt_required()
@@ -34,11 +40,11 @@ def init_project_routes(app):
         aliyah = data.get("aliyah")
         description = data.get("description")
         rabbi_email = data.get("rabbi_email")
-        print("check: ", rabbi_email)
-        if rabbi_email != "" and User.query.filter_by(email=rabbi_email).first() in None:
+        if rabbi_email != "" and User.query.filter_by(email=rabbi_email).first() is None:
             return jsonify({"error: rabbi email given was invalid"}), 401
 
         project = Project(creator=current_user.email, parasha=parasha,aliyah=aliyah, description=description)
+        project.rabbi_email = rabbi_email
         parasha_records = Parasha.query.filter_by(parasha=parasha, aliya=aliyah).all()
         if parasha_records:
             for record in parasha_records:

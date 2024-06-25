@@ -37,9 +37,14 @@ def init_analysis_routes(app, recordings):
         print("Started")
         session = Session.query.get(session_id)
         if session.recording is None:
-            session.recording = recordings[session_id]
-            recordings.pop(session_id)
-
+            if session_id in recordings:
+                session.recording = recordings[session_id]
+                with open('output_audio.wav', 'wb') as output_file:
+                    output_file.write(session.recording)
+                recordings.pop(session_id)
+            else:
+                return jsonify({"analysis": [], 'created_at': "", "url": ""}), 200
+        
         if  session.analysis_id is not None:
             analysis = Analysis.query.get(session.analysis_id)
             return jsonify({"analysis": json.loads(analysis.teamim), 'created_at': analysis.created_at, "url": session.url}), 200
@@ -121,6 +126,7 @@ def compare(sample_wav, user_wav, user_json, sample_json):
     last_place = 0
     place_not_found = []
     combined = []
+    print(analysis)
     for row in missing_words:
         if not row['broken']:
             row['word_status'] = 3
@@ -139,15 +145,15 @@ def compare(sample_wav, user_wav, user_json, sample_json):
                     add_backword = 0
                     for word in place_not_found:
                         if word['rav_end'] == row['rav_start']:
-                            analysis.insert(i-1-add_backword, word)
+                            analysis.insert(i-add_backword, word)
                             add_backword = add_backword + 1
                             combined.append(word)
                         elif word['rav_start'] == row['rav_end']:
-                            analysis.insert(i+1+add_forward, word)
+                            analysis.insert(i+add_forward, word)
                             add_forward = add_forward + 1
                             combined.append(word)
 
-                    last_place = i
+                    last_place = i + 1 + add_forward + add_backword + 1
                     found = True
                     break
             if not found:

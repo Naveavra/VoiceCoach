@@ -9,6 +9,8 @@ from models import Project, Session, Analysis
 from init import db
 from pydub import AudioSegment
 from utils import generate_hash
+import json
+
 from .fileRoutes import get_words_by_google
 
 import io
@@ -57,8 +59,8 @@ def init_session_routes(app, recordings):
         done = request.form.get('done')
         start = request.form.get('start')
         end = request.form.get('end')
-        if start is not None:
-            print(start, end)
+        print(request.form)
+
         content = audio_file.read()
         kind = filetype.guess(content)
         if not kind is None:
@@ -81,26 +83,31 @@ def init_session_routes(app, recordings):
                 audio.export(wav_io, format="wav")
                 wav_content = wav_io.getvalue()
 
+
                 if not session_id in recordings:
                     recordings[session_id] = wav_content
                 else:
                     existing_audio = AudioSegment.from_file(io.BytesIO(recordings[session_id]), format='wav')
+                    new_audio = AudioSegment.from_file(io.BytesIO(wav_content), format='wav')
+                    if start is not None:
+                        print("stopped: ", start, end)
+                        start = float(start)*1000
+                        end = float(end)*1000
 
-                    # Append converted audio to existing audio
-                    combined_audio = existing_audio + AudioSegment.from_file(io.BytesIO(wav_content), format='wav')
+                        old_part1 = existing_audio[:start]  # From start to the 'start' timestamp
+                        old_part2 = existing_audio[end:]    # From the 'end' timestamp to the end
+
+                        # Combine the segments
+                        combined_audio = old_part1 + new_audio + old_part2
+                    else:
+                        # Append converted audio to existing audio
+                        combined_audio = existing_audio + new_audio
                     
                     # Export combined audio to binary data
                     wav_io = io.BytesIO()
                     combined_audio.export(wav_io, format="wav")
                     recordings[session_id] = wav_io.getvalue()
                 
-                '''
-                if done == "true":
-                    session.recording = recordings[session_id]
-                    db.session.commit()
-                    print("done")
-                    recordings.pop(session_id)
-                '''
                 
                 words = get_words_by_google(wav_content, duration_seconds)
                 return words
@@ -108,6 +115,28 @@ def init_session_routes(app, recordings):
                 return jsonify({"error": "received unsupported file"}), 401
         else:
             return jsonify({"error": "received unsupported file"}), 401
+    
+    @app.route("/sessions/add_comment/<int:session_id>", methods=["POST"])
+    @jwt_required()
+    @authenticate
+    def add_comment(current_user, session_id):
+        data = request.get_json() if request.is_json else request.values
+        session = Session.query.get(session_id)
+        if not session:
+            return jsonify({"error": "session not found"}), 401
+        project = Project.query.get(session.project_id)
+        if project.rabbi_email != current_user.email:
+            return jsonify({"error": "user not allowed to leave comments on this project"}), 401
+        comment = data.get("comment")
+        comments = json.loads(session.rabbi_comments)
+        comments.append(comment)
+        session.rabbi_comments = json.dumps(comments)
+        db.session.commit()
+        return jsonify({"comment was successfully saved for the user to see"}), 201
+
+        
+
+
 
     @app.route('/session/download/<session_url>', methods=['GET'])
     def download_session(session_url):
