@@ -54,6 +54,7 @@ class Session(db.Model):
             'rabbi_comments': json.loads(self.rabbi_comments) if self.rabbi_comments is not None else [],
             'created_at': self.created_at,
             'url': self.url,
+            'score': 80,
         }
 
 class Analysis(db.Model):
@@ -105,8 +106,8 @@ class Project(db.Model):
             'parasha': self.parasha,
             'aliyah': self.aliyah,
             'description': self.description,
-            'clean_text': self.parasha_ref_clean.text if self.parasha_ref_clean is not None else "",
-            'mark_text': self.parasha_ref_mark.text if self.parasha_ref_mark is not None else "",
+            'clean_text': re.sub(' +', ' ', self.parasha_ref_clean.text.replace('\t', '').replace('\n', '').replace('׃', '').replace('-', '').replace('־', ' ').replace('׀', '')).strip() if self.parasha_ref_clean is not None else "",
+            'mark_text': re.sub(' +', ' ', self.parasha_ref_mark.text.replace('\t', '').replace('\n', '').replace('׃', '').replace('-', '').replace('־', ' ').replace('׀', '')).strip() if self.parasha_ref_mark is not None else "",
             'created_at': self.created_at,
             'created_by': self.creator_email,
             'rabbi_email': self.rabbi_email,
