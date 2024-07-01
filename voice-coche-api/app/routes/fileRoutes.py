@@ -192,8 +192,8 @@ def similar(a, b):
 
 
 def fixTeamimWithWords(teamim, words, cleanTxt, dirtyTxt, threshold=0.6):
-    cleanTxt = re.sub(' +', ' ', cleanTxt.replace('\t', '').replace('\n', '').replace(':', " :").replace('-', '').replace('־', ' ').replace('׀', '')).strip()
-    dirtyTxt = re.sub(' +', ' ', dirtyTxt.replace('\t', '').replace('\n', '').replace(':', " :").replace('-', '').replace('־', ' ').replace('׀', '')).strip()
+    cleanTxt = re.sub(' +', ' ', cleanTxt.replace('\t', '').replace('\n', '').replace('׃', '').replace('-', '').replace('־', ' ').replace('׀', '')).strip()
+    dirtyTxt = re.sub(' +', ' ', dirtyTxt.replace('\t', '').replace('\n', '').replace('׃', '').replace('-', '').replace('־', ' ').replace('׀', '')).strip()
     
     teamim = fixTeamimWithGoogle(teamim, words)
     print("before: " , teamim)

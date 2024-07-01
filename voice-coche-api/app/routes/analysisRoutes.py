@@ -39,15 +39,16 @@ def init_analysis_routes(app, recordings):
         if session.recording is None:
             if session_id in recordings:
                 session.recording = recordings[session_id]
-                with open('output_audio.wav', 'wb') as output_file:
-                    output_file.write(session.recording)
+                #with open('output_audio.wav', 'wb') as output_file:
+                #    output_file.write(session.recording)
                 recordings.pop(session_id)
             else:
-                return jsonify({"analysis": [], 'created_at': "", "url": ""}), 200
+                return jsonify({"analysis": [], 'created_at': "", "url": "", "project_url":"", "score": 0}), 200
         
         if  session.analysis_id is not None:
             analysis = Analysis.query.get(session.analysis_id)
-            return jsonify({"analysis": json.loads(analysis.teamim), 'created_at': analysis.created_at, "url": session.url}), 200
+            return jsonify({"analysis": get_time_json(json.loads(analysis.teamim)), 'created_at': analysis.created_at, "url": session.url,
+             "project_url": Project.query.get(session.project_id).sample_url, "score": 80}), 200
 
         audio_file_like = io.BytesIO(session.recording)
         audio = AudioSegment.from_file(audio_file_like)
@@ -69,7 +70,7 @@ def init_analysis_routes(app, recordings):
         db.session.add(analysis)
         db.session.commit()
 
-        return jsonify({"analysis": ans_analysis, "url": session.url})
+        return jsonify({"analysis": get_time_json(ans_analysis), "url": session.url, "project_url": project.sample_url, "score": 80})
                     
 
 def getMatchTeamim(user_teamim, sample_teamim):
@@ -170,8 +171,25 @@ def compare(sample_wav, user_wav, user_json, sample_json):
         analysis.append(row)
     return analysis
 
-#for analysis of teamim
+def get_time_json(analysis):#should be mm:ss:mm for start, end, rav_start, rav_end
+    for word in analysis:
+        word['start'] = get_time(word['start'])
+        word['end'] = get_time(word['end'])
+        word['rav_start'] = get_time(word['rav_start'])
+        word['rav_end'] = get_time(word['rav_end'])
+    return analysis
 
+def get_time(time):
+    minute = int(time//60)
+    time = time % 60
+    second = int(time // 1)
+    time = time % 1 
+    milli = int(time*100)
+    return "{:02d}:{:02d}:{:02d}".format(minute, second, milli)
+
+
+
+#for analysis of teamim
 
 def midi_to_note_name(midi_number):
     note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
