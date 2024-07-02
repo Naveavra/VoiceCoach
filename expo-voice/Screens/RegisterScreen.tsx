@@ -43,7 +43,7 @@ export const RegisterScreen = ({ navigation }: registerScreenProps) => {
         <AppPageContainer style={styles.pageContainer}>
 
             <View style={styles.panelContainer}>
-                <Title title={'enter credentials'} subtitle={""} />
+                <Title title={'Enter Credentials'} subtitle={""} />
                 <UITextField
                     value={email}
                     onChangeText={setEmail}
@@ -95,7 +95,8 @@ const styles = StyleSheet.create({
     pageContainer: {
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        direction: 'ltr'
     },
     panelContainer: {
         display: 'flex',
@@ -111,9 +112,13 @@ const styles = StyleSheet.create({
     },
     email: {
         // marginTop: defaultTheme.shape.spacing.small
+        direction: 'ltr'
+
     },
     password: {
-        marginTop: defaultTheme.shape.spacing.small
+        marginTop: defaultTheme.shape.spacing.small,
+        direction: 'ltr'
+
     },
     menuButton: {
         marginTop: defaultTheme.shape.spacing.large

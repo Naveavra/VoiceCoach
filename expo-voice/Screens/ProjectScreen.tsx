@@ -9,7 +9,7 @@ import { LogBox } from 'react-native';
 import { AudioRecord } from "../common/components/AudioRecord";
 import { UploadDocument } from "../common/components/Btn/UploadDocument";
 import { AppLoader } from "../common/components/Loader";
-import { addSession, cleanStateMsg, deleteSession } from "../common/redux/projectReducer";
+import { addSession, cleanSession, cleanStateMsg, deleteSession, selectSession, setSeenMsg } from "../common/redux/projectReducer";
 import { formatDate, getAsync } from "../common/utils";
 import AppSessionCard from "../common/components/AppSessionCard";
 import { useProject } from "../common/hooks/useProject";
@@ -23,11 +23,14 @@ LogBox.ignoreLogs([
 type ProjectScreenProps = NativeStackScreenProps<RootStackParamList, 'Project'>;
 
 export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
+
     const { useAppSelector, dispatch } = useUtilities();
     const { token } = useAuth({});
+
     const state = useAppSelector((state) => state.global.state);
     const selectedProject = useAppSelector((state) => state.projects.selectedProject);
     const { isLoadingProject, project, sessions, error, msg, reloadData } = useProject({ token: token, project_id: selectedProject.id });
+
     const [deviceUrl, setDeviceUrl] = useState<string>('');
     const [loadingUri, setLoadingUri] = useState<boolean>(true);
 
@@ -55,19 +58,24 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
                 // AddSampleAlert();
             }
         }
+        dispatch(cleanSession())
     }, [msg]);
 
-    const handlePress = async (session: SessionData) => {
-        const pathToUri = `${session.id}_${formatDate(session.created_at, true)}`;
-        const res = await getAsync(pathToUri);
-        navigation.navigate('Session', { session: session, local_uri: res });
+    const handlePress = async (session: SessionData, rabbi: boolean) => {
+        //path_to_sample
+        const path_sample_uri = `project_${project.id}`;
+        const path_session_uri = `session_${session.id}`
+        const sample_uri = await getAsync(path_sample_uri);
+        const session_uri = await getAsync(path_session_uri);
+        dispatch(selectSession(session.id))
+        navigation.navigate('Session', { rabbi: rabbi, session: session, sample_url: selectedProject.sample_url, sample_uri: sample_uri, session_uri: session_uri });
     };
 
     const elements = sessions.map((session, index) => {
         const commonProps = {
             key: index,
             session: session,
-            onPress: () => handlePress(session),
+            onPress: (rabbi: boolean) => handlePress(session, rabbi),
         };
 
         if (state === 'SharedProjects') {
@@ -81,6 +89,10 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
             />
         );
     });
+
+    useEffect(() => {
+
+    }, [sessions])
     return (
         <>
             <View style={styles.container}>
@@ -96,28 +108,30 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
                                 loadingUri ?
                                     <AppLoader /> :
                                     <AudioRecord
-                                        device_uri={null}
+                                        device_uri={deviceUrl}
                                         url={selectedProject.sample_url}
-                                        path={`${selectedProject.id}_${selectedProject.created_at}`}
-                                        is_sample={true} />
+                                        path={`project_${selectedProject.id}`}
+                                        is_sample={true} startTime={null} endTime={null} />
                             )
                             :
                             <UploadDocument token={token} selectedProject={selectedProject} reloadData={reloadData} />
                     }
                 </View>
                 <View style={styles.actionButtonsContainer}>
-                    <Ionicons style={styles.addProjectIcon} color="#1976d2" name="add-circle-outline" size={40} onPress={
+                    <Ionicons disabled={isLoadingProject || !selectedProject.sample_url} style={styles.addProjectIcon} color={isLoadingProject || !selectedProject.sample_url ? "#e0e0e0" : "#1976d2"} name="add-circle-outline" size={40} onPress={
                         () => {
+
                             dispatch(addSession({ project_id: selectedProject.id, token: token })).then((res: any) => {
                                 navigation.navigate('AddRecord', {
-                                    project: project
+                                    project: project,
+                                    sample_uri: deviceUrl,
                                 });
                             }).catch((err: any) => {
                                 console.error("Error adding session:", err);
                             });
                         }
                     } />
-                    <SimpleLineIcons name="refresh" size={35} color="#1976d2" onPress={reloadData} />
+                    <SimpleLineIcons disabled={isLoadingProject} name="refresh" size={35} color={isLoadingProject ? "#e0e0e0" : "#1976d2"} onPress={reloadData} />
                 </View>
                 {isLoadingProject ?
                     <View style={styles.loaderContainer}>
@@ -165,7 +179,6 @@ const styles = StyleSheet.create({
         width: '30%',
     },
     addProjectIcon: {
-        color: '#1976d2',
         marginBottom: 20,
     },
     itemContainer: {
@@ -173,6 +186,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginHorizontal: 10,
         marginBottom: 100,
+        marginTop: 15
     },
     projectName: {
         fontSize: 24,

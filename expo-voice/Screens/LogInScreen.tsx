@@ -13,6 +13,7 @@ import { useAuth, useUtilities } from "../common/hooks";
 import { cleanError, logIn } from "../common/redux/authReducer";
 import AppPageContainer from "../common/components/AppPageContainer";
 import { Title } from "../common/components/Title";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 type LogInScreenProps = NativeStackScreenProps<RootStackParamList, 'LogIn'>;
@@ -23,7 +24,9 @@ export const LogInScreen = ({ navigation }: LogInScreenProps) => {
     const [password, setPassword] = useState<string>('');
     const { isLoadingUser, error, user, token } = useAuth({});
     const [remember_me, setRememberMe] = useState<boolean>(false);
-
+    // AsyncStorage.clear().then(() => {
+    //     console.log('cleared')
+    // })
     if (isLoadingUser) {
         return <AppLoader />
     }

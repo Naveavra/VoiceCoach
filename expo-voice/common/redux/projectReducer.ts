@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { ApiListData, ApiError } from "../types/apiTypes";
-import { addSessionData, deleteSessionData, getVersionsData as getSessionsData } from "../types/requestTypes";
+import { addCommentData, addSessionData, deleteSessionData, getVersionsData as getSessionsData } from "../types/requestTypes";
 import { ProjectData, SessionData } from "../types/systemTypes";
 import { projectApi } from "../api/projectApi";
 import { sessionApi } from "../api/sessionApi";
@@ -66,6 +66,18 @@ export const deleteSession = createAsyncThunk<
             .catch((res) => thunkApi.rejectWithValue(res as ApiError));
     });
 
+export const addComment = createAsyncThunk<
+    null,
+    addCommentData,
+    { rejectValue: ApiError }
+>(`${reducerName}/addComment`,
+    async (params, thunkApi) => {
+        return sessionApi
+            .addComment(params)
+            .then((res) => thunkApi.fulfillWithValue(res as null))
+            .catch((res) => thunkApi.rejectWithValue(res as ApiError));
+    });
+
 
 export const projectReducer = createSlice({
     name: reducerName,
@@ -82,10 +94,18 @@ export const projectReducer = createSlice({
             state.msg = null;
         },
         selectSession: (state, action) => {
-            state.selectedSession = state.sessions.find(s => s.id === action.payload.id) ?? emptySession
+            state.selectedSession = state.sessions.find(s => s.id === action.payload) ?? emptySession
         },
-        cleanSession: (state, action) => {
+        cleanSession: (state) => {
             state.selectedSession = emptySession
+        },
+        setSeenMsg: (state, action) => {
+            state.sessions = state.sessions.map(session =>
+                session.id === action.payload && session.new_comment
+                    ? { ...session, new_comment: false }
+                    : session
+            );
+            state.selectedSession = { ...state.selectedSession, new_comment: false }
         }
     },
     extraReducers: (builder) => {
@@ -132,9 +152,21 @@ export const projectReducer = createSlice({
             state.error = action.payload?.message.error || 'An error occurred';
             state.msg = null;
         });
+        //addCommnet
+        builder.addCase(addComment.pending, (state) => {
+            state.isLoadingProject = true;
+        })
+        builder.addCase(addComment.fulfilled, (state, { payload }) => {
+            state.isLoadingProject = false;
+        });
+        builder.addCase(addComment.rejected, (state, action) => {
+            state.isLoadingProject = false;
+            state.error = action.payload?.message.error || 'An error occurred';
+            state.msg = null;
+        });
 
 
     },
 });
 
-export const { clearProject, cleanStateMsg, cleanSession, selectSession } = projectReducer.actions;
+export const { clearProject, cleanStateMsg, cleanSession, selectSession, setSeenMsg } = projectReducer.actions;
