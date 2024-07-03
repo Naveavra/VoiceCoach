@@ -43,7 +43,7 @@ def init_analysis_routes(app, recordings):
                 #    output_file.write(session.recording)
                 recordings.pop(session_id)
             else:
-                return jsonify({"analysis": [], 'created_at': "", "url": "", "project_url":"", "score": 0}), 200
+                return jsonify({"analysis": [], 'created_at': "", "url": "", "project_url":"", "score": 0, "teamin_stats":{}}), 200
         
         if  session.analysis_id is not None:
             analysis = Analysis.query.get(session.analysis_id)
@@ -63,14 +63,16 @@ def init_analysis_routes(app, recordings):
 
         print("started analysis")
         ans_analysis = compare(project.sample_clip, session.recording, json.loads(session.session_teamim), json.loads(project.sample_teamim))
-
+        #first comes the teacher
+        taam_stats = taam_performance(json.loads(project.sample_teamim),json.loads(session.session_teamim))
+        print(f"teamim status: {taam_stats}")
         analysis = Analysis(json.dumps(ans_analysis))
         session.analysis = analysis
         session.analysis_id = analysis.id
         db.session.add(analysis)
         db.session.commit()
-
-        return jsonify({"analysis": get_time_json(ans_analysis), "url": session.url, "project_url": project.sample_url, "score": 80})
+        #TODO: add total score.
+        return jsonify({"analysis": get_time_json(ans_analysis), "url": session.url, "project_url": project.sample_url, "score": 80, "teamin_stats": taam_stats})
                     
 
 def getMatchTeamim(user_teamim, sample_teamim):
@@ -121,8 +123,8 @@ def getMatchTeamim(user_teamim, sample_teamim):
 
 def compare(sample_wav, user_wav, user_json, sample_json):
     matching_elements_session, matching_elements_sample, missing_words, wrong_words = getMatchTeamim(user_json, sample_json)
-    analysis = process_recordings(sample_wav, user_wav, matching_elements_sample, matching_elements_session)
-
+    analysis, score = process_recordings(sample_wav, user_wav, matching_elements_sample, matching_elements_session)
+    print(f"FINAL SCORE IS: {score}")
     #those jsons are words that were said by the sample but where not found in the user recording
     last_place = 0
     place_not_found = []
@@ -306,9 +308,67 @@ def crop_audio(input_data, start_time, end_time):
     sf.write(output, y, sr, format='wav')
     return output.getvalue()
 
+def taam_performance(teacher_data, student_data):
+    taam_stats = {
+        'etnach': {'correct_count': 0, 'total_count': 0},
+        'segolta': {'correct_count': 0, 'total_count': 0},
+        'shalshelet': {'correct_count': 0, 'total_count': 0},
+        'zaqef katan': {'correct_count': 0, 'total_count': 0},
+        'zaqef gadol': {'correct_count': 0, 'total_count': 0},
+        'maarih tarha': {'correct_count': 0, 'total_count': 0},
+        'sof pasuk': {'correct_count': 0, 'total_count': 0},
+        'revia': {'correct_count': 0, 'total_count': 0},
+        'trei kadmin': {'correct_count': 0, 'total_count': 0},
+        'kadma': {'correct_count': 0, 'total_count': 0},
+        'tevir': {'correct_count': 0, 'total_count': 0},
+        'gerish': {'correct_count': 0, 'total_count': 0},
+        'shene gereshin': {'correct_count': 0, 'total_count': 0},
+        'talsha': {'correct_count': 0, 'total_count': 0},
+        'pazer gadol': {'correct_count': 0, 'total_count': 0},
+        'darga': {'correct_count': 0, 'total_count': 0},
+        'azla': {'correct_count': 0, 'total_count': 0},
+        'zarqa': {'correct_count': 0, 'total_count': 0},
+        'pasek': {'correct_count': 0, 'total_count': 0}
+    }
+    min_len = min(len(teacher_data), len(student_data))
+    for i in range(min_len):
+        teacher = teacher_data[i]
+        student = student_data[i]
+
+        if 'taam' in teacher and 'taam' in student:
+            if teacher['taam'] in taam_stats:
+                taam = teacher['taam']
+                
+                if taam == 'etnach':
+                    # Calculate downtime percentage after the word
+                    if i < len(teacher_data) - 1:
+                        teacher_downtime = teacher_data[i + 1]['start'] - teacher['end']
+                        student_downtime = student_data[i + 1]['start'] - student['end']
+                        if teacher_downtime > 0 and student_downtime > 0:
+                            downtime_ratio = student_downtime / teacher_downtime
+                            if 0.8 <= downtime_ratio <= 1.2:
+                                taam_stats[taam]['correct_count'] += 1
+                            taam_stats[taam]['total_count'] += 1
+                elif taam == 'revia' or taam == 'trei kadmin' or taam == 'pazer gadol':
+                    # Check how much time the word took
+                    teacher_word_time = teacher['end'] - teacher['start']
+                    student_word_time = student['end'] - student['start']
+                    time_ratio = student_word_time / teacher_word_time
+                    if 0.8 <= time_ratio <= 1.2:
+                        taam_stats[taam]['correct_count'] += 1
+                    taam_stats[taam]['total_count'] += 1
+                # Add more rules for other taamim
+
+    taamim_feedback = {taam: (stats['correct_count'], stats['total_count']) for taam, stats in taam_stats.items()}
+    return taamim_feedback
+
+
 def process_recordings(teacher_audio_data, student_audio_data, teacher_data, student_data):
     output = []
+    print(f"student data: {student_data}")
+    print(f"teacher data: {teacher_data}")
     len_teacher = len(teacher_data)
+    total_score = 0
 
     for i in range(len_teacher):
         if i >= len(student_data) or teacher_data[i]['text'] != student_data[i]['text']:
@@ -321,6 +381,7 @@ def process_recordings(teacher_audio_data, student_audio_data, teacher_data, stu
             student_pitch_array = extract_pitch_array(temp_student_audio)
 
             feedback, score = give_feedback(teacher_pitch_array, student_pitch_array)
+            total_score += score
             if score > 90:
                 review = "GOOD"
             elif score > 70:
@@ -335,4 +396,5 @@ def process_recordings(teacher_audio_data, student_audio_data, teacher_data, stu
             student_data[i]['taam_status'] = review
 
             output.append(student_data[i])
-    return output
+    average_score = total_score / len_teacher if len_teacher > 0 else 0
+    return output, average_score
