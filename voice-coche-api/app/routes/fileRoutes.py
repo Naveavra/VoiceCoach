@@ -28,7 +28,7 @@ aai.settings.api_key = "0dc55bacc27c4f6786439e81b735f87a"
 subclip_size = 60.0
 recognizer = sr.Recognizer()
 
-def init_file_routes(app, socketio):
+def init_file_routes(app):
     @app.route('/projects/<int:project_id>/uploade_sample', methods=['POST'])
     @jwt_required()
     @authenticate
@@ -192,11 +192,11 @@ def similar(a, b):
 
 
 def fixTeamimWithWords(teamim, words, cleanTxt, dirtyTxt, threshold=0.6):
-    cleanTxt = re.sub(' +', ' ', cleanTxt.replace('\t', '').replace('\n', '').replace(':', " :").replace('-', '').replace('־', ' ').replace('׀', '')).strip()
-    dirtyTxt = re.sub(' +', ' ', dirtyTxt.replace('\t', '').replace('\n', '').replace(':', " :").replace('-', '').replace('־', ' ').replace('׀', '')).strip()
+    cleanTxt = re.sub(' +', ' ', cleanTxt.replace('\t', '').replace('\n', '').replace('׃', '').replace('-', '').replace('־', ' ').replace('׀', '')).strip()
+    dirtyTxt = re.sub(' +', ' ', dirtyTxt.replace('\t', '').replace('\n', '').replace('׃', '').replace('-', '').replace('־', ' ').replace('׀', '')).strip()
     
     teamim = fixTeamimWithGoogle(teamim, words)
-    print(teamim)
+    print("before: " , teamim)
     clean_words = cleanTxt.split()
     dirty_words = dirtyTxt.split()
 
@@ -229,6 +229,7 @@ def fixTeamimWithWords(teamim, words, cleanTxt, dirtyTxt, threshold=0.6):
                     'end': taam['end']
                 })
             offset = offset + 1
+    print("after: ", aligned_texts)
     return aligned_texts
     
 def transcribe_subclip(temp_wav_file_path, offset):
