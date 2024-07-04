@@ -40,7 +40,7 @@ export const formatDate = (input: string, return_seconds: boolean): string => {
 }
 
 export const timeStringToMillis = (timeStr: string): number => {
-    const [minutes, seconds, millis] = timeStr.split(':').map(Number);
+    const [minutes, seconds, millis] = timeStr?.split(':').map(Number);
     return (minutes * 60 * 1000) + (seconds * 1000) + millis;
 };
 export const calculateDuration = (startTime: string, endTime: string): number => {

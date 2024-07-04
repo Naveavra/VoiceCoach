@@ -24,22 +24,16 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
     const { rabbi, session, sample_url, sample_uri, session_uri } = route.params;
     const [isLoading, setIsLoading] = useState(true);
     const [analysis, setAnalysis] = useState<Analysis | null>(null);
-    const [selectedWordIndex, setSelectedWordIndex] = useState<number | null>(null);
-    const [selectedWord, setSelectedWord] = useState<string | null>(null);
-    const [selectedWordToSay, setSelectedWordToSay] = useState<string | null>(null);
+    const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [selectedWordStatus, setSelectedWordStatus] = useState<number | null>(null);
+
+    const [downloaded, setDownloaded] = useState(false)
     const path_to_sample = `project_${session.projectId}`;
     const path_to_session = `session_${session.id}`
 
-    // console.log('1', session)
-    // console.log('analysis', analysis)
-    // console.log('sample_url', sample_url)
-    // console.log('session_uri', session_uri)
-    // console.log('session_url', analysis?.url ?? '?')
     const commentDialog = useAppSelector((state) => state.global.commentDialog);
     const [comment, setComment] = useState('')
 
-    const [selectedTaam, setSelectedTaam] = useState<number | null>(null)
     const successAlert = () => {
         Alert.alert('Success Word', 'You said the right word in the right place', [
             { text: 'OK', onPress: () => { }, style: 'cancel' },
@@ -61,29 +55,38 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
             { text: 'OK', onPress: () => { }, style: 'cancel' },
         ]);
     }
-    const handleWordClick = (index: number, word_been_said: string, word_to_say: string, status: number) => {
-        setSelectedWordIndex(index);
-        setSelectedWord(word_been_said);
-        setSelectedWordToSay(word_to_say);
+    const handleWordClick = (index: number, status: number) => {
+        //status can be 0 , 1 , 2 , 3
+        // 0 its green
+        // 1 its yellow
+        // 2 its red
+        // 3 its blue
+        setSelectedIndex(index);
         setSelectedWordStatus(status);
     };
+    const handleTaamClick = (index: number) => {
+        setSelectedIndex(index);
+        setSelectedWordStatus(analysis?.analysis[index].word_status ?? 0)
+    }
     const handleScreenClick = () => {
-        setSelectedWordIndex(null);
-        setSelectedTaam(null);
+        setSelectedIndex(null);
         dispatch(setCommentDialog(false))
     };
 
     useEffect(() => {
-
-        axios.get(`${API_URL}/analysis/${session.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
-            .then(response => {
-                setAnalysis(response.data);
-                setIsLoading(false);
-            })
-            .catch(error => {
-                console.error("Error fetching analysis data:", error);
-                setIsLoading(false);
-            });
+        if (!downloaded) {
+            axios.get(`${API_URL}/analysis/${session.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
+                .then(response => {
+                    setAnalysis(response.data);
+                    console.log('down')
+                    setDownloaded(true)
+                    setIsLoading(false);
+                })
+                .catch(error => {
+                    console.error("Error fetching analysis data:", error);
+                    setIsLoading(false);
+                });
+        }
     }, [session.id, token]);
 
 
@@ -118,8 +121,6 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                     {analysis.analysis.filter((word) => word.word_status != 2).map((word, index) => {
                                         const status = word.word_status;
                                         const wordColor = status === 0 ? '#4caf50' : status === 1 ? '#ffc107' : '#2196f3';
-                                        const word_been_said = word.text;
-                                        const word_to_say = word.word_to_say;
 
                                         let underlineStyle = {};
                                         switch (word.taam_status) {
@@ -136,89 +137,36 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                                 underlineStyle = {};
                                         }
 
-                                        if (status === 0) {
+                                        if (word.taam) {
+
                                             return (
-                                                <Text key={index} style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word_been_said}`}</Text>
+                                                <TouchableOpacity key={index} onPress={() => handleWordClick(index, status)}>
+                                                    <Text style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word.text}`}</Text>
+                                                </TouchableOpacity>
                                             );
                                         }
-
                                         return (
-                                            <TouchableOpacity key={index} onPress={() => handleWordClick(index, word_been_said, word_to_say, status)}>
-                                                <Text style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word_been_said}`}</Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            </ScrollView>
-
-
-                            {selectedWordIndex !== null &&
-                                <Modal visible={true} transparent={true} animationType="fade">
-                                    <TouchableWithoutFeedback onPress={handleScreenClick}>
-                                        <View style={styles.modalContainer}>
-                                            <View style={{
-                                                width: '80%',
-                                                height: '40%',
-                                                backgroundColor: 'white',
-                                                padding: 20,
-                                                borderRadius: 10,
-                                                alignContent: 'center',
-                                                alignItems: 'center',
-                                                justifyContent: 'center'
-                                            }}>
-                                                {selectedWordStatus === 1 ?
-                                                    <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#ffc107' }}>
-                                                        <Text style={{ marginBottom: 10 }}>You said: {"\"" + selectedWord + "\""} not in the right place</Text>
-                                                        <Text style={{ marginBottom: 10 }}>Should be: {"\"" + selectedWordToSay + "\""} </Text>
-                                                    </View>
-                                                    :
-                                                    selectedWordStatus === 2 ?
-                                                        <View style={{ ...styles.redTimeContainer, backgroundColor: '#f44336' }}>
-                                                            <Text style={{ marginBottom: 5 }}>This word is not in the sample</Text>
-                                                            <Text>You said: {"\"" + selectedWord + "\""}</Text>
-                                                        </View>
-                                                        : selectedWordStatus === 3 ?
-                                                            <View style={{ ...styles.timeContainer, backgroundColor: '#2196f3' }}>
-                                                                <Text style={{ marginBottom: 10 }}>You missed that word: {"\"" + selectedWord + "\""}</Text>
-                                                            </View>
-                                                            :
-                                                            <>
-                                                                <Text style={[styles.word]}>{`${analysis.analysis[selectedWordIndex].text} , ${analysis.analysis[selectedWordIndex].end} - ${analysis.analysis[selectedWordIndex].start}`}</Text>
-                                                                <Text>{analysis.analysis[selectedWordIndex].exp}</Text>
-                                                            </>
-                                                }
-                                            </View >
-                                        </View>
-                                    </TouchableWithoutFeedback>
-                                </Modal>
-                            }
-                            <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, marginTop: 15 }}>מילים לא קשורות</Text>
-
-                            <ScrollView contentContainerStyle={styles.scrollViewContainer}>
-                                <View style={styles.badWordsContainer}>
-                                    {analysis.analysis.filter((word) => word.word_status === 2).map((word, index) => {
-                                        const wordColor = '#f44336';
-                                        const word_been_said = word.text;
-                                        return (
-                                            <TouchableOpacity key={index} >
-                                                <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
-                                            </TouchableOpacity>
+                                            <Text style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word.text}`}</Text>
                                         )
                                     })}
                                 </View>
                             </ScrollView>
+
                             <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 10, marginTop: 10 }}> ניתוח טעמים</Text>
 
                             <ScrollView contentContainerStyle={styles.scrollViewContainer}>
                                 <View style={styles.teamimContainer}>
                                     {analysis.analysis.map((taam, index) => {
                                         const wordColor = taam.taam_status === "GOOD" ? '#4caf50' : taam.taam_status === "BAD" ? '#ffc107' : '#f44336';
+                                        if (!taam.taam) {
+                                            return null
+                                        }
                                         return (
                                             <TouchableOpacity
-                                                onPress={() => setSelectedTaam(index)} key={index} >
+                                                onPress={() => handleTaamClick(index)} key={index} >
                                                 <View
                                                     style={{ ...styles.timeContainer, backgroundColor: wordColor }}>
-                                                    <Text style={[styles.word]}>{`${taam.text} , ${taam.end} - ${taam.start}`}</Text>
+                                                    <Text style={[styles.word]}>{`${taam.text} , ${taam.taam} `}</Text>
                                                 </View>
 
                                             </TouchableOpacity>
@@ -230,43 +178,95 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
 
 
 
-                            {selectedTaam !== null &&
+                            <>
+                                {analysis.analysis.filter((word) => word.word_status === 2).length != 0 &&
+                                    <>
+                                        <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, marginTop: 15 }}>מילים לא קשורות</Text>
+                                        <ScrollView contentContainerStyle={styles.scrollViewContainer}>
+                                            <View style={styles.badWordsContainer}>
+                                                {analysis.analysis.filter((word) => word.word_status === 2).map((word, index) => {
+                                                    const wordColor = '#f44336';
+                                                    const word_been_said = word.text;
+                                                    return (
+                                                        <TouchableOpacity key={index} >
+                                                            <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
+                                                        </TouchableOpacity>
+                                                    )
+                                                })}
+                                            </View>
+                                        </ScrollView>
+                                    </>
+                                }
+                            </>
+
+                            {selectedIndex != null &&
                                 <Modal visible={true} transparent={true} animationType="fade">
                                     <TouchableWithoutFeedback onPress={handleScreenClick}>
                                         <View style={styles.modalContainer}>
                                             <View style={{
-                                                width: '80%',
+                                                width: '90%',
                                                 backgroundColor: 'white',
-                                                height: '70%',
                                                 padding: 20,
                                                 borderRadius: 10,
                                                 alignContent: 'center',
                                                 alignItems: 'center',
                                                 justifyContent: 'center'
                                             }}>
-                                                <>
-                                                    <View style={{
-                                                        width: '100%',
-                                                        alignContent: 'center',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        direction: 'rtl'
-                                                    }}>
-                                                        <AudioRecord url={sample_url} device_uri={sample_uri} path={path_to_sample} startTime={analysis.analysis[selectedTaam].rav_start} endTime={analysis.analysis[selectedTaam].rav_end} is_sample={true}></AudioRecord>
-                                                        <AudioRecord url={analysis.url} device_uri={session_uri} path={path_to_session} startTime={analysis.analysis[selectedTaam].start} endTime={analysis.analysis[selectedTaam].end} is_sample={false}></AudioRecord>
-                                                        <Text style={[styles.word]}>{`${analysis.analysis[selectedTaam].text} , ${analysis.analysis[selectedTaam].end} - ${analysis.analysis[selectedTaam].start}`}</Text>
-                                                        <Text
-                                                            style={{ marginBottom: 10, direction: 'rtl' }}
+                                                {selectedWordStatus === 0 && analysis.analysis[selectedIndex].taam ?
+                                                    <>
+                                                        <View style={{
+                                                            width: '100%',
+                                                            height: '80%',
+                                                            alignContent: 'center',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            direction: 'rtl'
+                                                        }}>
+                                                            <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 }}>{`${analysis.analysis[selectedIndex].text} של הרב`}</Text>
+                                                            <AudioRecord url={sample_url} device_uri={sample_uri} path={path_to_sample} startTime={analysis.analysis[selectedIndex].rav_start} endTime={analysis.analysis[selectedIndex].rav_end} is_sample={true}></AudioRecord>
+                                                            <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, marginTop: 20 }}>{`${analysis.analysis[selectedIndex].text} של התלמיד`}</Text>
+                                                            <AudioRecord url={analysis.url} device_uri={session_uri} path={path_to_session} startTime={analysis.analysis[selectedIndex].start} endTime={analysis.analysis[selectedIndex].end} is_sample={false}></AudioRecord>
+                                                            <View
+                                                                style={{
+                                                                    width: '100%',
+                                                                    alignContent: 'center',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                }}>
+                                                                <Text style={{ marginTop: 10 }}>{`${analysis.analysis[selectedIndex].text} `}</Text>
+                                                                <Text style={{ marginTop: 10 }}>{`${analysis.analysis[selectedIndex].taam}`}</Text>
+                                                                <Text style={{ marginTop: 10, marginBottom: 10 }}>{` ${analysis.analysis[selectedIndex].end} - ${analysis.analysis[selectedIndex].start}`}</Text>
+                                                            </View>
+                                                            <Text
+                                                                style={{
+                                                                    marginTop: 10,
+                                                                    marginBottom: 10,
+                                                                    direction: 'rtl'
+                                                                }}
 
-                                                        >{analysis.analysis[selectedTaam].exp}</Text>
-                                                    </View>
-                                                </>
+                                                            >{analysis.analysis[selectedIndex].exp}</Text>
+                                                        </View>
+                                                    </>
+                                                    : selectedWordStatus === 1 ?
+                                                        //word not in the right place
+                                                        <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#ffc107' }}>
+                                                            <Text style={{ marginBottom: 10 }}>You said: {"\"" + analysis.analysis[selectedIndex].text + "\""} not in the right place</Text>
+                                                            <Text style={{ marginBottom: 10 }}>Should be: {"\"" + analysis.analysis[selectedIndex].word_to_say + "\""} </Text>
+                                                        </View>
+                                                        : selectedWordStatus === 3 ?
+                                                            <View style={{ ...styles.timeContainer, backgroundColor: '#2196f3' }}>
+                                                                <Text style={{ marginBottom: 10 }}>You missed that word: {"\"" + analysis.analysis[selectedIndex].text + "\""}</Text>
+                                                            </View>
+                                                            : null
+
+                                                }
 
                                             </View>
                                         </View>
                                     </TouchableWithoutFeedback>
                                 </Modal>
                             }
+
                             {rabbi ?
                                 <Modal visible={commentDialog} transparent={true} animationType="fade">
                                     <TouchableWithoutFeedback onPress={handleScreenClick}>
@@ -311,6 +311,13 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                                     <Title title={'הערות של הרב'} subtitle="" />
 
                                                     {session.rabbi_comments.map((cmt, index) => {
+                                                        if (!session.rabbi_comments.length) {
+                                                            return (
+                                                                <Text>
+                                                                    אין הערות
+                                                                </Text>
+                                                            )
+                                                        }
                                                         return (
                                                             <Text style={{
                                                                 color: 'black',

@@ -99,6 +99,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'red',
         borderRadius: 10,
         margin: 5,
+        height: 70,
+        marginTop: 20,
         padding: 10,
     },
     leftAction: {
@@ -107,6 +109,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'green',
         borderRadius: 10,
         margin: 5,
+        height: 70,
+        marginTop: 20,
         padding: 10,
     },
     deleteButton: {

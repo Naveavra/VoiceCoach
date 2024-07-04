@@ -33,6 +33,8 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
     const [voice, setVoice] = useState<Audio.Sound | null>(null);
     const [uri, setUri] = useState<string>(device_uri || '');
     const [hasAudio, setHasAudio] = useState<boolean>(device_uri && device_uri != '' && device_uri != undefined ? true : false);
+
+
     const handleSetUri = (uri: string) => {
         setUri(uri);
         saveAsync(path, uri);
@@ -81,24 +83,21 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
             }
         }
     };
+    const get_and_create = async () => {
+        //need to download
+        setIsLoading(true);
+        const downloadResult = await downloadSampleResumable.downloadAsync();
+        if (downloadResult) {
+            handleSetUri(downloadResult.uri);
+            saveAsync(path, downloadResult.uri);
+            createSound();
+        }
+    }
 
     const createSound = async () => {
         try {
-            let localUri = uri;
-            if (!localUri) {
-                localUri = await getAsync(path);
-            }
-            if (localUri == null || localUri == '') {
-                //need to download
-                setIsLoading(true);
-                const downloadResult = await downloadSampleResumable.downloadAsync();
-                if (downloadResult) {
-                    localUri = downloadResult.uri;
-                    handleSetUri(localUri);
-                }
-            }
             // success fetch from async storage
-            const { sound } = await Audio.Sound.createAsync({ uri: localUri }, { shouldPlay: false }, onPlaybackStatusUpdate);
+            const { sound } = await Audio.Sound.createAsync({ uri: uri }, { shouldPlay: false }, onPlaybackStatusUpdate);
             if (startTime)
                 await sound.setPositionAsync(timeStringToMillis(startTime));
             setVoice(sound);
@@ -186,8 +185,19 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
 
 
     useEffect(() => {
-        if (uri && uri != '') {
-            createSound();
+        if (!device_uri || device_uri == '') {
+            getAsync(path).then((res) => {
+                if (res) {
+                    setUri(res)
+                    createSound();
+                }
+                else {
+                    get_and_create()
+                }
+            })
+        }
+        else {
+            createSound()
         }
         return () => {
             if (voice) {
