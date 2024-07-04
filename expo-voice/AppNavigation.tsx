@@ -12,6 +12,9 @@ import { initializeDetails } from './common/redux/authReducer';
 import { AnalysisScreen } from './Screens/AnalysisScreen';
 import { SessionScreen } from './Screens/SessionScreen';
 import { AppMenu } from './common/components/Btn/AppMenu';
+import { AppComment } from './common/components/Btn/AppComment';
+import { useNavigation } from '@react-navigation/native';
+import { TouchableOpacity, Text } from 'react-native';
 
 export type RootStackParamList = {
     LogIn: undefined;
@@ -19,9 +22,9 @@ export type RootStackParamList = {
     Home: undefined;
     AddProject: undefined;
     Project: { id: number };
-    Session: { session: SessionData, local_uri: string };
-    AddRecord: { project: ProjectData };
-    Analysis: { session_id: number, analysis: Analysis, uri: string };
+    Session: { rabbi: boolean, session: SessionData, sample_url: string, session_uri: string, sample_uri: string };
+    AddRecord: { project: ProjectData, sample_uri: string };
+    Analysis: { session_id: number, result: Analysis, sample_uri: string, sample_url: string, path_to_sample: string, path_to_session: string };
 };
 
 const NavigationStack = createNativeStackNavigator<RootStackParamList>();
@@ -29,10 +32,14 @@ const NavigationStack = createNativeStackNavigator<RootStackParamList>();
 export const AppNavigation = () => {
     const { useAppSelector, dispatch } = useUtilities();
     const isLoggedIn = useAppSelector((state) => !!state.auth.token);
-
+    const shared = useAppSelector((state) => state.global.state);
     useEffect(() => {
         dispatch(initializeDetails());
     }, [dispatch]);
+
+
+
+
 
     return (
 
@@ -50,7 +57,9 @@ export const AppNavigation = () => {
                                 <NavigationStack.Screen name="Project" component={ProjectScreen} />
                                 <NavigationStack.Screen name="AddRecord" component={AddRecordingScreen} options={{ title: 'Add Recording' }} />
                                 <NavigationStack.Screen name="Analysis" component={AnalysisScreen} options={{ headerLeft: () => null, headerBackVisible: false }} />
-                                <NavigationStack.Screen name="Session" component={SessionScreen} />
+                                <NavigationStack.Screen name="Session" component={SessionScreen} options={{
+                                    headerRight: () => (shared ? <AppComment /> : null),
+                                }} />
                             </>
                         )
                     )

@@ -6,12 +6,14 @@ const reducerName = 'global';
 
 interface GlobalState {
     state: 'MyProjects' | 'SharedProjects'
+    commentDialog: boolean
     //todo add more states
 }
 
 
 const initialState: GlobalState = {
-    state: 'MyProjects'
+    state: 'MyProjects',
+    commentDialog: false
 };
 
 
@@ -21,9 +23,12 @@ export const globalReducer = createSlice({
     reducers: {
         setGlobalState: (state, action) => {
             state.state = action.payload;
+        },
+        setCommentDialog: (state, { payload }) => {
+            state.commentDialog = payload
         }
     }
 });
 
 
-export const { setGlobalState } = globalReducer.actions;
+export const { setGlobalState, setCommentDialog } = globalReducer.actions;

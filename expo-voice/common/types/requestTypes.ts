@@ -33,3 +33,7 @@ export interface addSessionData extends baseCredentials {
 export interface deleteSessionData extends baseCredentials {
     session_id: number;
 }
+export interface addCommentData extends baseCredentials {
+    session_id: number;
+    comment: string;
+}

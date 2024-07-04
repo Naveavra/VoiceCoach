@@ -32,7 +32,7 @@ const AppFlatList = ({ isLoading, objects, elements, style = {} }: AppDrawerProp
                 contentContainerStyle={{ paddingTop: 30 }}
                 renderItem={({ item, index }) => {
                     return (
-                        <UIBox style={index > 0 ? styles.contentItem : styles.contentItemFirst}>
+                        <UIBox style={styles.contentItem}>
                             <AppFlatListItem item={{ object: item.object, render: item.render, id: item.id }} viewableItems={viewableItems} />
                         </UIBox >
                     )
@@ -44,21 +44,13 @@ const AppFlatList = ({ isLoading, objects, elements, style = {} }: AppDrawerProp
 
 export default AppFlatList;
 
-const contentItemBase = {
-    paddingHorizontal: defaultTheme.shape.spacing.medium,
-}
-
 const styles = StyleSheet.create({
     container: {
-        height: '70%',
-        flex: 1
+        height: '60%',
+        flex: 1,
     },
     contentItem: {
-        ...contentItemBase,
-        paddingTop: defaultTheme.shape.spacing.large
-
-    },
-    contentItemFirst: {
-        ...contentItemBase
+        paddingHorizontal: defaultTheme.shape.spacing.small,
+        bottom: 25
     }
 });

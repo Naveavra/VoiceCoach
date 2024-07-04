@@ -40,6 +40,8 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
         ]);
     };
 
+  
+  
     const openDocumentPicker = async () => {
         let document: any;
         try {
@@ -65,7 +67,6 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
                         'Content-Type': 'multipart/form-data',
                         'Authorization': `Bearer ${token}`
                     },
-                    onUploadProgress,
                 };
 
                 // Send the document using Axios POST request
