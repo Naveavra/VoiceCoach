@@ -17,6 +17,8 @@ import { delay, formatTime } from "../common/utils";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
 import Slider from '@react-native-community/slider';
 import { punctuation, similarity } from "../common/data/torah";
+import { Circle } from 'react-native-progress';
+
 
 LogBox.ignoreLogs([
     'Non-serializable values were found in the navigation state',
@@ -63,6 +65,24 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const scrollY = useSharedValue(0);
 
     const [recordings, setRecordings] = useState<QueueItem[]>([])
+
+    const [countdown, setCountdown] = useState<number>(0);
+
+    const startCountdown = () => {
+        // let counter = 3;
+        // setCountdown(counter);
+        // const countdownInterval = setInterval(() => {
+        //     counter--;
+        //     setCountdown(counter);
+        //     if (counter === 1) {
+        //         handleRecord();
+        //     }
+        //     if (counter === 0) {
+        //         clearInterval(countdownInterval);
+        //         setCountdown(0);
+        //     }
+        // }, 1000);
+    };
 
     const errorAlert = () => {
         Alert.alert('Error', 'Something went wrong', [
@@ -308,9 +328,25 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     };
 
     const handleStartButtonClick = () => {
-        setStatus('recording');
-        const promise = loop();
-        setLoopPromise(promise);
+        setStatus('countdown');
+        let counter = 3;
+        setCountdown(counter);
+        const countdownInterval = setInterval(() => {
+            counter--;
+            setCountdown(counter);
+            if (counter === 1) {
+                const promise = loop();
+                setLoopPromise(promise);
+            }
+            if (counter === 0) {
+                setStatus('recording');
+                clearInterval(countdownInterval);
+                setCountdown(0);
+            }
+        }, 1000);
+        // setStatus('recording');
+        // const promise = loop();
+        // setLoopPromise(promise);
     };
 
     const handleStopButtonClick = async () => {
@@ -431,9 +467,9 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         }
                     </Animated.View>
                 </SafeAreaView>
-                <View style={styles.transcriptContainer}>
+                {/* <View style={styles.transcriptContainer}>
                     {transcript && <Text>{transcript}</Text>}
-                </View>
+                </View> */}
                 <View style={styles.mainContainer}>
                     {status == '' ?
                         <>
@@ -444,79 +480,92 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                 </TouchableOpacity>
                             </View>
                         </>
+
                         :
-                        status == 'recording' ?
+                        status == 'countdown' ?
                             <>
-                                <View style={{
-                                    flex: 1,
-                                    flexDirection: "column",
-                                    justifyContent: "center",
-                                    alignItems: "center",
-                                }}>
-                                    <View style={styles.itemsContainer}>
-                                        <View style={styles.itemContainer}>
-                                            <AntDesign name="pause" size={24} color="black" onPress={pauseRecording} />
-                                            <Text>Pause Recording</Text>
-                                        </View>
-                                        <View style={styles.itemContainer}>
-                                            <Entypo name="controller-stop" size={24} color="black" onPress={handleStopButtonClick} />
-                                            <Text>Stop Recording</Text>
-                                        </View>
-                                    </View>
-                                    <View style={styles.timerContainer}>
-                                        <Text>Recording Time: {formatTime(recordingTime)}</Text>
-                                    </View>
+                                <View style={styles.countdownContainer}>
+                                    <Circle
+                                        size={150}
+                                        progress={countdown / 3}
+                                        showsText={true}
+                                        formatText={() => `${countdown}`}
+                                    />
                                 </View>
                             </>
                             :
-                            status == 'paused' ?
+                            status == 'recording' ?
                                 <>
                                     <View style={{
                                         flex: 1,
                                         flexDirection: "column",
                                         justifyContent: "center",
-                                        alignItems: "center"
+                                        alignItems: "center",
                                     }}>
-
                                         <View style={styles.itemsContainer}>
                                             <View style={styles.itemContainer}>
-                                                <Entypo name="controller-play" size={24} color="black" onPress={resumeRecording} />
-                                                <Text>Resume Recording</Text>
+                                                <AntDesign name="pause" size={24} color="black" onPress={pauseRecording} />
+                                                <Text>Pause Recording</Text>
                                             </View>
                                             <View style={styles.itemContainer}>
                                                 <Entypo name="controller-stop" size={24} color="black" onPress={handleStopButtonClick} />
                                                 <Text>Stop Recording</Text>
                                             </View>
                                         </View>
-                                        <View style={styles.itemsContainer}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                <Slider
-                                                    style={{ width: 200, height: 40, direction: 'ltr' }}
-                                                    minimumValue={0}
-                                                    maximumValue={recordingTime}
-                                                    value={currentPosition}
-                                                    onValueChange={handleSliderChange}
-                                                    minimumTrackTintColor="#1976d2"
-                                                    maximumTrackTintColor="#000000"
-                                                    step={0.1}
-                                                />
-                                                <Text>{formatTime(currentPosition)}</Text>
-                                            </View>
+                                        <View style={styles.timerContainer}>
+                                            <Text>Recording Time: {formatTime(recordingTime)}</Text>
                                         </View>
                                     </View>
                                 </>
                                 :
-                                status == 'stopped' ?
+                                status == 'paused' ?
                                     <>
-                                        {isLoading ?
+                                        <View style={{
+                                            flex: 1,
+                                            flexDirection: "column",
+                                            justifyContent: "center",
+                                            alignItems: "center"
+                                        }}>
+
                                             <View style={styles.itemsContainer}>
-                                                <ActivityIndicator animating={true} color={"#1976d2"} size={80} />
+                                                <View style={styles.itemContainer}>
+                                                    <Entypo name="controller-play" size={24} color="black" onPress={resumeRecording} />
+                                                    <Text>Resume Recording</Text>
+                                                </View>
+                                                <View style={styles.itemContainer}>
+                                                    <Entypo name="controller-stop" size={24} color="black" onPress={handleStopButtonClick} />
+                                                    <Text>Stop Recording</Text>
+                                                </View>
                                             </View>
-                                            : null
-                                        }
+                                            <View style={styles.itemsContainer}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                    <Slider
+                                                        style={{ width: 200, height: 40, direction: 'ltr' }}
+                                                        minimumValue={0}
+                                                        maximumValue={recordingTime}
+                                                        value={currentPosition}
+                                                        onValueChange={handleSliderChange}
+                                                        minimumTrackTintColor="#1976d2"
+                                                        maximumTrackTintColor="#000000"
+                                                        step={0.1}
+                                                    />
+                                                    <Text>{formatTime(currentPosition)}</Text>
+                                                </View>
+                                            </View>
+                                        </View>
                                     </>
                                     :
-                                    null
+                                    status == 'stopped' ?
+                                        <>
+                                            {isLoading ?
+                                                <View style={styles.itemsContainer}>
+                                                    <ActivityIndicator animating={true} color={"#1976d2"} size={80} />
+                                                </View>
+                                                : null
+                                            }
+                                        </>
+                                        :
+                                        null
                     }
                 </View>
             </View >
@@ -596,6 +645,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    countdownContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        flex: 1,
     },
     homeBtn: {
         margin: 5,
