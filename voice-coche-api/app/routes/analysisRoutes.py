@@ -44,35 +44,37 @@ def init_analysis_routes(app, recordings):
                 recordings.pop(session_id)
             else:
                 return jsonify({"analysis": [], 'created_at': "", "url": "", "project_url":"", "score": 0, "teamin_stats":{}}), 200
-        
+
         if  session.analysis_id is not None:
             analysis = Analysis.query.get(session.analysis_id)
-            return jsonify({"analysis": get_time_json(json.loads(analysis.teamim)), 'created_at': analysis.created_at, "url": session.url,
-             "project_url": Project.query.get(session.project_id).sample_url, "score": 80}), 200
+            return jsonify({"analysis": json.loads(analysis.teamim), 'created_at': analysis.created_at, "url": session.url,
+             "project_url": Project.query.get(session.project_id).sample_url, "score": int(session.score), "teamin_stats": {}}), 200
 
+        print("here")
         audio_file_like = io.BytesIO(session.recording)
         audio = AudioSegment.from_file(audio_file_like)
         duration_seconds = audio.duration_seconds
 
-        print("for teamim")
         project = Project.query.get(session.project_id)
-        print("for teamim2")
         if session.session_teamim is None:
-            teamim = getTeamim(session.recording, duration_seconds, project.parasha_ref_clean.text, project.parasha_ref_mark.text)
+            teamim = getTeamim(session.recording, duration_seconds, project.parasha_ref_clean.text, project.parasha_ref_mark.text, None)
             session.session_teamim = json.dumps(teamim)
 
         print("started analysis")
-        ans_analysis = compare(project.sample_clip, session.recording, json.loads(session.session_teamim), json.loads(project.sample_teamim))
+        ans_analysis, score = compare(project.sample_clip, session.recording, json.loads(session.session_teamim), json.loads(project.sample_teamim))
+        score = round(score, 2)
         #first comes the teacher
-        taam_stats = taam_performance(json.loads(project.sample_teamim),json.loads(session.session_teamim))
-        print(f"teamim status: {taam_stats}")
+        #taam_stats = taam_performance(json.loads(project.sample_teamim),json.loads(session.session_teamim))
+        taam_stats = {}
+        get_time_json(ans_analysis)
         analysis = Analysis(json.dumps(ans_analysis))
         session.analysis = analysis
         session.analysis_id = analysis.id
+        session.score = score
         db.session.add(analysis)
         db.session.commit()
         #TODO: add total score.
-        return jsonify({"analysis": get_time_json(ans_analysis), "url": session.url, "project_url": project.sample_url, "score": 80, "teamin_stats": taam_stats})
+        return jsonify({"analysis": ans_analysis, 'created_at': analysis.created_at, "url": session.url, "project_url": project.sample_url, "score": int(score), "teamin_stats": taam_stats})
                     
 
 def getMatchTeamim(user_teamim, sample_teamim):
@@ -85,6 +87,8 @@ def getMatchTeamim(user_teamim, sample_teamim):
     place_check = []
     offset_words = 0
     nonesense_words = 0
+    last_word_user = -1
+    last_word_sample = -1
 
 
     for i in range(0, len(user_teamim)):
@@ -95,9 +99,27 @@ def getMatchTeamim(user_teamim, sample_teamim):
             sample_delete = None
             row = user_teamim[i]
 
-            for j in range(i, len(sample_teamim)):
+            for j in range(last_word_sample+1, len(sample_teamim)):
                 row2 = sample_teamim[j]
-                if row['text'] == row2['text'] and j not in place_check:
+                if row['text'] == row2['text'] and row['parasha_place'] == row2['parasha_place'] and j not in place_check:
+                    rep = j-1
+                    while sample_teamim[rep]['broken'] and rep > -1:
+                        rep = rep - 1
+                    if last_word_user != -1 and user_teamim[last_word_user]['parasha_place'] != sample_teamim[rep]['parasha_place']:
+                        row['word_status'] = 1
+                        row['word_to_say'] = sample_teamim[rep]['text']
+                    else:
+                        row['word_to_say'] = ""
+                        row['word_status'] = 0
+                    '''
+                    if i > 0 and user_teamim[i-1]['parasha_place'] != sample_teamim[j-1]['parasha_place']:
+                        row['word_status'] = 1
+                        row['word_to_say'] = sample_teamim[j-1]['text']
+                    else:
+                        row['word_to_say'] = ""
+                        row['word_status'] = 0
+                    '''
+                    '''
                     if j != i + offset_words + nonesense_words and j != i + offset_words - nonesense_words:
                         row['word_status'] = 1
                         rep = i+offset_words
@@ -109,11 +131,14 @@ def getMatchTeamim(user_teamim, sample_teamim):
                     else:
                         row['word_to_say'] = ""
                         row['word_status'] = 0
+                    '''
 
                     matching_elements_session.append(row)
                     matching_elements_sample.append(row2)
                     sample_delete = row2
                     place_check.append(j)
+                    last_word_sample = j
+                    last_word_user = i
                     break
             if sample_delete is not None:
                 missing_words.remove(sample_delete)
@@ -171,7 +196,7 @@ def compare(sample_wav, user_wav, user_json, sample_json):
         row['rav_start'] = 0.0
         row['rav_end'] = 0.0
         analysis.append(row)
-    return analysis
+    return analysis, score
 
 def get_time_json(analysis):#should be mm:ss:mm for start, end, rav_start, rav_end
     for word in analysis:
@@ -182,11 +207,12 @@ def get_time_json(analysis):#should be mm:ss:mm for start, end, rav_start, rav_e
     return analysis
 
 def get_time(time):
-    minute = int(time//60)
-    time = time % 60
-    second = int(time // 1)
-    time = time % 1 
-    milli = int(time*100)
+    time = time*100
+    minute = int(time//6000)
+    time = time % 6000
+    second = int(time // 100)
+    time = time % 100
+    milli = int(time)
     return "{:02d}:{:02d}:{:02d}".format(minute, second, milli)
 
 
@@ -365,8 +391,6 @@ def taam_performance(teacher_data, student_data):
 
 def process_recordings(teacher_audio_data, student_audio_data, teacher_data, student_data):
     output = []
-    print(f"student data: {student_data}")
-    print(f"teacher data: {teacher_data}")
     len_teacher = len(teacher_data)
     total_score = 0
 
@@ -396,5 +420,5 @@ def process_recordings(teacher_audio_data, student_audio_data, teacher_data, stu
             student_data[i]['taam_status'] = review
 
             output.append(student_data[i])
-    average_score = total_score / len_teacher if len_teacher > 0 else 0
+    average_score = total_score / len(student_data) if len(student_data) > 0 else 0
     return output, average_score

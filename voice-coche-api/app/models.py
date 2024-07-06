@@ -40,6 +40,7 @@ class Session(db.Model):
     analysis = db.relationship('Analysis', backref='Session', cascade="all, delete", lazy=True)
     session_teamim = db.Column(db.Text, nullable=True)
     rabbi_comments = db.Column(db.Text, nullable=True)
+    score = db.Column(db.Float, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
     url = db.Column(db.String(255), nullable=True)
 
@@ -48,13 +49,23 @@ class Session(db.Model):
         self.created_at = datetime.utcnow()
 
     def simpleSerialize(self):
+        new_rabbi_comments = []
+        added = False
+        if self.rabbi_comments is not None:
+            old_rabbi_comments = json.loads(self.rabbi_comments)
+            for comment in old_rabbi_comments:
+                if not comment[1]:
+                    added = True
+                new_rabbi_comments.append((comment[0], True))
+        self.rabbi_comments = json.dumps(new_rabbi_comments)
         return {
             'id': self.id,
             'project_id': self.project_id,
             'rabbi_comments': json.loads(self.rabbi_comments) if self.rabbi_comments is not None else [],
+            'new_comment': added,
             'created_at': self.created_at,
             'url': self.url,
-            'score': 80,
+            'score': self.score,
         }
 
 class Analysis(db.Model):
@@ -106,8 +117,8 @@ class Project(db.Model):
             'parasha': self.parasha,
             'aliyah': self.aliyah,
             'description': self.description,
-            'clean_text': re.sub(' +', ' ', self.parasha_ref_clean.text.replace('\t', '').replace('\n', '').replace('׃', '').replace('-', '').replace('־', ' ').replace('׀', '')).strip() if self.parasha_ref_clean is not None else "",
-            'mark_text': re.sub(' +', ' ', self.parasha_ref_mark.text.replace('\t', '').replace('\n', '').replace('׃', '').replace('-', '').replace('־', ' ').replace('׀', '')).strip() if self.parasha_ref_mark is not None else "",
+            'clean_text': re.sub(' +', ' ', self.parasha_ref_clean.text.replace('\t', '').replace('\n', '').replace('׃', '').replace('-', '').replace('־', ' ').replace('׀', '').replace('ׁ', '')).strip() if self.parasha_ref_clean is not None else "",
+            'mark_text': re.sub(' +', ' ', self.parasha_ref_mark.text.replace('\t', '').replace('\n', '')).strip() if self.parasha_ref_mark is not None else "",
             'created_at': self.created_at,
             'created_by': self.creator_email,
             'rabbi_email': self.rabbi_email,

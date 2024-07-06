@@ -127,12 +127,11 @@ def init_session_routes(app, recordings):
         project = Project.query.get(session.project_id)
         if project.rabbi_email != current_user.email:
             return jsonify({"error": "user not allowed to leave comments on this project"}), 401
-        print(data)
         comment = data.get("comment")
         comments = []
         if session.rabbi_comments is not None:
             comments = json.loads(session.rabbi_comments)
-        comments.append(comment)
+        comments.append((comment, False))
         session.rabbi_comments = json.dumps(comments)
         db.session.commit()
         return jsonify({"success": "comment was successfully saved for the user to see"}), 201
