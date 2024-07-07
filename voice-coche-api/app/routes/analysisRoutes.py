@@ -129,7 +129,7 @@ def compare(sample_wav, user_wav, user_json, sample_json):
     last_place = 0
     place_not_found = []
     combined = []
-    print(analysis)
+    # print(analysis)
     for row in missing_words:
         if not row['broken']:
             row['word_status'] = 3
@@ -339,17 +339,25 @@ def taam_performance(teacher_data, student_data):
             if teacher['taam'] in taam_stats:
                 taam = teacher['taam']
                 
-                if taam == 'etnach':
+                if taam in ['etnach', 'zaqef katan', 'maarih tarha', 'sof pasuk', 'pasek']:
                     # Calculate downtime percentage after the word
-                    if i < len(teacher_data) - 1:
+                    if i < min_len - 1:
                         teacher_downtime = teacher_data[i + 1]['start'] - teacher['end']
                         student_downtime = student_data[i + 1]['start'] - student['end']
-                        if teacher_downtime > 0 and student_downtime > 0:
-                            downtime_ratio = student_downtime / teacher_downtime
-                            if 0.8 <= downtime_ratio <= 1.2:
+                        #print(f"Teacher downtime for taam {taam} at index {i}: {teacher_downtime}")
+                        #print(f"Student downtime for taam {taam} at index {i}: {student_downtime}")
+
+                        if teacher_downtime == 0 and student_downtime == 0:
+                            taam_stats[taam]['correct_count'] += 1
+                        elif teacher_downtime == 0 or student_downtime == 0:
+                            # If one of them is zero and the other is not, consider it incorrect
+                            pass
+                        else:
+                            time_ratio = student_downtime / teacher_downtime
+                            if 0.8 <= time_ratio <= 1.2:
                                 taam_stats[taam]['correct_count'] += 1
-                            taam_stats[taam]['total_count'] += 1
-                elif taam == 'revia' or taam == 'trei kadmin' or taam == 'pazer gadol':
+                        taam_stats[taam]['total_count'] += 1
+                elif taam in ['revia', 'trei kadmin', 'pazer gadol', 'tevir', 'shene gereshin', 'zarqa']:
                     # Check how much time the word took
                     teacher_word_time = teacher['end'] - teacher['start']
                     student_word_time = student['end'] - student['start']
@@ -360,13 +368,16 @@ def taam_performance(teacher_data, student_data):
                 # Add more rules for other taamim
 
     taamim_feedback = {taam: (stats['correct_count'], stats['total_count']) for taam, stats in taam_stats.items()}
-    return taamim_feedback
-
+    # print (f'teamin feedback: {taamim_feedback}')
+    # Calculate grades
+    taamim_grades = {taam: (stats['correct_count'] / stats['total_count']) * 100 for taam, stats in taam_stats.items() if stats['total_count'] > 0}
+    
+    return taamim_grades
 
 def process_recordings(teacher_audio_data, student_audio_data, teacher_data, student_data):
     output = []
-    print(f"student data: {student_data}")
-    print(f"teacher data: {teacher_data}")
+    # print(f"student data: {student_data}")
+    # print(f"teacher data: {teacher_data}")
     len_teacher = len(teacher_data)
     total_score = 0
 
