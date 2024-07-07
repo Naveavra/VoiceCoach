@@ -1,13 +1,15 @@
 import React from 'react';
-import { View, StyleSheet } from "react-native";
-import { SessionData } from "../types/systemTypes";
+import { View, StyleSheet } from 'react-native';
+import { SessionData } from '../types/systemTypes';
 import { UIButton } from '../ui/components';
 import { Swipeable } from 'react-native-gesture-handler';
 import { formatDate } from '../utils';
+import { AntDesign } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface AppProjectCardProps {
     session: SessionData,
-    onPress: () => void,
+    onPress: (rabbi: boolean) => void,
     onDelete: () => void,
     onEdit: () => void
 }
@@ -26,6 +28,7 @@ const AppSessionCard: React.FC<AppProjectCardProps> = ({ session, onPress, onDel
             </View>
         );
     };
+
     const renderLeftActions = () => {
         return (
             <View style={styles.leftAction}>
@@ -39,37 +42,56 @@ const AppSessionCard: React.FC<AppProjectCardProps> = ({ session, onPress, onDel
         );
     };
 
-
     return (
         <Swipeable
             renderRightActions={renderRightActions}
             renderLeftActions={renderLeftActions}
+            containerStyle={styles.container}
         >
-            <UIButton
-                to_tap={true}
-                title={`${formatDate(session.created_at, false)}`}
-                onClick={onPress}
-                style={styles.card}
-            />
+            <View style={styles.cardContainer}>
+                <UIButton
+                    to_tap={true}
+                    title={`${formatDate(session.created_at, false)} - ${session.score}%`}
+                    onClick={() => onPress(false)}
+                    style={styles.card}
+                />
+                {session.new_comment && (
+                    <View style={styles.indicator}>
+                        <MaterialCommunityIcons name="alert-decagram-outline" size={20} color="black" />
+                    </View>
+                )}
+            </View>
         </Swipeable>
     );
 }
+
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        width: 340,
+        height: 110,
+        alignItems: 'center',
+        justifyContent: 'center'
+
+    },
+    cardContainer: {
+        position: 'relative',
+        width: 300,
+        margin: 5,
+    },
     card: {
         flexDirection: 'row',
-        width: 300,
         height: 70,
-        margin: 5,
         padding: 5,
-        backgroundColor: '#007BFF', // Change the background color to make it stand out
+        backgroundColor: '#007BFF',
         borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000', // Add shadow for a 3D effect
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.8,
         shadowRadius: 2,
-        elevation: 5, // Add elevation for Android shadow
+        elevation: 5,
     },
     rightAction: {
         justifyContent: 'center',
@@ -77,6 +99,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'red',
         borderRadius: 10,
         margin: 5,
+        height: 70,
+        marginTop: 20,
         padding: 10,
     },
     leftAction: {
@@ -85,6 +109,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'green',
         borderRadius: 10,
         margin: 5,
+        height: 70,
+        marginTop: 20,
         padding: 10,
     },
     deleteButton: {
@@ -96,6 +122,11 @@ const styles = StyleSheet.create({
     actionText: {
         color: '#fff',
         fontWeight: 'bold',
+    },
+    indicator: {
+        position: 'absolute',
+        top: -15,
+        right: -15,
     },
 });
 

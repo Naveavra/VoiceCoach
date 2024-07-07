@@ -1,8 +1,9 @@
 import axios from "axios";
 import { Audio } from "expo-av";
+import * as FileSystem from 'expo-file-system';
 import { Recording } from "expo-av/build/Audio";
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator, Switch, BackHandler, Modal, TouchableWithoutFeedback } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator, Switch } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../AppNavigation";
 import { API_URL } from "../common/config";
@@ -16,6 +17,8 @@ import { delay, formatTime } from "../common/utils";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
 import Slider from '@react-native-community/slider';
 import { punctuation, similarity } from "../common/data/torah";
+import { Circle } from 'react-native-progress';
+
 
 LogBox.ignoreLogs([
     'Non-serializable values were found in the navigation state',
@@ -29,12 +32,17 @@ let marked_index = 0;
 let send = true;
 let start = 0;
 let end = 0;
+let recording_index = 0;
 
+interface QueueItem {
+    recording: Audio.Recording;
+    recording_index: number;
+}
 export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProps) => {
     const { dispatch, useAppSelector } = useUtilities();
     const { token } = useAuth({});
     const selected_session = useAppSelector((state) => state.project.selectedSession);
-    const { project } = route.params;
+    const { project, sample_uri } = route.params;
 
 
     const loopRunning = useRef<boolean>(false);
@@ -55,6 +63,27 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const [wordColors, setWordColors] = useState<string[]>(project.clean_text.split(" ").map(() => 'black'));
     const [markedWordsColors, setMarkedWordsColors] = useState<string[]>(project.mark_text.split(" ").map(() => 'black'));
     const scrollY = useSharedValue(0);
+
+    const [recordings, setRecordings] = useState<QueueItem[]>([])
+
+    const [countdown, setCountdown] = useState<number>(0);
+
+    const startCountdown = () => {
+        // let counter = 3;
+        // setCountdown(counter);
+        // const countdownInterval = setInterval(() => {
+        //     counter--;
+        //     setCountdown(counter);
+        //     if (counter === 1) {
+        //         handleRecord();
+        //     }
+        //     if (counter === 0) {
+        //         clearInterval(countdownInterval);
+        //         setCountdown(0);
+        //     }
+        // }, 1000);
+    };
+
     const errorAlert = () => {
         Alert.alert('Error', 'Something went wrong', [
             {
@@ -62,8 +91,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             },
         ]);
     }
-
-    const sendAudioData = async (recording: Audio.Recording | undefined, done: boolean) => {
+    const sendAudioData = async (recording: Audio.Recording, done: boolean) => {
         try {
             const url = `${API_URL}/upload/${selected_session.id}`;
             if (recording) {
@@ -188,7 +216,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         })
     }
 
-    const startRecording = async (): Promise<Audio.Recording | undefined> => {
+    const startRecording = async (): Promise<Audio.Recording> => {
         try {
             if (permissionResponse && permissionResponse.status !== 'granted') {
                 await requestPermission();
@@ -205,6 +233,9 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             return recording;
         } catch (err) {
             console.error('Failed to start recording', err);
+            errorAlert();
+            stopLoop();
+            return recording;
         }
     }
 
@@ -258,14 +289,14 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         }
     };
 
-    const stopRecording = async (record: Recording): Promise<string | null> => {
+    const stopRecording = async (record: Recording): Promise<Recording> => {
         await record.stopAndUnloadAsync();
         await Audio.setAudioModeAsync(
             {
                 allowsRecordingIOS: false,
             }
         );
-        return record.getURI();
+        return record;
     }
 
     const loop = async () => {
@@ -277,18 +308,19 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             }, 1000);
             setTimerInterval(timer);
             while (loopRunning.current) {
-
-                const record = await startRecording();
+                let record = await startRecording();
                 await delay(5000);
-                if (record) {
-                    await stopRecording(record);
-                    sendAudioData(record, false);
-                }
-
+                await stopRecording(record);
+                setRecordings((prev) => [...prev, { recording: record, recording_index: recording_index }]);
+                recording_index++;
             }
             clearInterval(timer);
         }
     }
+    useEffect(() => {
+        if (recordings.length > 0)
+            sendAudioData(recordings[recordings.length - 1].recording, false)
+    }, [recordings]);
 
     const stopLoop = () => {
         loopRunning.current = false;
@@ -296,9 +328,25 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     };
 
     const handleStartButtonClick = () => {
-        setStatus('recording');
-        const promise = loop();
-        setLoopPromise(promise);
+        setStatus('countdown');
+        let counter = 3;
+        setCountdown(counter);
+        const countdownInterval = setInterval(() => {
+            counter--;
+            setCountdown(counter);
+            if (counter === 1) {
+                const promise = loop();
+                setLoopPromise(promise);
+            }
+            if (counter === 0) {
+                setStatus('recording');
+                clearInterval(countdownInterval);
+                setCountdown(0);
+            }
+        }, 1000);
+        // setStatus('recording');
+        // const promise = loop();
+        // setLoopPromise(promise);
     };
 
     const handleStopButtonClick = async () => {
@@ -312,6 +360,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         }
         if (recording) {
             await stopRecording(recording);
+            //sendAudioData(recordings[recordings.length - 1].recording, true).then(() => {
             sendAudioData(recording, true).then(() => {
                 axios.get(`${API_URL}/analysis/${selected_session.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
                     .then((response) => {
@@ -323,10 +372,15 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         // get the uri from async storage or from the downloaded file
                         // navigate to the analysis page
                         //
+                        //clear the recordings
+                        setRecordings([]);
                         navigation.navigate('Analysis', {
-                            analysis: response.data,
+                            result: response.data,
                             session_id: selected_session.id,
-                            uri: '',
+                            sample_uri: sample_uri,
+                            sample_url: project.sample_url,
+                            path_to_sample: `project_${project.id}`,
+                            path_to_session: `session_${selected_session.id}`
                         });
                     });
             });
@@ -356,7 +410,6 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
 
     const handleSliderChange = (value: number) => {
         value = Number(value.toFixed(2));
-        console.log(value);
         setCurrentPosition(value);
         start = value;
     }
@@ -389,7 +442,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                     style={[
                                         styles.word,
                                         { color: markedWordsColors[index] },
-                                        currentMarkedWord === index && styles.highlight,
+                                        // currentMarkedWord === index && styles.highlight,
                                     ]}
                                 >
                                     {word}{' '}
@@ -404,7 +457,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                         style={[
                                             styles.word,
                                             { color: wordColors[index] },
-                                            currentWord === index && styles.highlight,
+                                            // currentWord === index && styles.highlight,
                                         ]}
                                     >
                                         {word}{' '}
@@ -414,9 +467,9 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         }
                     </Animated.View>
                 </SafeAreaView>
-                <View style={styles.transcriptContainer}>
+                {/* <View style={styles.transcriptContainer}>
                     {transcript && <Text>{transcript}</Text>}
-                </View>
+                </View> */}
                 <View style={styles.mainContainer}>
                     {status == '' ?
                         <>
@@ -427,79 +480,92 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                 </TouchableOpacity>
                             </View>
                         </>
+
                         :
-                        status == 'recording' ?
+                        status == 'countdown' ?
                             <>
-                                <View style={{
-                                    flex: 1,
-                                    flexDirection: "column",
-                                    justifyContent: "center",
-                                    alignItems: "center",
-                                }}>
-                                    <View style={styles.itemsContainer}>
-                                        <View style={styles.itemContainer}>
-                                            <AntDesign name="pause" size={24} color="black" onPress={pauseRecording} />
-                                            <Text>Pause Recording</Text>
-                                        </View>
-                                        <View style={styles.itemContainer}>
-                                            <Entypo name="controller-stop" size={24} color="black" onPress={handleStopButtonClick} />
-                                            <Text>Stop Recording</Text>
-                                        </View>
-                                    </View>
-                                    <View style={styles.timerContainer}>
-                                        <Text>Recording Time: {formatTime(recordingTime)}</Text>
-                                    </View>
+                                <View style={styles.countdownContainer}>
+                                    <Circle
+                                        size={150}
+                                        progress={countdown / 3}
+                                        showsText={true}
+                                        formatText={() => `${countdown}`}
+                                    />
                                 </View>
                             </>
                             :
-                            status == 'paused' ?
+                            status == 'recording' ?
                                 <>
                                     <View style={{
                                         flex: 1,
                                         flexDirection: "column",
                                         justifyContent: "center",
-                                        alignItems: "center"
+                                        alignItems: "center",
                                     }}>
-
                                         <View style={styles.itemsContainer}>
                                             <View style={styles.itemContainer}>
-                                                <Entypo name="controller-play" size={24} color="black" onPress={resumeRecording} />
-                                                <Text>Resume Recording</Text>
+                                                <AntDesign name="pause" size={24} color="black" onPress={pauseRecording} />
+                                                <Text>Pause Recording</Text>
                                             </View>
                                             <View style={styles.itemContainer}>
                                                 <Entypo name="controller-stop" size={24} color="black" onPress={handleStopButtonClick} />
                                                 <Text>Stop Recording</Text>
                                             </View>
                                         </View>
-                                        <View style={styles.itemsContainer}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                <Slider
-                                                    style={{ width: 200, height: 40, direction: 'ltr' }}
-                                                    minimumValue={0}
-                                                    maximumValue={recordingTime}
-                                                    value={currentPosition}
-                                                    onValueChange={handleSliderChange}
-                                                    minimumTrackTintColor="#1976d2"
-                                                    maximumTrackTintColor="#000000"
-                                                    step={0.1}
-                                                />
-                                                <Text>{formatTime(currentPosition)}</Text>
-                                            </View>
+                                        <View style={styles.timerContainer}>
+                                            <Text>Recording Time: {formatTime(recordingTime)}</Text>
                                         </View>
                                     </View>
                                 </>
                                 :
-                                status == 'stopped' ?
+                                status == 'paused' ?
                                     <>
-                                        {isLoading ?
+                                        <View style={{
+                                            flex: 1,
+                                            flexDirection: "column",
+                                            justifyContent: "center",
+                                            alignItems: "center"
+                                        }}>
+
                                             <View style={styles.itemsContainer}>
-                                                <ActivityIndicator animating={true} color={"#1976d2"} size={80} />
+                                                <View style={styles.itemContainer}>
+                                                    <Entypo name="controller-play" size={24} color="black" onPress={resumeRecording} />
+                                                    <Text>Resume Recording</Text>
+                                                </View>
+                                                <View style={styles.itemContainer}>
+                                                    <Entypo name="controller-stop" size={24} color="black" onPress={handleStopButtonClick} />
+                                                    <Text>Stop Recording</Text>
+                                                </View>
                                             </View>
-                                            : null
-                                        }
+                                            <View style={styles.itemsContainer}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                    <Slider
+                                                        style={{ width: 200, height: 40, direction: 'ltr' }}
+                                                        minimumValue={0}
+                                                        maximumValue={recordingTime}
+                                                        value={currentPosition}
+                                                        onValueChange={handleSliderChange}
+                                                        minimumTrackTintColor="#1976d2"
+                                                        maximumTrackTintColor="#000000"
+                                                        step={0.1}
+                                                    />
+                                                    <Text>{formatTime(currentPosition)}</Text>
+                                                </View>
+                                            </View>
+                                        </View>
                                     </>
                                     :
-                                    null
+                                    status == 'stopped' ?
+                                        <>
+                                            {isLoading ?
+                                                <View style={styles.itemsContainer}>
+                                                    <ActivityIndicator animating={true} color={"#1976d2"} size={80} />
+                                                </View>
+                                                : null
+                                            }
+                                        </>
+                                        :
+                                        null
                     }
                 </View>
             </View >
@@ -515,13 +581,6 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-
     },
     switchContainer: {
         flexDirection: 'column',
@@ -586,6 +645,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    countdownContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        flex: 1,
     },
     homeBtn: {
         margin: 5,

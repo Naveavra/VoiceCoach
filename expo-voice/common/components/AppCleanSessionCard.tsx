@@ -7,7 +7,7 @@ import { formatDate } from '../utils';
 
 interface AppProjectCardProps {
     session: SessionData,
-    onPress: () => void,
+    onPress: (rabbi:boolean) => void,
 }
 
 const AppCleanSessionCard: React.FC<AppProjectCardProps> = ({ session, onPress }) => {
@@ -15,7 +15,7 @@ const AppCleanSessionCard: React.FC<AppProjectCardProps> = ({ session, onPress }
         <UIButton
             to_tap={true}
             title={`${formatDate(session.created_at, false)}`}
-            onClick={onPress}
+            onClick={()=>onPress(true)}
             style={styles.card}
         />
     );

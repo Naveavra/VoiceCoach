@@ -6,29 +6,35 @@ import { FontAwesome5 } from "@expo/vector-icons";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as FileSystem from 'expo-file-system';
 import { API_URL } from "../../common/config";
-import { AntDesign } from '@expo/vector-icons';
-import { alertError, getAsync, saveAsync } from "../utils";
+import { alertError, calculateDuration, getAsync, millisToTimeString, saveAsync, timeStringToMillis } from "../utils";
 
 interface AudioRecordProps {
     device_uri: string | null;
     url: string;
     path: string;
     is_sample: boolean
+    startTime: string | null; // Start time in milliseconds
+    endTime: string | null;
 }
+
 
 const primaryColor = "#0ea5e9";
 
-export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sample, path }) => {
+export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sample, path, startTime, endTime }) => {
     const [playing, setPlaying] = useState<boolean>(false);
     const [speedRate, setSpeedRate] = useState<0.5 | 1.0 | 1.5>(1.0);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [duration, setDuration] = useState(0);
     const [position, setPosition] = useState(0);
+    const [formatted_position, set_formatted_position] = useState(startTime ? startTime : '00:00:00')
+    const [formatted_duration, set_formatted_duration] = useState(millisToTimeString(duration))
     const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
     const [voice, setVoice] = useState<Audio.Sound | null>(null);
     const [uri, setUri] = useState<string>(device_uri || '');
     const [hasAudio, setHasAudio] = useState<boolean>(device_uri && device_uri != '' && device_uri != undefined ? true : false);
+
+
     const handleSetUri = (uri: string) => {
         setUri(uri);
         saveAsync(path, uri);
@@ -56,28 +62,44 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
 
     const onPlaybackStatusUpdate = (status: any) => {
         if (status.isLoaded) {
-            setPosition(status.positionMillis || 0);
-            setDuration(status.durationMillis || 0);
+            if (startTime && endTime) {
+                setPosition(status.positionMillis - timeStringToMillis(startTime) || 0);
+                setDuration(calculateDuration(startTime, endTime));
+                set_formatted_position(millisToTimeString(status.positionMillis ?? startTime ?? 0))
+                set_formatted_duration(endTime)
+            }
+
+            else {
+                setPosition(status.positionMillis || 0);
+                setDuration(status.durationMillis || 0);
+                set_formatted_duration(millisToTimeString(status.durationMillis || 0))
+                set_formatted_position(millisToTimeString(status.positionMillis || 0))
+
+            }
+            if (endTime && startTime && status.positionMillis >= timeStringToMillis(endTime)) {
+                pausePlaying();
+                setPosition(0);
+                set_formatted_position(startTime)
+            }
         }
     };
+    const get_and_create = async () => {
+        //need to download
+        setIsLoading(true);
+        const downloadResult = await downloadSampleResumable.downloadAsync();
+        if (downloadResult) {
+            handleSetUri(downloadResult.uri);
+            saveAsync(path, downloadResult.uri);
+            createSound();
+        }
+    }
 
     const createSound = async () => {
         try {
-            let localUri = uri;
-            if (!localUri) {
-                localUri = await getAsync(path);
-            }
-            if (localUri == null || localUri == '') {
-                //need to download
-                setIsLoading(true);
-                const downloadResult = await downloadSampleResumable.downloadAsync();
-                if (downloadResult) {
-                    localUri = downloadResult.uri;
-                    handleSetUri(localUri);
-                }
-            }
             // success fetch from async storage
-            const { sound } = await Audio.Sound.createAsync({ uri: localUri }, { shouldPlay: false }, onPlaybackStatusUpdate);
+            const { sound } = await Audio.Sound.createAsync({ uri: uri }, { shouldPlay: false }, onPlaybackStatusUpdate);
+            if (startTime)
+                await sound.setPositionAsync(timeStringToMillis(startTime));
             setVoice(sound);
             setIsLoading(false);
             setHasAudio(true);
@@ -92,6 +114,8 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
 
     const play = async () => {
         if (voice) {
+            if (startTime)
+                await voice.setPositionAsync(timeStringToMillis(startTime));
             await voice.playAsync();
             setPlaying(true);
             voice.setOnPlaybackStatusUpdate(async (status) => {
@@ -130,6 +154,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
         if (voice) {
             await voice.setPositionAsync(value);
             setPosition(value);
+            set_formatted_position(millisToTimeString(value))
         }
     };
 
@@ -154,19 +179,25 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
             setUri('');
         }
     }
+    const handlePlay = async () => {
+        play()
+    }
 
-    const formatTime = (millis: number) => {
-        const totalSeconds = Math.floor(millis / 1000);
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-    };
 
     useEffect(() => {
-        if (uri && uri != '') {
-            console.log(uri)
-            console.log('creating')
-            createSound();
+        if (!device_uri || device_uri == '') {
+            getAsync(path).then((res) => {
+                if (res) {
+                    setUri(res)
+                    createSound();
+                }
+                else {
+                    get_and_create()
+                }
+            })
+        }
+        else {
+            createSound()
         }
         return () => {
             if (voice) {
@@ -188,36 +219,42 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
                         onSlidingComplete={handleSliderValueChange}
                     />
                     <View style={styles.timeContainer}>
-                        <Text style={styles.timeText}>{formatTime(position)}</Text>
-                        <Text style={styles.timeText}>{formatTime(duration)}</Text>
+                        <Text style={styles.timeText}>{formatted_position}</Text>
+                        <Text style={styles.timeText}>{formatted_duration}</Text>
                     </View>
                     <TouchableOpacity onPress={setPlaybackRate} style={styles.speedButton}>
                         <Text style={styles.speedText}>&times;{speedRate.toFixed(1)}</Text>
                     </TouchableOpacity>
                     <View style={styles.controlsContainer}>
-                        {is_sample ?
+                        {!startTime ?
                             <>
-                                <AntDesign name="delete" size={35} color="black" style={{ marginRight: 30 }} />
-                                <TouchableOpacity style={styles.controlButton} onPress={() => handleSkip(-10000)}>
+                                <TouchableOpacity style={{ ...styles.controlButton, marginLeft: 80 }} onPress={() => handleSkip(-10000)}>
                                     <MaterialIcons name="replay-10" size={35} color="black" />
                                 </TouchableOpacity>
+                                <Pressable style={styles.controlButton} onPress={handlePlayPause}>
+                                    <FontAwesome5
+                                        name={playing ? "pause-circle" : "play-circle"}
+                                        solid
+                                        size={44}
+                                        color={primaryColor}
+                                    />
+                                </Pressable>
+                                <TouchableOpacity style={styles.controlButton} onPress={() => handleSkip(10000)}>
+                                    <MaterialIcons name="forward-10" size={35} color="black" />
+                                </TouchableOpacity>
+                                <MaterialIcons name="cleaning-services" size={35} color="black" style={{ marginLeft: 30 }} onPress={clearRecording} />
                             </>
                             :
-                            <TouchableOpacity style={{ ...styles.controlButton, marginLeft: 80 }} onPress={() => handleSkip(-10000)}>
-                                <MaterialIcons name="replay-10" size={35} color="black" />
-                            </TouchableOpacity>}
-                        <Pressable style={styles.controlButton} onPress={handlePlayPause}>
-                            <FontAwesome5
-                                name={playing ? "pause-circle" : "play-circle"}
-                                solid
-                                size={44}
-                                color={primaryColor}
-                            />
-                        </Pressable>
-                        <TouchableOpacity style={styles.controlButton} onPress={() => handleSkip(10000)}>
-                            <MaterialIcons name="forward-10" size={35} color="black" />
-                        </TouchableOpacity>
-                        <MaterialIcons name="cleaning-services" size={35} color="black" style={{ marginLeft: 30 }} onPress={clearRecording} />
+                            <Pressable style={styles.controlButton} onPress={handlePlay}>
+                                <FontAwesome5
+                                    name={playing ? "pause-circle" : "play-circle"}
+                                    solid
+                                    size={44}
+                                    color={primaryColor}
+
+                                />
+                            </Pressable>
+                        }
 
                     </View>
                 </View>

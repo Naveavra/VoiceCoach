@@ -1,42 +1,56 @@
-import { useState } from "react";
-import { View, StyleSheet, Text, Modal, TouchableWithoutFeedback } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { EvilIcons } from '@expo/vector-icons';
-
+import { setCommentDialog } from "../../redux/globalReducer";
+import { useUtilities } from "../../hooks";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { setSeenMsg } from "../../redux/projectReducer";
+import { useEffect } from "react";
 export const AppComment = () => {
-    const [open, setOpen] = useState(false);
-
-    const handleScreenClick = () => {
-        setOpen(false);
+    const { useAppSelector, dispatch } = useUtilities();
+    const selectedSession = useAppSelector((state) => state.project.selectedSession)
+    const new_message = selectedSession.new_comment
+    const state = useAppSelector((state) => state.global.state)
+    const handleOpen = () => {
+        dispatch(setCommentDialog(true))
+        if (state == 'MyProjects' && new_message) {
+            dispatch(setSeenMsg(selectedSession.id))
+        }
     }
+    useEffect(() => {
+
+    }, [new_message, state])
 
     return (
         <>
             <View style={styles.container}>
-                <Text style={styles.text}>This is a comment</Text>
-                <EvilIcons name="comment" size={24} color="#1976d2" onPress={() => setOpen(true)} />
-            </View>
-            <Modal visible={open} transparent={true} animationType="fade">
-                <TouchableWithoutFeedback onPress={handleScreenClick}>
-                    <View style={styles.modalContainer}>
-
+                <EvilIcons name="comment" size={35} color="#1976d2" onPress={handleOpen} />
+                {state == 'MyProjects' && new_message &&
+                    <View style={styles.indicator}>
+                        <MaterialCommunityIcons name="alert-decagram-outline" size={20} color="black" />
                     </View>
-                </TouchableWithoutFeedback>
-            </Modal>
+                }
+            </View>
         </>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        // flex: 1,
+        // justifyContent: 'center',
+        // alignItems: 'center',
+
     },
-    text: {
-        fontSize: 20,
+    indicator: {
+        position: 'absolute',
+        top: -8,
+        right: -9,
     },
-    modalContainer: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
+    // text: {
+    //     fontSize: 20,
+    // },
+    // modalContainer: {
+    //     flex: 1,
+    //     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    // },
 });

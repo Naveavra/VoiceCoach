@@ -22,6 +22,7 @@ export interface ProjectData {
     created_at: string;
     clean_text: string;
     mark_text: string;
+    created_by: string;
 }
 
 export interface Analysis {
@@ -34,9 +35,11 @@ export interface Analysis {
         rav_end: string,
         word_status: number,
         taam_status: string,
-        word_to_say:string,
+        word_to_say: string,
         exp: string,
-    }[]
+    }[],
+    url: string,
+    score: number,
 }
 //0 good - #4caf50
 //1 exist but not in right place - #ffc107
@@ -48,5 +51,8 @@ export interface SessionData {
     projectId: string;
     url: string;
     created_at: string;
-    analysis: Analysis | null
+    analysis: Analysis;
+    score: number;
+    rabbi_comments: string[],
+    new_comment: boolean,
 }
