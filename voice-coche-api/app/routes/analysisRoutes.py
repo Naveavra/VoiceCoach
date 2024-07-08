@@ -65,7 +65,6 @@ def init_analysis_routes(app, recordings):
         score = round(score, 2)
         #first comes the teacher
         taam_stats = taam_performance(json.loads(project.sample_teamim),json.loads(session.session_teamim))
-        #taam_stats = {}
         get_time_json(ans_analysis)
         analysis = Analysis(json.dumps(ans_analysis), json.dumps(taam_stats))
         session.analysis = analysis
@@ -285,59 +284,119 @@ def calculate_similarity_score(pitch_array_teacher, pitch_array_student):
     score = max(0, 100 - (distance / max_distance) * 100)
     return score
 
-
 def give_feedback(pitch_array_teacher, pitch_array_student):
     length = min(len(pitch_array_teacher), len(pitch_array_student))
     third = length // 3
 
     segments = {
-        "התחלה, ": (0, third),
-        "אמצע, ": (third, 2 * third),
-        "סוף, ": (2 * third, length)
+        "התחלה": (0, third),
+        "אמצע": (third, 2 * third),
+        "סוף": (2 * third, length)
     }
 
-    feedback = ""
-
+    feedback = []
     overall_score = 0
 
     for segment, (start, end) in segments.items():
         score = calculate_similarity_score(pitch_array_teacher[start:end], pitch_array_student[start:end])
-        feedback += f"{segment.capitalize()} ציון: {score:.2f}. "
+        segment_feedback = {
+            "segment": segment,
+            "score": score,
+            "feedback": f"{segment.capitalize()} ציון: {score:.2f}. "
+        }
 
         if score > 90:
-            feedback += "מעולה דומה מאוד למורה, "
+            segment_feedback["feedback"] += "מעולה דומה מאוד למורה, "
         elif score > 70:
-            feedback += "ניסיון יפה, דרוש עבודה על התזמון והגייה, "
+            segment_feedback["feedback"] += "ניסיון יפה, דרוש עבודה על התזמון והגייה, "
         else:
-            feedback += ".יש המון מקום לשיפור, נסה שוב "
-        overall_score = overall_score + score
+            segment_feedback["feedback"] += ".יש המון מקום לשיפור, נסה שוב "
+
+        overall_score += score
 
         teacher_midi_segment = note_array_to_midi(pitch_array_teacher[start:end])
         student_midi_segment = note_array_to_midi(pitch_array_student[start:end])
 
         if np.mean(student_midi_segment) < np.mean(teacher_midi_segment):
-            feedback += "תרים את הסולם קול "
+            segment_feedback["feedback"] += "תרים את הסולם קול "
         else:
-            feedback += "תוריד את הסולם קול "
+            segment_feedback["feedback"] += "תוריד את הסולם קול "
 
         if np.var(student_midi_segment) < np.var(teacher_midi_segment):
-            feedback += "ותוסיף סלסול לקול "
+            segment_feedback["feedback"] += "ותוסיף סלסול לקול "
         else:
-            feedback += "ונסה לשמור על אותו קול "
+            segment_feedback["feedback"] += "ונסה לשמור על אותו קול "
 
-        feedback += "\n"
+        feedback.append(segment_feedback)
 
     overall_score = overall_score / 3
-    feedback += f"ציון סופי : {overall_score:.2f}. "
+    final_feedback = {
+        "overall_score": overall_score,
+        "final_feedback": f"ציון סופי : {overall_score:.2f}. "
+    }
 
     if overall_score > 90:
-        feedback += "ביצוע מעולה"
+        final_feedback["final_feedback"] += "ביצוע מעולה"
     elif overall_score > 70:
-        feedback += "ביצוע טוב, יש מקום לשיפור"
+        final_feedback["final_feedback"] += "ביצוע טוב, יש מקום לשיפור"
     else:
-        feedback += "ביצוע לא טוב, נסה שוב"
+        final_feedback["final_feedback"] += "ביצוע לא טוב, נסה שוב"
 
-    return feedback, overall_score
+    return json.dumps(feedback + [final_feedback]), overall_score
+
+# OLD CODE HERE:
+# def give_feedback(pitch_array_teacher, pitch_array_student):
+#     length = min(len(pitch_array_teacher), len(pitch_array_student))
+#     third = length // 3
+
+#     segments = {
+#         "התחלה, ": (0, third),
+#         "אמצע, ": (third, 2 * third),
+#         "סוף, ": (2 * third, length)
+#     }
+
+#     feedback = ""
+
+#     overall_score = 0
+
+#     for segment, (start, end) in segments.items():
+#         score = calculate_similarity_score(pitch_array_teacher[start:end], pitch_array_student[start:end])
+#         feedback += f"{segment.capitalize()} ציון: {score:.2f}. "
+
+#         if score > 90:
+#             feedback += "מעולה דומה מאוד למורה, "
+#         elif score > 70:
+#             feedback += "ניסיון יפה, דרוש עבודה על התזמון והגייה, "
+#         else:
+#             feedback += ".יש המון מקום לשיפור, נסה שוב "
+#         overall_score = overall_score + score
+
+#         teacher_midi_segment = note_array_to_midi(pitch_array_teacher[start:end])
+#         student_midi_segment = note_array_to_midi(pitch_array_student[start:end])
+
+#         if np.mean(student_midi_segment) < np.mean(teacher_midi_segment):
+#             feedback += "תרים את הסולם קול "
+#         else:
+#             feedback += "תוריד את הסולם קול "
+
+#         if np.var(student_midi_segment) < np.var(teacher_midi_segment):
+#             feedback += "ותוסיף סלסול לקול "
+#         else:
+#             feedback += "ונסה לשמור על אותו קול "
+
+#         feedback += "\n"
+
+#     overall_score = overall_score / 3
+#     feedback += f"ציון סופי : {overall_score:.2f}. "
+
+#     if overall_score > 90:
+#         feedback += "ביצוע מעולה"
+#     elif overall_score > 70:
+#         feedback += "ביצוע טוב, יש מקום לשיפור"
+#     else:
+#         feedback += "ביצוע לא טוב, נסה שוב"
+
+#     return feedback, overall_score
 
 
 def crop_audio(input_data, start_time, end_time):
