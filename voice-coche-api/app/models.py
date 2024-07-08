@@ -71,10 +71,13 @@ class Session(db.Model):
 class Analysis(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     teamim = db.Column(db.Text, nullable=True)
+    taam_stats = db.Column(db.Text, nullable=True)
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # Creation date
 
-    def __init__(self, teamim):
+    def __init__(self, teamim, taam_stats):
         self.teamim = teamim
+        self.taam_stats = taam_stats
         self.created_at = datetime.utcnow()
     
     def simpleSerialize(self):
