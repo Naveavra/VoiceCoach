@@ -43,12 +43,12 @@ def init_analysis_routes(app, recordings):
                 #    output_file.write(session.recording)
                 recordings.pop(session_id)
             else:
-                return jsonify({"analysis": [], 'created_at': "", "url": "", "project_url":"", "score": 0, "teamin_stats":{}}), 200
+                return jsonify({"analysis": [], 'created_at': "", "url": "", "project_url":"", "score": 0, "words_score": 0, "teamin_stats":{}}), 200
 
         if  session.analysis_id is not None:
             analysis = Analysis.query.get(session.analysis_id)
             return jsonify({"analysis": json.loads(analysis.teamim), 'created_at': analysis.created_at, "url": session.url,
-             "project_url": Project.query.get(session.project_id).sample_url, "score": int(session.score), "teamin_stats": {}}), 200
+             "project_url": Project.query.get(session.project_id).sample_url, "score": int(session.score), "words_score": int(get_words_score(json.loads(analysis.teamim))*100), "teamin_stats": json.loads(analysis.taam_stats)}), 200
 
         print("here")
         audio_file_like = io.BytesIO(session.recording)
@@ -64,17 +64,18 @@ def init_analysis_routes(app, recordings):
         ans_analysis, score = compare(project.sample_clip, session.recording, json.loads(session.session_teamim), json.loads(project.sample_teamim))
         score = round(score, 2)
         #first comes the teacher
-        #taam_stats = taam_performance(json.loads(project.sample_teamim),json.loads(session.session_teamim))
-        taam_stats = {}
+        taam_stats = taam_performance(json.loads(project.sample_teamim),json.loads(session.session_teamim))
+        #taam_stats = {}
         get_time_json(ans_analysis)
-        analysis = Analysis(json.dumps(ans_analysis))
+        analysis = Analysis(json.dumps(ans_analysis), json.dumps(taam_stats))
         session.analysis = analysis
         session.analysis_id = analysis.id
         session.score = score
         db.session.add(analysis)
         db.session.commit()
-        #TODO: add total score.
-        return jsonify({"analysis": ans_analysis, 'created_at': analysis.created_at, "url": session.url, "project_url": project.sample_url, "score": int(score), "teamin_stats": taam_stats})
+
+        return jsonify({"analysis": ans_analysis, 'created_at': analysis.created_at, "url": session.url, "project_url": project.sample_url,
+         "score": int(score), "words_score": int(get_words_score(analysis)*100), "teamin_stats": taam_stats})
                     
 
 def getMatchTeamim(user_teamim, sample_teamim):
@@ -149,7 +150,7 @@ def getMatchTeamim(user_teamim, sample_teamim):
 def compare(sample_wav, user_wav, user_json, sample_json):
     matching_elements_session, matching_elements_sample, missing_words, wrong_words = getMatchTeamim(user_json, sample_json)
     analysis, score = process_recordings(sample_wav, user_wav, matching_elements_sample, matching_elements_session)
-    print(f"FINAL SCORE IS: {score}")
+
     #those jsons are words that were said by the sample but where not found in the user recording
     last_place = 0
     place_not_found = []
@@ -214,6 +215,17 @@ def get_time(time):
     time = time % 100
     milli = int(time)
     return "{:02d}:{:02d}:{:02d}".format(minute, second, milli)
+
+def get_words_score(analysis):
+    right_words = 0
+    all_words = 0
+    for word in analysis:
+        if word['word_status'] != 2:
+            all_words = all_words + 1
+            if word['word_status'] != 3:
+                right_words = right_words + 1
+    return right_words / all_words
+
 
 
 
