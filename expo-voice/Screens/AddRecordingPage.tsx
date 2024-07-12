@@ -2,8 +2,8 @@ import axios from "axios";
 import { Audio } from "expo-av";
 import * as FileSystem from 'expo-file-system';
 import { Recording } from "expo-av/build/Audio";
-import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator, Switch } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator, Switch, ScrollView } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../AppNavigation";
 import { API_URL } from "../common/config";
@@ -13,12 +13,11 @@ import { defaultTheme } from "../common/ui/defaultTheme";
 import { Entypo } from '@expo/vector-icons';
 import { useAuth, useUtilities } from "../common/hooks";
 import { LogBox } from 'react-native';
-import { delay, formatTime } from "../common/utils";
+import { alertError, delay, formatTime } from "../common/utils";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
 import Slider from '@react-native-community/slider';
 import { punctuation, similarity } from "../common/data/torah";
 import { Circle } from 'react-native-progress';
-
 
 LogBox.ignoreLogs([
     'Non-serializable values were found in the navigation state',
@@ -33,11 +32,15 @@ let send = true;
 let start = 0;
 let end = 0;
 let recording_index = 0;
-
+let record_time = 0;
+let word_times: WordTimePair[] = [];
 interface QueueItem {
     recording: Audio.Recording;
     recording_index: number;
+    time: number;
 }
+type WordTimePair = [string, number];
+
 export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProps) => {
     const { dispatch, useAppSelector } = useUtilities();
     const { token } = useAuth({});
@@ -48,7 +51,6 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const loopRunning = useRef<boolean>(false);
     const [permissionResponse, requestPermission] = Audio.usePermissions();
     const [loopPromise, setLoopPromise] = useState<Promise<void> | null>(null);
-    const [transcript, setTranscript] = useState<string>('');
     const [status, setStatus] = useState<string>('');
     const [recordingTime, setRecordingTime] = useState<number>(0);
     const [currentPosition, setCurrentPosition] = useState<number>(0);
@@ -67,22 +69,8 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const [recordings, setRecordings] = useState<QueueItem[]>([])
 
     const [countdown, setCountdown] = useState<number>(0);
+    const [linePosition, setLinePosition] = useState<number | null>(null); // State for the line position
 
-    const startCountdown = () => {
-        // let counter = 3;
-        // setCountdown(counter);
-        // const countdownInterval = setInterval(() => {
-        //     counter--;
-        //     setCountdown(counter);
-        //     if (counter === 1) {
-        //         handleRecord();
-        //     }
-        //     if (counter === 0) {
-        //         clearInterval(countdownInterval);
-        //         setCountdown(0);
-        //     }
-        // }, 1000);
-    };
 
     const errorAlert = () => {
         Alert.alert('Error', 'Something went wrong', [
@@ -91,7 +79,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             },
         ]);
     }
-    const sendAudioData = async (recording: Audio.Recording, done: boolean) => {
+    const sendAudioData = async (recording: Audio.Recording, send_time: number, done: boolean) => {
         try {
             const url = `${API_URL}/upload/${selected_session.id}`;
             if (recording) {
@@ -112,7 +100,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 formData.append('done', done ? 'true' : 'false');
 
                 if (send) {
-                    if (start != 0 && start != recordingTime) {
+                    if (start != 0) {
                         formData.append('start', start.toString());
                         formData.append('end', end.toString());
                         start = 0
@@ -121,11 +109,11 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     await axios.post(url, formData, config)
                         .then((response) => {
                             if (!done) {
-                                handleTranscript(response.data);
+                                handleTranscript(response.data, send_time);
                             }
                         })
                         .catch((error) => {
-                            console.log('error', error);
+                            alertError(String(error) ?? "Error fetching audio data", () => { });
                             stopLoop();
                         });
                 }
@@ -135,9 +123,9 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         }
     }
 
-    const handleTranscript = (data: any) => {
-        setTranscript((prev) => prev + data + ' ');
+    const handleTranscript = (data: any, send_time: number) => {
         data.split(" ").forEach((word: string) => {
+
             const word_from_text = project.clean_text.split(" ")[index];
             const next_word = project.clean_text.split(" ")[index + 1];
             const next_next_word = project.clean_text.split(" ")[index + 2];
@@ -157,6 +145,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         newColors[marked_index] = 'green';
                         return newColors;
                     });
+
                 } else if (word === next_word || similarity.get(word)?.includes(next_word)) {
                     setWordColors((prev) => {
                         const newColors = [...prev];
@@ -174,6 +163,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         marked_index++;
                         return newColors;
                     });
+
                 }
                 else if (word === next_next_word || similarity.get(word)?.includes(next_next_word)) {
                     setWordColors((prev) => {
@@ -209,6 +199,9 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     });
                 }
             }
+            word_times.push([word_from_text, send_time]);
+            console.log(word_from_text, send_time);
+            console.log(word_times);
             setCurrentWord((prev) => (prev + 1) % project.clean_text.split(" ").length);
             setCurrentMarkedWord((prev) => (prev + 1) % project.mark_text.split(" ").length);
             marked_index++;
@@ -232,7 +225,6 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             await recording.startAsync();
             return recording;
         } catch (err) {
-            console.error('Failed to start recording', err);
             errorAlert();
             stopLoop();
             return recording;
@@ -249,15 +241,33 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 clearInterval(timerInterval);
             }
             send = false;
+            console.log(start, end, currentPosition, recordingTime)
             setStatus('paused');
             setCurrentPosition(recordingTime);
         } catch (error) {
-            console.error('Failed to pause recording:', error);
+            alertError(String(error) ?? "failed to pause recording", () => { });
         }
     };
 
     const resumeRecording = async () => {
         try {
+            console.log(currentPosition, recordingTime)
+            if (currentPosition != recordingTime) {
+                wordColors.forEach((color, word_index) => {
+                    if (linePosition && word_index < linePosition) {
+                        wordColors[word_index] = 'black';
+                    }
+                });
+                if (linePosition) {
+                    index = linePosition;
+                    marked_index = linePosition;
+                }
+                setLinePosition(null);
+                start = currentPosition;
+                end = recordingTime;
+                setRecordingTime(currentPosition);
+                record_time = currentPosition;
+            }
             const status = await recording.getStatusAsync();
             // Check if the recording is in a state where it can be resumed
             if (status.isDoneRecording) {
@@ -274,18 +284,17 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 );
             }
             send = true;
-            end = recordingTime;
-            if (start != recordingTime) {
-                setRecordingTime(start);
-            }
+
+
             await recording.startAsync();
             const timer = setInterval(() => {
                 setRecordingTime(prev => prev + 1);
+                record_time++;
             }, 1000);
             setTimerInterval(timer);
             setStatus('recording');
         } catch (error) {
-            console.error('Failed to resume recording:', error);
+            alertError(String(error) ?? "Failed to resume recording", () => { });
         }
     };
 
@@ -299,27 +308,30 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         return record;
     }
 
-    const loop = async () => {
+    const loop = useCallback(() => async () => {
         if (!loopRunning.current) {
             loopRunning.current = true;
             setRecordingTime(0);
+            record_time = 0;
             const timer = setInterval(() => {
                 setRecordingTime(prev => prev + 1);
+                record_time++;
             }, 1000);
             setTimerInterval(timer);
             while (loopRunning.current) {
                 let record = await startRecording();
                 await delay(5000);
                 await stopRecording(record);
-                setRecordings((prev) => [...prev, { recording: record, recording_index: recording_index }]);
+                const send_time = record_time;
+                setRecordings((prev) => [...prev, { recording: record, recording_index: recording_index, time: send_time }]);
                 recording_index++;
             }
             clearInterval(timer);
         }
-    }
+    }, [recordingTime]);
     useEffect(() => {
         if (recordings.length > 0)
-            sendAudioData(recordings[recordings.length - 1].recording, false)
+            sendAudioData(recordings[recordings.length - 1].recording, recordings[recordings.length - 1].time, false)
     }, [recordings]);
 
     const stopLoop = () => {
@@ -407,10 +419,20 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         };
     });
 
-
+    //todo:change the index , maybe create a modal here and onConfirm will change everything
     const handleSliderChange = (value: number) => {
         value = Number(value.toFixed(2));
+        console.log(value)
         setCurrentPosition(value);
+        console.log(word_times)
+        console.log(value)
+        for (let i = 0; i < word_times.length; i++) {
+            if (word_times[i][1] > value) {
+                console.log('found', i)
+                setLinePosition(i);
+                break;
+            }
+        }
         start = value;
     }
 
@@ -433,47 +455,61 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     />
                     <Text>{help ? 'עם טעמים' : 'בלי טעמים'}</Text>
                 </View>
-                <SafeAreaView style={styles.safeContainer}>
-                    <Animated.View style={[styles.textContainer, animatedStyles]}>
-                        {help ? project.mark_text.split(" ").map((word, index) => {
-                            return (
-                                <Text
-                                    key={index}
-                                    style={[
-                                        styles.word,
-                                        { color: markedWordsColors[index] },
-                                        // currentMarkedWord === index && styles.highlight,
-                                    ]}
-                                >
-                                    {word}{' '}
-                                </Text>
-                            );
-                        })
-                            :
-                            project.clean_text.split(" ").map((word, index) => {
-                                return (
-                                    <Text
-                                        key={index}
-                                        style={[
-                                            styles.word,
-                                            { color: wordColors[index] },
-                                            // currentWord === index && styles.highlight,
-                                        ]}
-                                    >
-                                        {word}{' '}
-                                    </Text>
-                                );
-                            })
-                        }
-                    </Animated.View>
-                </SafeAreaView>
-                {/* <View style={styles.transcriptContainer}>
-                    {transcript && <Text>{transcript}</Text>}
-                </View> */}
+                <View style={styles.scrollContainer}>
+                    <SafeAreaView style={styles.safeContainer}>
+                        <ScrollView contentContainerStyle={styles.wordsContainer}>
+                            <Animated.View style={[styles.textContainer, animatedStyles]}>
+                                {help ? project.mark_text.split(" ").map((word, index) => {
+                                    return (
+                                        <Text
+                                            key={index}
+                                            style={[
+                                                styles.word,
+                                                { color: markedWordsColors[index] },
+                                            ]}
+                                        >
+                                            {status == 'paused' && index === linePosition && <View style={styles.line}></View>}
+                                            {word}{' '}
+                                        </Text>
+                                    );
+                                })
+                                    :
+                                    project.clean_text.split(" ").map((word, index) => {
+                                        return (
+                                            <Text
+                                                key={index}
+                                                style={[
+                                                    styles.word,
+                                                    { color: wordColors[index] },
+                                                ]}
+                                            >
+                                                {
+                                                    index == linePosition &&
+                                                    <View style={styles.line}>
+                                                        <AntDesign name="arrowleft" size={24} color="black" />
+                                                    </View>}
+                                                {word}{' '}
+                                            </Text>
+                                        );
+                                    })}
+                            </Animated.View>
+                        </ScrollView>
+                    </SafeAreaView>
+                </View>
+
                 <View style={styles.mainContainer}>
                     {status == '' ?
                         <>
-                            <View style={styles.itemsContainer}>
+                            <View style={{
+                                flex: 1,
+                                flexDirection: "row",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                marginTop: 30,
+                                position: 'relative',
+                                top: 20,
+
+                            }}>
                                 <TouchableOpacity style={styles.itemContainer} onPress={handleStartButtonClick}>
                                     <FontAwesome name="microphone" size={24} color="black" />
                                     <Text style={defaultTheme.components.text}>Start Recording</Text>
@@ -486,7 +522,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                             <>
                                 <View style={styles.countdownContainer}>
                                     <Circle
-                                        size={150}
+                                        size={125}
                                         progress={countdown / 3}
                                         showsText={true}
                                         formatText={() => `${countdown}`}
@@ -501,8 +537,17 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                         flexDirection: "column",
                                         justifyContent: "center",
                                         alignItems: "center",
+                                        position: 'relative',
+                                        top: 20,
+
                                     }}>
-                                        <View style={styles.itemsContainer}>
+                                        <View
+                                            style={{
+                                                flexDirection: 'row',
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+
+                                            }}>
                                             <View style={styles.itemContainer}>
                                                 <AntDesign name="pause" size={24} color="black" onPress={pauseRecording} />
                                                 <Text>Pause Recording</Text>
@@ -524,10 +569,18 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                             flex: 1,
                                             flexDirection: "column",
                                             justifyContent: "center",
-                                            alignItems: "center"
+                                            alignItems: "center",
+                                            position: 'relative',
+                                            top: 20,
+
                                         }}>
 
-                                            <View style={styles.itemsContainer}>
+                                            <View
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                }}>
                                                 <View style={styles.itemContainer}>
                                                     <Entypo name="controller-play" size={24} color="black" onPress={resumeRecording} />
                                                     <Text>Resume Recording</Text>
@@ -537,20 +590,19 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                                     <Text>Stop Recording</Text>
                                                 </View>
                                             </View>
-                                            <View style={styles.itemsContainer}>
-                                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                    <Slider
-                                                        style={{ width: 200, height: 40, direction: 'ltr' }}
-                                                        minimumValue={0}
-                                                        maximumValue={recordingTime}
-                                                        value={currentPosition}
-                                                        onValueChange={handleSliderChange}
-                                                        minimumTrackTintColor="#1976d2"
-                                                        maximumTrackTintColor="#000000"
-                                                        step={0.1}
-                                                    />
-                                                    <Text>{formatTime(currentPosition)}</Text>
-                                                </View>
+
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <Slider
+                                                    style={{ width: 200, height: 40, direction: 'ltr' }}
+                                                    minimumValue={0}
+                                                    maximumValue={recordingTime}
+                                                    value={currentPosition}
+                                                    onValueChange={handleSliderChange}
+                                                    minimumTrackTintColor="#1976d2"
+                                                    maximumTrackTintColor="#000000"
+                                                    step={1}
+                                                />
+                                                <Text>{formatTime(currentPosition)}</Text>
                                             </View>
                                         </View>
                                     </>
@@ -582,55 +634,48 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+
+    scrollContainer: {
+        width: '100%',
+        height: '55%',
+    },
+    wordsContainer: {
+        textAlign: 'right',
+        direction: 'rtl',
+        flexWrap: 'wrap',
+        flexDirection: 'row',
+        justifyContent: 'center',
+    },
+    safeContainer: {
+        flex: 1,
+        height: '70%'
+    },
+    textContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        alignItems: 'center',
+        direction: 'rtl',
+    },
     switchContainer: {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        position: 'absolute',
-        top: 100,
-    },
-    safeContainer: {
-        position: 'absolute',
-        top: 150,
-        overflow: 'hidden',
-        height: 150,
-        marginTop: 20,
-    },
-    transcriptContainer: {
-        position: 'absolute',
-        top: 350,
-        width: '90%',
-        padding: 10,
-        borderRadius: 10,
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 10,
-        direction: 'rtl',
-    },
-    textStyle: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        fontFamily: 'Menlo',
-        marginBottom: 14
+        marginBottom: 30
     },
     details: {
         width: '90%',
-        padding: 10,
         borderRadius: 10,
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 10,
-        position: 'absolute',
-        top: 0,
+        marginBottom: 15,
+        marginTop: -40
     },
     mainContainer: {
         justifyContent: 'center',
         flexDirection: 'row',
         alignItems: 'center',
-        position: 'absolute',
-        bottom: 10,
         width: '100%',
     },
     itemContainer: {
@@ -663,10 +708,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         marginRight: 5,
     },
-    highlight: {
-        fontWeight: 'bold',
-        textDecorationLine: 'underline',
-    },
+
     projectName: {
         fontSize: 24,
         fontWeight: 'bold',
@@ -674,25 +716,11 @@ const styles = StyleSheet.create({
     projectDescription: {
         fontSize: 16,
     },
-    textContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        alignItems: 'center',
-        direction: 'rtl',
+    line: {
+        height: 20,
     },
     timerContainer: {
         marginLeft: 20,
     },
-    timeContainer: {
-        marginTop: 16,
-        backgroundColor: "white",
-        borderRadius: 4,
-        width: 300,
-        height: 200,
-        alignItems: 'center',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        margin: 10
-    },
+
 });

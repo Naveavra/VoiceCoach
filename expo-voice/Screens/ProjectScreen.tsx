@@ -43,6 +43,7 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
                     setLoadingUri(false);
                 } catch (err) {
                     console.error("Error fetching sample URI:", err);
+
                     setLoadingUri(false);
                 }
             }
@@ -85,7 +86,7 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
             <AppSessionCard
                 {...commonProps}
                 onDelete={() => dispatch(deleteSession({ session_id: session.id, token }))}
-                onEdit={() => console.log("Function not implemented.")}
+                onEdit={() => {  }}
             />
         );
     });
@@ -111,7 +112,9 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
                                         device_uri={deviceUrl}
                                         url={selectedProject.sample_url}
                                         path={`project_${selectedProject.id}`}
-                                        is_sample={true} startTime={null} endTime={null} />
+                                        is_sample={true} startTime={null} endTime={null}
+                                        to_download={false}
+                                    />
                             )
                             :
                             <UploadDocument token={token} selectedProject={selectedProject} reloadData={reloadData} />
@@ -131,7 +134,12 @@ export const ProjectScreen = ({ route, navigation }: ProjectScreenProps) => {
                             });
                         }
                     } />
-                    <SimpleLineIcons disabled={isLoadingProject} name="refresh" size={35} color={isLoadingProject ? "#e0e0e0" : "#1976d2"} onPress={reloadData} />
+                    <View
+                        style={{
+                            marginTop: 2,
+                        }}>
+                        <SimpleLineIcons disabled={isLoadingProject} name="refresh" size={35} color={isLoadingProject ? "#e0e0e0" : "#1976d2"} onPress={reloadData} />
+                    </View>
                 </View>
                 {isLoadingProject ?
                     <View style={styles.loaderContainer}>

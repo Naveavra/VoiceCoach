@@ -15,6 +15,9 @@ import { setCommentDialog } from "../common/redux/globalReducer";
 import { UIButton, UITextField } from "../common/ui/components";
 import { addComment } from "../common/redux/projectReducer";
 import { Title } from "../common/components/Title";
+import { Circle } from 'react-native-progress';
+import { taam_to_hebrew } from "../common/data/torah";
+import { alertError } from "../common/utils";
 
 type SessionScreenProps = NativeStackScreenProps<RootStackParamList, 'Session'>;
 
@@ -77,21 +80,20 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
         if (!downloaded) {
             axios.get(`${API_URL}/analysis/${session.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
                 .then(response => {
-                    setAnalysis(response.data);
-                    console.log('down')
                     setDownloaded(true)
+                    setAnalysis(response.data);
                     setIsLoading(false);
                 })
                 .catch(error => {
                     console.error("Error fetching analysis data:", error);
+                    alertError(`Error fetching analysis data: ${error}`, () => { });
                     setIsLoading(false);
                 });
         }
     }, [session.id, token]);
 
-
     useEffect(() => {
-    }, [commentDialog, session_uri])
+    }, [analysis, commentDialog, session_uri])
 
     return (
         <>
@@ -99,22 +101,62 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                 !analysis ? <Text>No data available.</Text> :
                     <ScrollView contentContainerStyle={styles.container}>
                         <>
-                            <View style={styles.sampleContainer}>
-                                <AudioRecord
-                                    url={sample_url}
-                                    device_uri={session_uri}
-                                    is_sample={false}
-                                    path={`session_${session.id}`}
-                                    startTime={null}
-                                    endTime={null} />
-                            </View>
                             <View style={styles.warningsContainer}>
                                 <MaterialCommunityIcons name="check-decagram" size={35} color="#4caf50" onPress={successAlert} />
                                 <MaterialCommunityIcons name="check-circle-outline" size={35} color="#ffc107" onPress={infoAlert} />
                                 <Feather name="info" size={35} color="#2196f3" onPress={missedAlert} />
                                 <AntDesign name="warning" size={35} color="#f44336" onPress={failAlert} />
                             </View>
+                            <View style={styles.sampleContainer}>
+                                <AudioRecord
+                                    url={session.url}
+                                    device_uri={session_uri}
+                                    is_sample={false}
+                                    path={`session_${session.id}`}
+                                    startTime={null}
+                                    endTime={null}
+                                    to_download={true}
+                                />
+                            </View>
 
+                            <View style={styles.circles}>
+                                <View
+                                    style={{
+                                        flexDirection: 'column',
+                                        justifyContent: 'space-around',
+
+                                    }}>
+                                    <Circle
+                                        size={70}
+                                        progress={analysis.score / 100}
+                                        showsText={true}
+                                        formatText={() => `${analysis.score.toFixed(0)}%`}
+                                        style={{ marginBottom: 10 }}
+                                    />
+                                    <Text>
+                                        ציון טעמים כללי
+                                    </Text>
+                                </View>
+                                <View
+                                    style={{
+                                        flexDirection: 'column',
+                                        justifyContent: 'space-around',
+
+                                    }}>
+                                    <Circle
+                                        size={70}
+                                        progress={analysis.words_score / 100}
+                                        showsText={true}
+                                        formatText={() => `${analysis.words_score.toFixed(0)}%`}
+                                        style={{ marginBottom: 10 }}
+
+                                    />
+                                    <Text>
+                                        ציון מילים כללי
+                                    </Text>
+                                </View>
+                            </View>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, marginTop: 15 }}> ניתוח מילים</Text>
 
                             <ScrollView contentContainerStyle={styles.scrollViewContainer}>
                                 <View style={styles.goodWordsContainer}>
@@ -125,63 +167,36 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                         let underlineStyle = {};
                                         switch (word.taam_status) {
                                             case 'GOOD':
-                                                underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#4caf50', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                                underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#00e676', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                                break;
+                                            case 'MEDIUM':
+                                                underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#ffeb3b', textDecorationStyle: 'solid', textDecorationThickness: 2 };
                                                 break;
                                             case 'BAD':
-                                                underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#ffc107', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                                underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#f44336', textDecorationStyle: 'solid', textDecorationThickness: 2 };
                                                 break;
                                             case 'MISSING':
-                                                underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#f44336', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                                underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#6c757d', textDecorationStyle: 'solid', textDecorationThickness: 2 };
                                                 break;
                                             default:
                                                 underlineStyle = {};
                                         }
-
-                                        if (word.taam) {
-
-                                            return (
-                                                <TouchableOpacity key={index} onPress={() => handleWordClick(index, status)}>
-                                                    <Text style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word.text}`}</Text>
-                                                </TouchableOpacity>
-                                            );
-                                        }
                                         return (
-                                            <Text style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word.text}`}</Text>
-                                        )
-                                    })}
-                                </View>
-                            </ScrollView>
-
-                            <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 10, marginTop: 10 }}> ניתוח טעמים</Text>
-
-                            <ScrollView contentContainerStyle={styles.scrollViewContainer}>
-                                <View style={styles.teamimContainer}>
-                                    {analysis.analysis.map((taam, index) => {
-                                        const wordColor = taam.taam_status === "GOOD" ? '#4caf50' : taam.taam_status === "BAD" ? '#ffc107' : '#f44336';
-                                        if (!taam.taam) {
-                                            return null
-                                        }
-                                        return (
-                                            <TouchableOpacity
-                                                onPress={() => handleTaamClick(index)} key={index} >
-                                                <View
-                                                    style={{ ...styles.timeContainer, backgroundColor: wordColor }}>
-                                                    <Text style={[styles.word]}>{`${taam.text} , ${taam.taam} `}</Text>
-                                                </View>
-
+                                            <TouchableOpacity key={index} onPress={() => handleWordClick(index, status)}>
+                                                <Text style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word.text}`}</Text>
                                             </TouchableOpacity>
-                                        )
+                                        );
                                     })}
                                 </View>
                             </ScrollView>
-
-
-
-
                             <>
                                 {analysis.analysis.filter((word) => word.word_status === 2).length != 0 &&
                                     <>
-                                        <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, marginTop: 15 }}>מילים לא קשורות</Text>
+                                        <Text style={{
+                                            position: 'relative',
+
+                                            fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 10, marginTop: 5
+                                        }}>מילים לא קשורות</Text>
                                         <ScrollView contentContainerStyle={styles.scrollViewContainer}>
                                             <View style={styles.badWordsContainer}>
                                                 {analysis.analysis.filter((word) => word.word_status === 2).map((word, index) => {
@@ -198,6 +213,28 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                     </>
                                 }
                             </>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, marginTop: 10 }}> ניתוח טעמים</Text>
+                            <ScrollView contentContainerStyle={styles.teamimScrollContainer}>
+
+                                <View style={styles.teamimContainer}>
+                                    {analysis.analysis.map((taam, index) => {
+                                        const wordColor = taam.taam_status === "GOOD" ? '#00e676' : taam.taam_status === "MEDIUM" ? '#ffeb3b' : taam.taam_status === 'BAD' ? '#f44336' : '6c757d';
+                                        if (!taam.taam) {
+                                            return null
+                                        }
+                                        return (
+                                            <TouchableOpacity
+                                                onPress={() => handleTaamClick(index)} key={index} >
+                                                <View
+                                                    style={{ ...styles.timeContainer, backgroundColor: wordColor }}>
+                                                    <Text style={[styles.word]}>{`${taam.text} , ${taam_to_hebrew[taam.taam]} , ${taam.final_feedback.overall_score.toFixed(0)}%`}</Text>
+                                                </View>
+
+                                            </TouchableOpacity>
+                                        )
+                                    })}
+                                </View>
+                            </ScrollView>
 
                             {selectedIndex != null &&
                                 <Modal visible={true} transparent={true} animationType="fade">
@@ -212,50 +249,100 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                                 alignItems: 'center',
                                                 justifyContent: 'center'
                                             }}>
-                                                {selectedWordStatus === 0 && analysis.analysis[selectedIndex].taam ?
+                                                {selectedWordStatus === 0 ?
                                                     <>
                                                         <View style={{
                                                             width: '100%',
-                                                            height: '80%',
+                                                            height: '90%',
                                                             alignContent: 'center',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
                                                             direction: 'rtl'
                                                         }}>
-                                                            <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 }}>{`${analysis.analysis[selectedIndex].text} של הרב`}</Text>
-                                                            <AudioRecord url={sample_url} device_uri={sample_uri} path={path_to_sample} startTime={analysis.analysis[selectedIndex].rav_start} endTime={analysis.analysis[selectedIndex].rav_end} is_sample={true}></AudioRecord>
+                                                            <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 }}>{`${analysis.analysis[selectedIndex].final_feedback.final_feedback}`}</Text>
+                                                            <Circle
+                                                                size={70}
+                                                                progress={analysis.analysis[selectedIndex].final_feedback.overall_score / 100}
+                                                                showsText={true}
+                                                                formatText={() => `${analysis.analysis[selectedIndex].final_feedback.overall_score.toFixed(0)}%`}
+                                                            />
+                                                            <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, marginTop: 10 }}>{`${analysis.analysis[selectedIndex].text} של הרב`}</Text>
+                                                            <AudioRecord
+                                                                url={sample_url}
+                                                                device_uri={sample_uri}
+                                                                path={path_to_sample}
+                                                                startTime={analysis.analysis[selectedIndex].rav_start}
+                                                                endTime={analysis.analysis[selectedIndex].rav_end}
+                                                                is_sample={true}
+                                                                to_download={true}
+                                                            ></AudioRecord>
                                                             <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, marginTop: 20 }}>{`${analysis.analysis[selectedIndex].text} של התלמיד`}</Text>
-                                                            <AudioRecord url={analysis.url} device_uri={session_uri} path={path_to_session} startTime={analysis.analysis[selectedIndex].start} endTime={analysis.analysis[selectedIndex].end} is_sample={false}></AudioRecord>
+                                                            <AudioRecord
+                                                                url={analysis.url}
+                                                                device_uri={session_uri}
+                                                                path={path_to_session}
+                                                                startTime={analysis.analysis[selectedIndex].start}
+                                                                endTime={analysis.analysis[selectedIndex].end}
+                                                                is_sample={false}
+                                                                to_download={true}
+                                                            ></AudioRecord>
+                                                            {analysis.analysis[selectedIndex].taam ?
+                                                                <Text style={{ marginTop: 10 }}>{`${taam_to_hebrew[analysis.analysis[selectedIndex].taam]}`}</Text>
+                                                                : null}
                                                             <View
-                                                                style={{
-                                                                    width: '100%',
-                                                                    alignContent: 'center',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center',
-                                                                }}>
-                                                                <Text style={{ marginTop: 10 }}>{`${analysis.analysis[selectedIndex].text} `}</Text>
-                                                                <Text style={{ marginTop: 10 }}>{`${analysis.analysis[selectedIndex].taam}`}</Text>
-                                                                <Text style={{ marginTop: 10, marginBottom: 10 }}>{` ${analysis.analysis[selectedIndex].end} - ${analysis.analysis[selectedIndex].start}`}</Text>
-                                                            </View>
-                                                            <Text
                                                                 style={{
                                                                     marginTop: 10,
                                                                     marginBottom: 10,
-                                                                    direction: 'rtl'
+                                                                    direction: 'rtl',
+                                                                    alignContent: 'flex-start',
+                                                                    alignItems: 'flex-start',
+                                                                    width: '110%'
                                                                 }}
 
-                                                            >{analysis.analysis[selectedIndex].exp}</Text>
+                                                            >{Array.isArray(analysis.analysis[selectedIndex].exp) ?
+                                                                analysis.analysis[selectedIndex].exp.map((feedback, index) => {
+                                                                    return (
+                                                                        <Text key={index} style={{
+                                                                            marginBottom: 10,
+                                                                            textAlign: 'right',
+
+
+                                                                        }}>{`• ${feedback.feedback} `}</Text>
+                                                                    )
+                                                                }) : analysis.analysis[selectedIndex].exp
+                                                                }</View>
                                                         </View>
                                                     </>
+
                                                     : selectedWordStatus === 1 ?
                                                         //word not in the right place
-                                                        <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#ffc107' }}>
-                                                            <Text style={{ marginBottom: 10 }}>You said: {"\"" + analysis.analysis[selectedIndex].text + "\""} not in the right place</Text>
-                                                            <Text style={{ marginBottom: 10 }}>Should be: {"\"" + analysis.analysis[selectedIndex].word_to_say + "\""} </Text>
+                                                        <View style={{
+                                                            width: '100%',
+                                                            height: '90%',
+                                                            alignContent: 'center',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            direction: 'rtl',
+                                                            backgroundColor: 'green'
+                                                        }}>
+                                                            <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#ffc107' }}>
+                                                                <Text style={{ marginBottom: 10 }}>You said: {"\"" + analysis.analysis[selectedIndex].text + "\""} not in the right place</Text>
+                                                                <Text style={{ marginBottom: 10 }}>Should be: {"\"" + analysis.analysis[selectedIndex].word_to_say + "\""} </Text>
+                                                            </View>
                                                         </View>
                                                         : selectedWordStatus === 3 ?
-                                                            <View style={{ ...styles.timeContainer, backgroundColor: '#2196f3' }}>
-                                                                <Text style={{ marginBottom: 10 }}>You missed that word: {"\"" + analysis.analysis[selectedIndex].text + "\""}</Text>
+                                                            <View style={{
+                                                                width: '100%',
+                                                                height: '90%',
+                                                                alignContent: 'center',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                direction: 'rtl',
+                                                                backgroundColor: 'red'
+                                                            }}>
+                                                                <View style={{ ...styles.timeContainer, backgroundColor: '#2196f3' }}>
+                                                                    <Text style={{ marginBottom: 10 }}>You missed that word: {"\"" + analysis.analysis[selectedIndex].text + "\""}</Text>
+                                                                </View>
                                                             </View>
                                                             : null
 
@@ -288,9 +375,8 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                                             handleScreenClick()
                                                         })
                                                             .catch((error) => {
-                                                                console.log(error)
                                                                 setComment('')
-                                                                //todo: add error alert ErrorAlert(error.message);
+                                                                alertError(`Failed to send comment ${error}`, () => { });
                                                             });
                                                     }}
 
@@ -308,7 +394,7 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                         <View style={styles.modalContainer}>
                                             <View style={styles.commentsContainer}>
                                                 <>
-                                                    <Title title={'הערות של הרב'} subtitle="" />
+                                                    <Title title={session.rabbi_comments.length ? 'הערות של הרב' : 'אין הערות'} subtitle="" />
 
                                                     {session.rabbi_comments.map((cmt, index) => {
                                                         if (!session.rabbi_comments.length) {
@@ -347,9 +433,8 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 16,
         direction: 'rtl',
-        justifyContent: 'center'
+        justifyContent: 'center',
     },
     sampleContainer: {
         width: '100%',
@@ -360,12 +445,20 @@ const styles = StyleSheet.create({
         marginBottom: 10, // Adjust spacing between elements
         height: 150, // Adjust height as needed
     },
+    circles: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        position: 'relative',
+        marginBottom: 5,
+        marginTop: 5
+    },
     warningsContainer: {
         alignItems: 'center',
         flexDirection: 'row',
         justifyContent: 'space-around',
         margin: 5,
-        marginBottom: 30,
+        marginBottom: 10,
+        marginTop: 20
     },
     modalContainer: {
         flex: 1,
@@ -407,29 +500,32 @@ const styles = StyleSheet.create({
     goodWordsContainer: {
         flexDirection: "row",
         flexWrap: "wrap",
+        position: 'relative',
         justifyContent: 'center',
-        flex: 1,
-        textAlign: 'center',
-        height: 400
+        alignContent: 'flex-start',
+        height: 150,
     },
     badWordsContainer: {
         flexDirection: "row",
         flexWrap: "wrap",
         position: 'relative',
         justifyContent: 'center',
-        alignContent: 'center',
-        flex: 1,
-        height: 400
+        alignContent: 'flex-start',
+        height: 150,
     },
     teamimContainer: {
         flexDirection: "column",
-        flex: 1,
         justifyContent: 'center',
         alignContent: 'center',
     },
     scrollViewContainer: {
         marginVertical: 5,
         alignContent: 'center',
+    },
+    teamimScrollContainer: {
+        marginVertical: 5,
+        alignContent: 'center',
+        marginBottom: 20
     },
     word: {
         fontSize: 16,
