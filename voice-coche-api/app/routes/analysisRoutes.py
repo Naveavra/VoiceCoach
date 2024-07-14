@@ -31,37 +31,50 @@ from scipy.spatial.distance import euclidean
 aai.settings.api_key = "0dc55bacc27c4f6786439e81b735f87a"
 
 
-def init_analysis_routes(app):
+def init_analysis_routes(app, recordings):
     @app.route("/analysis/<int:session_id>", methods=["GET"])
     def forAnalysis(session_id):
         print("Started")
         session = Session.query.get(session_id)
+        if session.recording is None:
+            if session_id in recordings:
+                session.recording = recordings[session_id]
+                #with open('output_audio.wav', 'wb') as output_file:
+                #    output_file.write(session.recording)
+                recordings.pop(session_id)
+            else:
+                return jsonify({"analysis": [], 'created_at': "", "url": "", "project_url":"", "score": 0, "words_score": 0, "teamin_stats":{}}), 200
 
         if  session.analysis_id is not None:
             analysis = Analysis.query.get(session.analysis_id)
-            return jsonify({"analysis": json.loads(analysis.teamim), 'created_at': analysis.created_at, "url": session.url}), 200
+            return jsonify({"analysis": json.loads(analysis.teamim), 'created_at': analysis.created_at, "url": session.url,
+             "project_url": Project.query.get(session.project_id).sample_url, "score": int(session.score), "words_score": int(get_words_score(json.loads(analysis.teamim))*100), "teamin_stats": json.loads(analysis.taam_stats)}), 200
 
+        print("here")
         audio_file_like = io.BytesIO(session.recording)
         audio = AudioSegment.from_file(audio_file_like)
         duration_seconds = audio.duration_seconds
 
-        print("for teamim")
         project = Project.query.get(session.project_id)
-        print("for teamim2")
         if session.session_teamim is None:
-            teamim = getTeamim(session.recording, duration_seconds, project.parasha_ref_clean.text, project.parasha_ref_mark.text)
+            teamim = getTeamim(session.recording, duration_seconds, project.parasha_ref_clean.text, project.parasha_ref_mark.text, None)
             session.session_teamim = json.dumps(teamim)
 
         print("started analysis")
-        ans_analysis = compare(project.sample_clip, session.recording, json.loads(session.session_teamim), json.loads(project.sample_teamim))
-
-        analysis = Analysis(json.dumps(ans_analysis))
+        ans_analysis, score = compare(project.sample_clip, session.recording, json.loads(session.session_teamim), json.loads(project.sample_teamim))
+        score = round(score, 2)
+        #first comes the teacher
+        taam_stats = taam_performance(json.loads(project.sample_teamim),json.loads(session.session_teamim))
+        get_time_json(ans_analysis)
+        analysis = Analysis(json.dumps(ans_analysis), json.dumps(taam_stats))
         session.analysis = analysis
         session.analysis_id = analysis.id
+        session.score = score
         db.session.add(analysis)
         db.session.commit()
 
-        return jsonify({"analysis": ans_analysis, "url": session.url})
+        return jsonify({"analysis": ans_analysis, 'created_at': analysis.created_at, "url": session.url, "project_url": project.sample_url,
+         "score": int(score), "words_score": int(get_words_score(analysis)*100), "teamin_stats": taam_stats})
                     
 
 def getMatchTeamim(user_teamim, sample_teamim):
@@ -74,6 +87,8 @@ def getMatchTeamim(user_teamim, sample_teamim):
     place_check = []
     offset_words = 0
     nonesense_words = 0
+    last_word_user = -1
+    last_word_sample = -1
 
 
     for i in range(0, len(user_teamim)):
@@ -84,12 +99,30 @@ def getMatchTeamim(user_teamim, sample_teamim):
             sample_delete = None
             row = user_teamim[i]
 
-            for j in range(i, len(sample_teamim)):
+            for j in range(last_word_sample+1, len(sample_teamim)):
                 row2 = sample_teamim[j]
-                if row['text'] == row2['text'] and j not in place_check:
+                if row['text'] == row2['text'] and row['parasha_place'] == row2['parasha_place'] and j not in place_check:
+                    rep = j-1
+                    while sample_teamim[rep]['broken'] and rep > -1:
+                        rep = rep - 1
+                    if last_word_user != -1 and user_teamim[last_word_user]['parasha_place'] != sample_teamim[rep]['parasha_place']:
+                        row['word_status'] = 1
+                        row['word_to_say'] = sample_teamim[rep]['text']
+                    else:
+                        row['word_to_say'] = ""
+                        row['word_status'] = 0
+                    '''
+                    if i > 0 and user_teamim[i-1]['parasha_place'] != sample_teamim[j-1]['parasha_place']:
+                        row['word_status'] = 1
+                        row['word_to_say'] = sample_teamim[j-1]['text']
+                    else:
+                        row['word_to_say'] = ""
+                        row['word_status'] = 0
+                    '''
+                    '''
                     if j != i + offset_words + nonesense_words and j != i + offset_words - nonesense_words:
                         row['word_status'] = 1
-                        rep = i+offset_words-1
+                        rep = i+offset_words
                         while sample_teamim[rep]['broken'] and rep > 0:
                             rep = rep - 1
 
@@ -98,11 +131,14 @@ def getMatchTeamim(user_teamim, sample_teamim):
                     else:
                         row['word_to_say'] = ""
                         row['word_status'] = 0
+                    '''
 
                     matching_elements_session.append(row)
                     matching_elements_sample.append(row2)
                     sample_delete = row2
                     place_check.append(j)
+                    last_word_sample = j
+                    last_word_user = i
                     break
             if sample_delete is not None:
                 missing_words.remove(sample_delete)
@@ -112,18 +148,45 @@ def getMatchTeamim(user_teamim, sample_teamim):
 
 def compare(sample_wav, user_wav, user_json, sample_json):
     matching_elements_session, matching_elements_sample, missing_words, wrong_words = getMatchTeamim(user_json, sample_json)
-    analysis = process_recordings(sample_wav, user_wav, matching_elements_sample, matching_elements_session)
+    analysis, score = process_recordings(sample_wav, user_wav, matching_elements_sample, matching_elements_session)
 
     #those jsons are words that were said by the sample but where not found in the user recording
+    last_place = 0
+    place_not_found = []
+    combined = []
+    # print(analysis)
     for row in missing_words:
         if not row['broken']:
             row['word_status'] = 3
             row['taam_status'] = 'MISSING'
             row['exp'] = "פיספסת את הטעם בזמן הביצוע שלך"
             row['word_to_say'] = ""
-            row['rav_start'] = 0.0
-            row['rav_end'] = 0.0
-        analysis.append(row)
+            row['rav_start'] = row['start']
+            row['rav_end'] = row['end']
+            row['start'] = 0.0
+            row['end'] = 0.0
+            found = False
+            for i in range(last_place, len(analysis)):
+                if analysis[i]['word_status'] == 1 and analysis[i]['word_to_say'] == row['text']:
+                    analysis.insert(i, row)
+                    add_forward = 0
+                    add_backword = 0
+                    for word in place_not_found:
+                        if word['rav_end'] == row['rav_start']:
+                            analysis.insert(i-add_backword, word)
+                            add_backword = add_backword + 1
+                            combined.append(word)
+                        elif word['rav_start'] == row['rav_end']:
+                            analysis.insert(i+add_forward, word)
+                            add_forward = add_forward + 1
+                            combined.append(word)
+
+                    last_place = i + 1 + add_forward + add_backword + 1
+                    found = True
+                    break
+            if not found:
+                place_not_found.append(row)
+        #analysis.append(row)
 
     for row in wrong_words:
         row['word_status'] = 2
@@ -133,10 +196,39 @@ def compare(sample_wav, user_wav, user_json, sample_json):
         row['rav_start'] = 0.0
         row['rav_end'] = 0.0
         analysis.append(row)
+    return analysis, score
+
+def get_time_json(analysis):#should be mm:ss:mm for start, end, rav_start, rav_end
+    for word in analysis:
+        word['start'] = get_time(word['start'])
+        word['end'] = get_time(word['end'])
+        word['rav_start'] = get_time(word['rav_start'])
+        word['rav_end'] = get_time(word['rav_end'])
     return analysis
 
-#for analysis of teamim
+def get_time(time):
+    time = time*100
+    minute = int(time//6000)
+    time = time % 6000
+    second = int(time // 100)
+    time = time % 100
+    milli = int(time)
+    return "{:02d}:{:02d}:{:02d}".format(minute, second, milli)
 
+def get_words_score(analysis):
+    right_words = 0
+    all_words = 0
+    for word in analysis:
+        if word['word_status'] != 2:
+            all_words = all_words + 1
+            if word['word_status'] != 3:
+                right_words = right_words + 1
+    return right_words / all_words
+
+
+
+
+#for analysis of teamim
 
 def midi_to_note_name(midi_number):
     note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -192,59 +284,119 @@ def calculate_similarity_score(pitch_array_teacher, pitch_array_student):
     score = max(0, 100 - (distance / max_distance) * 100)
     return score
 
-
 def give_feedback(pitch_array_teacher, pitch_array_student):
     length = min(len(pitch_array_teacher), len(pitch_array_student))
     third = length // 3
 
     segments = {
-        "התחלה, ": (0, third),
-        "אמצע, ": (third, 2 * third),
-        "סוף, ": (2 * third, length)
+        "התחלה": (0, third),
+        "אמצע": (third, 2 * third),
+        "סוף": (2 * third, length)
     }
 
-    feedback = ""
-
+    feedback = []
     overall_score = 0
 
     for segment, (start, end) in segments.items():
         score = calculate_similarity_score(pitch_array_teacher[start:end], pitch_array_student[start:end])
-        feedback += f"{segment.capitalize()} ציון: {score:.2f}. "
+        segment_feedback = {
+            "segment": segment,
+            "score": score,
+            "feedback": f"{segment.capitalize()} ציון: {score:.2f}. "
+        }
 
         if score > 90:
-            feedback += "מעולה דומה מאוד למורה, "
+            segment_feedback["feedback"] += "מעולה דומה מאוד למורה, "
         elif score > 70:
-            feedback += "ניסיון יפה, דרוש עבודה על התזמון והגייה, "
+            segment_feedback["feedback"] += "ניסיון יפה, דרוש עבודה על התזמון והגייה, "
         else:
-            feedback += ".יש המון מקום לשיפור, נסה שוב "
-        overall_score = overall_score + score
+            segment_feedback["feedback"] += ".יש המון מקום לשיפור, נסה שוב "
+
+        overall_score += score
 
         teacher_midi_segment = note_array_to_midi(pitch_array_teacher[start:end])
         student_midi_segment = note_array_to_midi(pitch_array_student[start:end])
 
         if np.mean(student_midi_segment) < np.mean(teacher_midi_segment):
-            feedback += "תרים את הסולם קול "
+            segment_feedback["feedback"] += "תרים את הסולם קול "
         else:
-            feedback += "תוריד את הסולם קול "
+            segment_feedback["feedback"] += "תוריד את הסולם קול "
 
         if np.var(student_midi_segment) < np.var(teacher_midi_segment):
-            feedback += "ותוסיף סלסול לקול "
+            segment_feedback["feedback"] += "ותוסיף סלסול לקול "
         else:
-            feedback += "ונסה לשמור על אותו קול "
+            segment_feedback["feedback"] += "ונסה לשמור על אותו קול "
 
-        feedback += "\n"
+        feedback.append(segment_feedback)
 
     overall_score = overall_score / 3
-    feedback += f"ציון סופי : {overall_score:.2f}. "
+    final_feedback = {
+        "overall_score": overall_score,
+        "final_feedback": f"ציון סופי : {overall_score:.2f}. "
+    }
 
     if overall_score > 90:
-        feedback += "ביצוע מעולה"
+        final_feedback["final_feedback"] += "ביצוע מעולה"
     elif overall_score > 70:
-        feedback += "ביצוע טוב, יש מקום לשיפור"
+        final_feedback["final_feedback"] += "ביצוע טוב, יש מקום לשיפור"
     else:
-        feedback += "ביצוע לא טוב, נסה שוב"
+        final_feedback["final_feedback"] += "ביצוע לא טוב, נסה שוב"
 
-    return feedback, overall_score
+    return json.dumps(feedback + [final_feedback]), overall_score
+
+# OLD CODE HERE:
+# def give_feedback(pitch_array_teacher, pitch_array_student):
+#     length = min(len(pitch_array_teacher), len(pitch_array_student))
+#     third = length // 3
+
+#     segments = {
+#         "התחלה, ": (0, third),
+#         "אמצע, ": (third, 2 * third),
+#         "סוף, ": (2 * third, length)
+#     }
+
+#     feedback = ""
+
+#     overall_score = 0
+
+#     for segment, (start, end) in segments.items():
+#         score = calculate_similarity_score(pitch_array_teacher[start:end], pitch_array_student[start:end])
+#         feedback += f"{segment.capitalize()} ציון: {score:.2f}. "
+
+#         if score > 90:
+#             feedback += "מעולה דומה מאוד למורה, "
+#         elif score > 70:
+#             feedback += "ניסיון יפה, דרוש עבודה על התזמון והגייה, "
+#         else:
+#             feedback += ".יש המון מקום לשיפור, נסה שוב "
+#         overall_score = overall_score + score
+
+#         teacher_midi_segment = note_array_to_midi(pitch_array_teacher[start:end])
+#         student_midi_segment = note_array_to_midi(pitch_array_student[start:end])
+
+#         if np.mean(student_midi_segment) < np.mean(teacher_midi_segment):
+#             feedback += "תרים את הסולם קול "
+#         else:
+#             feedback += "תוריד את הסולם קול "
+
+#         if np.var(student_midi_segment) < np.var(teacher_midi_segment):
+#             feedback += "ותוסיף סלסול לקול "
+#         else:
+#             feedback += "ונסה לשמור על אותו קול "
+
+#         feedback += "\n"
+
+#     overall_score = overall_score / 3
+#     feedback += f"ציון סופי : {overall_score:.2f}. "
+
+#     if overall_score > 90:
+#         feedback += "ביצוע מעולה"
+#     elif overall_score > 70:
+#         feedback += "ביצוע טוב, יש מקום לשיפור"
+#     else:
+#         feedback += "ביצוע לא טוב, נסה שוב"
+
+#     return feedback, overall_score
 
 
 def crop_audio(input_data, start_time, end_time):
@@ -253,9 +405,76 @@ def crop_audio(input_data, start_time, end_time):
     sf.write(output, y, sr, format='wav')
     return output.getvalue()
 
+def taam_performance(teacher_data, student_data):
+    taam_stats = {
+        'etnach': {'correct_count': 0, 'total_count': 0},
+        'segolta': {'correct_count': 0, 'total_count': 0},
+        'shalshelet': {'correct_count': 0, 'total_count': 0},
+        'zaqef katan': {'correct_count': 0, 'total_count': 0},
+        'zaqef gadol': {'correct_count': 0, 'total_count': 0},
+        'maarih tarha': {'correct_count': 0, 'total_count': 0},
+        'sof pasuk': {'correct_count': 0, 'total_count': 0},
+        'revia': {'correct_count': 0, 'total_count': 0},
+        'trei kadmin': {'correct_count': 0, 'total_count': 0},
+        'kadma': {'correct_count': 0, 'total_count': 0},
+        'tevir': {'correct_count': 0, 'total_count': 0},
+        'gerish': {'correct_count': 0, 'total_count': 0},
+        'shene gereshin': {'correct_count': 0, 'total_count': 0},
+        'talsha': {'correct_count': 0, 'total_count': 0},
+        'pazer gadol': {'correct_count': 0, 'total_count': 0},
+        'darga': {'correct_count': 0, 'total_count': 0},
+        'azla': {'correct_count': 0, 'total_count': 0},
+        'zarqa': {'correct_count': 0, 'total_count': 0},
+        'pasek': {'correct_count': 0, 'total_count': 0}
+    }
+    min_len = min(len(teacher_data), len(student_data))
+    for i in range(min_len):
+        teacher = teacher_data[i]
+        student = student_data[i]
+
+        if 'taam' in teacher and 'taam' in student:
+            if teacher['taam'] in taam_stats:
+                taam = teacher['taam']
+                
+                if taam in ['etnach', 'zaqef katan', 'maarih tarha', 'sof pasuk', 'pasek']:
+                    # Calculate downtime percentage after the word
+                    if i < min_len - 1:
+                        teacher_downtime = teacher_data[i + 1]['start'] - teacher['end']
+                        student_downtime = student_data[i + 1]['start'] - student['end']
+                        #print(f"Teacher downtime for taam {taam} at index {i}: {teacher_downtime}")
+                        #print(f"Student downtime for taam {taam} at index {i}: {student_downtime}")
+
+                        if teacher_downtime == 0 and student_downtime == 0:
+                            taam_stats[taam]['correct_count'] += 1
+                        elif teacher_downtime == 0 or student_downtime == 0:
+                            # If one of them is zero and the other is not, consider it incorrect
+                            pass
+                        else:
+                            time_ratio = student_downtime / teacher_downtime
+                            if 0.8 <= time_ratio <= 1.2:
+                                taam_stats[taam]['correct_count'] += 1
+                        taam_stats[taam]['total_count'] += 1
+                elif taam in ['revia', 'trei kadmin', 'pazer gadol', 'tevir', 'shene gereshin', 'zarqa']:
+                    # Check how much time the word took
+                    teacher_word_time = teacher['end'] - teacher['start']
+                    student_word_time = student['end'] - student['start']
+                    time_ratio = student_word_time / teacher_word_time
+                    if 0.8 <= time_ratio <= 1.2:
+                        taam_stats[taam]['correct_count'] += 1
+                    taam_stats[taam]['total_count'] += 1
+                # Add more rules for other taamim
+
+    taamim_feedback = {taam: (stats['correct_count'], stats['total_count']) for taam, stats in taam_stats.items()}
+    # print (f'teamin feedback: {taamim_feedback}')
+    # Calculate grades
+    taamim_grades = {taam: (stats['correct_count'] / stats['total_count']) * 100 for taam, stats in taam_stats.items() if stats['total_count'] > 0}
+    
+    return taamim_grades
+
 def process_recordings(teacher_audio_data, student_audio_data, teacher_data, student_data):
     output = []
     len_teacher = len(teacher_data)
+    total_score = 0
 
     for i in range(len_teacher):
         if i >= len(student_data) or teacher_data[i]['text'] != student_data[i]['text']:
@@ -268,6 +487,7 @@ def process_recordings(teacher_audio_data, student_audio_data, teacher_data, stu
             student_pitch_array = extract_pitch_array(temp_student_audio)
 
             feedback, score = give_feedback(teacher_pitch_array, student_pitch_array)
+            total_score += score
             if score > 90:
                 review = "GOOD"
             elif score > 70:
@@ -282,4 +502,5 @@ def process_recordings(teacher_audio_data, student_audio_data, teacher_data, stu
             student_data[i]['taam_status'] = review
 
             output.append(student_data[i])
-    return output
+    average_score = total_score / len(student_data) if len(student_data) > 0 else 0
+    return output, average_score

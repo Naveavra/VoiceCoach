@@ -1,7 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { io } from 'socket.io-client';
-import * as FileSystem from 'expo-file-system';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Text, Alert, TouchableOpacity, StyleSheet, View } from 'react-native';
 import { API_URL } from '../../config';
 import { setSampleUrl } from '../../redux/projectsReducer';
@@ -15,11 +13,22 @@ export interface uploadDocumentProps {
     selectedProject: ProjectData;
     reloadData: () => void;
 }
-
+const onUploadProgress = (progressEvent: AxiosProgressEvent) => {
+    const { loaded, total } = progressEvent;
+    if (total === 0 || total === null || total === undefined) {
+        return;
+    }
+    let percent = Math.floor((loaded * 100) / total);
+    console.log('percent:', percent);
+    if (percent < 100) {
+        console.log(`${loaded} bytes of ${total} bytes. ${percent}%`);
+    }
+};
 
 export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedProject, reloadData }) => {
     const { dispatch } = useUtilities();
     const [isLoading, setIsLoading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<number>(0);
 
     const errorAlert = (error: string) => {
         Alert.alert('Something went wrong', error, [
@@ -31,9 +40,7 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
         ]);
     };
 
-
-
-
+  
     const openDocumentPicker = async () => {
         let document: any;
         try {

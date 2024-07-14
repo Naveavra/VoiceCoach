@@ -28,7 +28,7 @@ aai.settings.api_key = "0dc55bacc27c4f6786439e81b735f87a"
 subclip_size = 60.0
 recognizer = sr.Recognizer()
 
-def init_file_routes(app, socketio):
+def init_file_routes(app):
     @app.route('/projects/<int:project_id>/uploade_sample', methods=['POST'])
     @jwt_required()
     @authenticate
@@ -69,7 +69,7 @@ def init_file_routes(app, socketio):
                             project.sample_clip = wav_content
                             
                             #now we get the words from the sample
-                            teamim = getTeamim(wav_content, duration_seconds, project.parasha_ref_clean.text, project.parasha_ref_mark.text)
+                            teamim = getTeamim(wav_content, duration_seconds, project.parasha_ref_clean.text, project.parasha_ref_mark.text, None)
                             project.sample_teamim = json.dumps(teamim)
                         else:
                             return jsonify({"error": "received unsupported file"}), 401
@@ -155,7 +155,7 @@ def recognizeTeamim(cuurWord):
 
 
 def fixTeamimWithGoogle(teamim, words):
-    tmp_words = words.replace(',', '')
+    tmp_words = words.replace(',', ' ')
     word_list = tmp_words.split()
     # Replace words in places with the most similar ones from the word list within one position off
     len_teamim = len(teamim)
@@ -183,7 +183,7 @@ def find_best_match(word, word_list, current_index, next_word):
 def transcribe_subclip_google(audio_file_path, start_time, subclip_duration):
     with sr.AudioFile(audio_file_path) as source:
         recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.record(source, duration=subclip_duration, offset=start_time)
+        audio = recognizer.record(source, duration=subclip_duration)
         return recognizer.recognize_google(audio, language="iw-IL")
 
 
@@ -191,12 +191,18 @@ def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
 
-def fixTeamimWithWords(teamim, words, cleanTxt, dirtyTxt, threshold=0.6):
-    cleanTxt = re.sub(' +', ' ', cleanTxt.replace('\t', '').replace('\n', '').replace(':', " :").replace('-', '').replace('־', ' ').replace('׀', '')).strip()
-    dirtyTxt = re.sub(' +', ' ', dirtyTxt.replace('\t', '').replace('\n', '').replace(':', " :").replace('-', '').replace('־', ' ').replace('׀', '')).strip()
+def fixTeamimWithWords(teamim, words, cleanTxt, dirtyTxt, path, threshold=0.6):
+    cleanTxt = re.sub(' +', ' ', cleanTxt.replace('\t', '').replace('\n', '').replace('.', '').replace(',', '').replace('׃', '').replace('-', ' ').replace('ׁ', '').replace('־', ' ').replace('׀', '')).strip()
+    dirtyTxt = re.sub(' +', ' ', dirtyTxt.replace('\t', '').replace('\n', '').replace('׃', '').replace('־', ' ').replace('׀', '')).strip()
     
-    teamim = fixTeamimWithGoogle(teamim, words)
-    print(teamim)
+    if path is not None:
+        with open(path.split('.')[0] + "_teamim" + ".json", "w", encoding="utf-8") as file:
+            json.dump(teamim, file, ensure_ascii=False, indent=4)
+        with open(path.split('.')[0] + "_words" + ".txt", "w", encoding="utf-8") as file:
+            file.write(words)
+
+    #teamim = fixTeamimWithGoogle(teamim, words)
+
     clean_words = cleanTxt.split()
     dirty_words = dirtyTxt.split()
 
@@ -206,14 +212,16 @@ def fixTeamimWithWords(teamim, words, cleanTxt, dirtyTxt, threshold=0.6):
 
     for taam in teamim:
         found = False
-        for i in range(cur_place, min(cur_place + 3+offset, len(clean_words))):
+        for i in range(cur_place, min(cur_place + 5 + offset, len(clean_words))):
+            taam['text'] = taam['text'].replace(',', '').replace('.', '')
             if similar(taam['text'], clean_words[i])>=threshold:
                 aligned_texts.append({
                     'text': dirty_words[i],
                     'taam': recognizeTeamim(dirty_words[i]),
                     'broken': False,
                     'start': taam['start'],
-                    'end': taam['end']
+                    'end': taam['end'],
+                    'parasha_place': i
                 })
 
                 cur_place = i+1
@@ -226,16 +234,20 @@ def fixTeamimWithWords(teamim, words, cleanTxt, dirtyTxt, threshold=0.6):
                     'text': taam['text'],
                     'broken': True,
                     'start': taam['start'],
-                    'end': taam['end']
+                    'end': taam['end'],
+                    'parasha_place': -1
                 })
             offset = offset + 1
+    if path is not None:
+        with open(path.split('.')[0] + "_fixed" + ".json", "w", encoding="utf-8") as file:
+            json.dump(aligned_texts, file, ensure_ascii=False, indent=4)
     return aligned_texts
     
 def transcribe_subclip(temp_wav_file_path, offset):
     FILE_URL = temp_wav_file_path
     stamps_array = []
     try:
-        config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano)
+        config = aai.TranscriptionConfig(language_code="he", speech_model=aai.SpeechModel.nano, punctuate=False, format_text=False)
         transcriber = aai.Transcriber(config=config)
         transcript = transcriber.transcribe(FILE_URL)
 
@@ -261,18 +273,22 @@ def processSubClip(audio, start_time, subclip_duration):
         subclip.export(temp_wav_file, format="wav")
         temp_wav_file_path = temp_wav_file.name
 
+        '''
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future_google = executor.submit(transcribe_subclip_google, temp_wav_file_path, 0.0, subclip_duration)
             future_teamim = executor.submit(transcribe_subclip, temp_wav_file_path, start_time)
 
         words = future_google.result()
         stamps_array = future_teamim.result()
+        '''
+        words = ""
+        stamps_array = transcribe_subclip(temp_wav_file_path, start_time)
 
         #stamps_array = transcribe_subclip(temp_wav_file_path, start_time)
         return start_time, words, stamps_array
 
 
-def getTeamim(audio_data, duration, clean_txt, dirty_txt):
+def getTeamim(audio_data, duration, clean_txt, dirty_txt, path):
     audio = AudioSegment.from_file(io.BytesIO(audio_data))
     subclip_durations = [
         (i, max(0.0, min(subclip_size, duration - i)))
@@ -310,8 +326,7 @@ def getTeamim(audio_data, duration, clean_txt, dirty_txt):
             txt = txt_dict[time]
         else:
             txt = txt + ',' + txt_dict[time]
-
-    ans = fixTeamimWithWords(ans, txt, clean_txt, dirty_txt)
+    ans = fixTeamimWithWords(ans, txt, clean_txt, dirty_txt, path)
     return ans
 
 
