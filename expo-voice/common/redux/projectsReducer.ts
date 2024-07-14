@@ -2,7 +2,7 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { projectsApi } from "../api/projectsApi";
 import { ApiError, ApiListData } from "../types/apiTypes";
 import { ProjectData } from "../types/systemTypes";
-import { baseCredentials } from "../types/requestTypes";
+import { baseCredentials, editProjectData } from "../types/requestTypes";
 import { addProjectPostData, deleteProjectData } from "../types/requestTypes";
 import { emptyProject } from "../data/consts";
 
@@ -45,6 +45,18 @@ export const addProject = createAsyncThunk<
     async (params, thunkApi) => {
         return projectsApi
             .addProject(params)
+            .then((res) => thunkApi.fulfillWithValue(res as ProjectData))
+            .catch((res) => thunkApi.rejectWithValue(res as ApiError));
+    });
+
+export const editProject = createAsyncThunk<
+    ProjectData,
+    editProjectData,
+    { rejectValue: ApiError }
+>(`${reducerName}/editProject`,
+    async (params, thunkApi) => {
+        return projectsApi
+            .editProject(params)
             .then((res) => thunkApi.fulfillWithValue(res as ProjectData))
             .catch((res) => thunkApi.rejectWithValue(res as ApiError));
     });
@@ -124,6 +136,24 @@ export const projectsReducer = createSlice({
             state.msg = "Project added successfully";
         });
         builder.addCase(addProject.rejected, (state, action) => {
+            state.isLoadingProjects = false;
+            state.error = action.payload?.message.error || "An error occurred";
+        });
+        //edit Project
+        builder.addCase(editProject.pending, (state, action) => {
+            state.isLoadingProjects = true;
+        });
+        builder.addCase(editProject.fulfilled, (state, action) => {
+            state.isLoadingProjects = false;
+            state.projects = state.projects.map(p => {
+                if (p.id === action.payload.id) {
+                    return action.payload;
+                }
+                return p;
+            });
+            state.msg = "Project edited successfully";
+        });
+        builder.addCase(editProject.rejected, (state, action) => {
             state.isLoadingProjects = false;
             state.error = action.payload?.message.error || "An error occurred";
         });

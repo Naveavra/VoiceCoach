@@ -1,4 +1,4 @@
-import { Alert, Button, Modal, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native"
+import { Alert, Modal, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native"
 import { useAuth, useProjects, useUtilities } from "../common/hooks";
 import AppFlatList from "../common/components/AppFlatList";
 import { AppLoader } from "../common/components/Loader";
@@ -16,8 +16,6 @@ import AppProjectCard from "../common/components/AppProjectCard";
 import { SimpleLineIcons } from '@expo/vector-icons';
 import { alertError, getAsync } from "../common/utils";
 import AppCleanProjectCard from "../common/components/AppCleanProjectCard";
-import { setGlobalState } from "../common/redux/globalReducer";
-import { UITextField } from "../common/ui/components";
 
 type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -35,16 +33,19 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
         Alert.alert('No projects found', '', [
             {
                 text: 'Cancel',
-                onPress: () => console.log('Cancel Pressed'),
+                onPress: () => { },
                 style: 'cancel',
             },
-            { text: 'Add Project', onPress: () => navigation.navigate('AddProject') },
+            { text: 'Add Project', onPress: () => navigation.navigate('AddEditProject', { state: 'add', project_id: -1 }) },
         ]);
     }
 
     const cleanState = () => {
         projects.map(async (project) => {
-            deleteAsync(await getAsync(`${project.id}_${project.created_at}`), { idempotent: true });
+            //todo fix
+            // path_to_sample = `project_#{project.id}`
+            // path_to_session = `session_${session.id}`
+            deleteAsync(await getAsync(`project_${project.id}`), { idempotent: true });
         })
         dispatch(cleanProjectsState())
     }
@@ -52,7 +53,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
         Alert.alert('Are you sure?', 'Deleting a project deletes all recordings and information associated with it', [
             {
                 text: 'Cancel',
-                onPress: () => console.log('Cancel Pressed'),
+                onPress: () => { },
                 style: 'cancel',
             },
             {
@@ -76,7 +77,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
                     navigation.navigate('Project', { id: project.id });
                 }}
                 onDelete={() => deleteProjectAlert(project.id)}
-                onEdit={() => setVisible(true)}
+                onEdit={() => navigation.navigate('AddEditProject', { state: 'edit', project_id: project.id })}
             />
         );
     });
@@ -126,7 +127,8 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
                     <Ionicons style={{
                         alignSelf: 'center',
                         color: '#1976d2',
-                    }} name="add-circle-outline" size={40} color="black" onPress={() => navigation.navigate('AddProject')} />
+                        marginBottom: 1
+                    }} name="add-circle-outline" size={40} color="black" onPress={() => navigation.navigate('AddEditProject', { state: 'add', project_id: -1 })} />
 
                     <SimpleLineIcons name="refresh" size={35} color="#1976d2" onPress={reloadData} />
 

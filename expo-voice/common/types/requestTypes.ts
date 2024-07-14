@@ -18,6 +18,11 @@ export interface addProjectPostData extends baseCredentials {
     description: string;
     rabbi_email: string;
 }
+export interface editProjectData extends baseCredentials {
+    project_id: number;
+    description?: string;
+    rabbi_email?: string;
+}
 
 export interface deleteProjectData extends baseCredentials {
     project_id: number;

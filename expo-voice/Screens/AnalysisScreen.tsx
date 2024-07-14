@@ -13,6 +13,8 @@ import { saveAsync } from "../common/utils";
 import { AppLoader } from "../common/components/Loader";
 import { AudioRecord } from "../common/components/AudioRecord";
 type AnalysisScreenProps = NativeStackScreenProps<RootStackParamList, 'Analysis'>;
+import { Circle } from 'react-native-progress';
+import { taam_to_hebrew } from "../common/data/torah";
 
 export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
     const { result, session_id, sample_url, sample_uri, path_to_sample, path_to_session } = route.params;
@@ -129,7 +131,44 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                                     <Feather name="info" size={35} color="#2196f3" onPress={missedAlert} />
                                     <AntDesign name="warning" size={35} color="#f44336" onPress={failAlert} />
                                 </View>
-                                <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, marginTop: 5 }}> ניתוח מילים</Text>
+                                <View style={styles.circles}>
+                                    <View
+                                        style={{
+                                            flexDirection: 'column',
+                                            justifyContent: 'space-around',
+
+                                        }}>
+                                        <Circle
+                                            size={70}
+                                            progress={result.score / 100}
+                                            showsText={true}
+                                            formatText={() => `${result.score.toFixed(0)}%`}
+                                            style={{ marginBottom: 10 }}
+                                        />
+                                        <Text>
+                                            ציון טעמים כללי
+                                        </Text>
+                                    </View>
+                                    <View
+                                        style={{
+                                            flexDirection: 'column',
+                                            justifyContent: 'space-around',
+
+                                        }}>
+                                        <Circle
+                                            size={70}
+                                            progress={result.words_score / 100}
+                                            showsText={true}
+                                            formatText={() => `${result.words_score.toFixed(0)}%`}
+                                            style={{ marginBottom: 10 }}
+
+                                        />
+                                        <Text>
+                                            ציון מילים כללי
+                                        </Text>
+                                    </View>
+                                </View>
+                                <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, marginTop: 15 }}> ניתוח מילים</Text>
                                 <ScrollView contentContainerStyle={styles.scrollViewContainer}>
                                     <View style={styles.goodWordsContainer}>
                                         {result.analysis.filter((word) => word.word_status != 2).map((word, index) => {
@@ -139,19 +178,20 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                                             let underlineStyle = {};
                                             switch (word.taam_status) {
                                                 case 'GOOD':
-                                                    underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#4caf50', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                                    underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#357a38', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                                    break;
+                                                case 'MEDIUM':
+                                                    underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#ffeb3b', textDecorationStyle: 'solid', textDecorationThickness: 2 };
                                                     break;
                                                 case 'BAD':
-                                                    underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#ffc107', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                                    underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#f44336', textDecorationStyle: 'solid', textDecorationThickness: 2 };
                                                     break;
                                                 case 'MISSING':
-                                                    underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#f44336', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                                    underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#6c757d', textDecorationStyle: 'solid', textDecorationThickness: 2 };
                                                     break;
                                                 default:
                                                     underlineStyle = {};
                                             }
-
-
                                             return (
                                                 <TouchableOpacity key={index} onPress={() => handleWordClick(index, status)}>
                                                     <Text style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word.text}`}</Text>
@@ -161,27 +201,34 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                                     </View>
                                 </ScrollView>
 
-                                <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, marginTop: 5 }}>מילים לא קשורות</Text>
+                                {result.analysis.filter((word) => word.word_status === 2).length ?
+                                    <>
+                                        <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, marginTop: 5 }}>מילים לא קשורות</Text>
 
-                                <ScrollView contentContainerStyle={styles.scrollViewContainer}>
-                                    <View style={styles.badWordsContainer}>
-                                        {result.analysis.filter((word) => word.word_status === 2).map((word, index) => {
-                                            const wordColor = '#f44336';
-                                            const word_been_said = word.text;
-                                            return (
-                                                <TouchableOpacity key={index} >
-                                                    <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
-                                                </TouchableOpacity>
-                                            )
-                                        })}
-                                    </View>
-                                </ScrollView>
+                                        <ScrollView contentContainerStyle={styles.scrollViewContainer}>
+                                            <View style={styles.badWordsContainer}>
+                                                {result.analysis.filter((word) => word.word_status === 2).map((word, index) => {
+                                                    const wordColor = '#f44336';
+                                                    const word_been_said = word.text;
+                                                    return (
+                                                        <TouchableOpacity key={index} >
+                                                            <Text style={[styles.word, { color: wordColor }]}>{`${word_been_said}`}</Text>
+                                                        </TouchableOpacity>
+                                                    )
+                                                })}
+                                            </View>
+                                        </ScrollView>
+                                    </>
+                                    :
+                                    null
+                                }
+
                                 <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 10, marginTop: 10 }}> ניתוח טעמים</Text>
 
-                                <ScrollView contentContainerStyle={styles.scrollViewContainer}>
+                                <ScrollView contentContainerStyle={styles.teamimScrollContainer}>
                                     <View style={styles.teamimContainer}>
                                         {result.analysis.map((taam, index) => {
-                                            const wordColor = taam.taam_status === "GOOD" ? '#4caf50' : taam.taam_status === "BAD" ? '#ffc107' : '#f44336';
+                                            const wordColor = taam.taam_status === "GOOD" ? '#357a38' : taam.taam_status === "MEDIUM" ? '#ffeb3b' : taam.taam_status === 'BAD' ? '#f44336' : '6c757d';
                                             if (!taam.taam) {
                                                 return null
                                             }
@@ -190,7 +237,7 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                                                     onPress={() => handleTaamClick(index)} key={index} >
                                                     <View
                                                         style={{ ...styles.timeContainer, backgroundColor: wordColor }}>
-                                                        <Text style={[styles.word]}>{`${taam.text} , ${taam.end} - ${taam.start}`}</Text>
+                                                        <Text style={[styles.word]}>{`${taam.text} , ${taam_to_hebrew[taam.taam]} `}</Text>
                                                     </View>
 
                                                 </TouchableOpacity>
@@ -216,39 +263,72 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                                             alignItems: 'center',
                                             justifyContent: 'center'
                                         }}>
-                                            {selectedWordStatus === 0 && result.analysis[selectedIndex].taam ?
+                                            {selectedWordStatus === 0 ?
                                                 <>
                                                     <View style={{
                                                         width: '100%',
-                                                        height: '75%',
+                                                        height: '90%',
                                                         alignContent: 'center',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
                                                         direction: 'rtl'
                                                     }}>
-                                                        <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 }}>{`${result.analysis[selectedIndex].text} של הרב`}</Text>
-                                                        <AudioRecord url={sample_url} device_uri={sample_uri} path={path_to_sample} startTime={result.analysis[selectedIndex].rav_start} endTime={result.analysis[selectedIndex].rav_end} is_sample={true}></AudioRecord>
-                                                        <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, marginTop: 20 }}>{`${result.analysis[selectedIndex].text} של התלמיד`}</Text>
-                                                        <AudioRecord url={result.url} device_uri={localSessionUri} path={path_to_session} startTime={result.analysis[selectedIndex].start} endTime={result.analysis[selectedIndex].end} is_sample={false}></AudioRecord>
+                                                        <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 }}>{`${result.analysis[selectedIndex].final_feedback.final_feedback}`}</Text>
+                                                        <Circle
+                                                            size={70}
+                                                            progress={result.analysis[selectedIndex].final_feedback.overall_score / 100}
+                                                            showsText={true}
+                                                            formatText={() => `${result.analysis[selectedIndex].final_feedback.overall_score.toFixed(0)}%`}
+
+                                                        />
+                                                        <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 }}>{`${result.analysis[selectedIndex].text}  של הרב :`}</Text>
+                                                        <AudioRecord
+                                                            url={sample_url}
+                                                            device_uri={sample_uri}
+                                                            path={path_to_sample}
+                                                            startTime={result.analysis[selectedIndex].rav_start}
+                                                            endTime={result.analysis[selectedIndex].rav_end}
+                                                            is_sample={true}
+                                                            to_download={true}
+                                                        >
+                                                        </AudioRecord>
+                                                        <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, marginTop: 20 }}>{`${result.analysis[selectedIndex].text} של התלמיד :`}</Text>
+                                                        <AudioRecord
+                                                            url={result.url}
+                                                            device_uri={localSessionUri}
+                                                            path={path_to_session}
+                                                            startTime={result.analysis[selectedIndex].start}
+                                                            endTime={result.analysis[selectedIndex].end}
+                                                            is_sample={false}
+                                                            to_download={true}
+                                                        ></AudioRecord>
+                                                        {result.analysis[selectedIndex].taam ?
+                                                            <Text style={{ marginTop: 10 }}>{`${taam_to_hebrew[result.analysis[selectedIndex].taam]}`}</Text>
+                                                            : null
+                                                        }
                                                         <View
-                                                            style={{
-                                                                width: '100%',
-                                                                alignContent: 'center',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                            }}>
-                                                            <Text style={{}}>{`${result.analysis[selectedIndex].text} `}</Text>
-                                                            <Text style={{}}>{`${result.analysis[selectedIndex].taam}`}</Text>
-                                                            <Text style={{}}>{` ${result.analysis[selectedIndex].end} - ${result.analysis[selectedIndex].start}`}</Text>
-                                                        </View>
-                                                        <Text
                                                             style={{
                                                                 marginTop: 10,
                                                                 marginBottom: 10,
-                                                                direction: 'rtl'
-                                                            }}
+                                                                direction: 'rtl',
+                                                                alignContent: 'flex-start',
+                                                                alignItems: 'flex-start',
 
-                                                        >{result.analysis[selectedIndex].exp}</Text>
+                                                            }}
+                                                        >{
+                                                                Array.isArray(result.analysis[selectedIndex].exp) ?
+                                                                    result.analysis[selectedIndex].exp.map((feedback, index) => {
+                                                                        return (
+                                                                            <Text key={index} style={{
+                                                                                marginBottom: 10,
+                                                                                textAlign: 'right',
+
+
+                                                                            }}>{`•${feedback.feedback} `}</Text>
+                                                                        )
+                                                                    }) : result.analysis[selectedIndex].exp
+
+                                                            }</View>
                                                     </View>
                                                 </>
                                                 : selectedWordStatus === 1 ?
@@ -296,12 +376,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         flexDirection: 'row',
         justifyContent: 'space-around',
-        margin: 5,
         position: 'relative',
-        top: 20,
-        marginBottom: 30,
+        marginBottom: 5,
+        marginTop: -20
     },
-
+    circles: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        position: 'relative',
+        marginBottom: 5,
+        marginTop: 5
+    },
     word: {
         fontSize: 16,
         marginRight: 8,
@@ -355,9 +440,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignContent: 'flex-start',
         flex: 1,
-        marginBottom: 20,
         textAlign: 'center',
-        height: 400
+        height: 300
     },
     timeText: {
         fontSize: 14,
@@ -374,7 +458,11 @@ const styles = StyleSheet.create({
         padding: 20,
         borderRadius: 10,
     },
-
+    teamimScrollContainer: {
+        marginVertical: 5,
+        alignContent: 'center',
+        marginBottom: 20
+    },
     teamimContainer: {
         flexDirection: "column",
         flex: 1,
@@ -425,7 +513,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginHorizontal: 10,
-        marginBottom: 100,
+        marginBottom: 50,
     },
 });
 

@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useUtilities } from './common/hooks';
-import { AddProjectScreen } from './Screens/AddProjectScreen';
+import { AddEditProjectScreen } from './Screens/AddEditProjectScreen';
 import { HomeScreen } from './Screens/HomeScreen';
 import { LogInScreen } from './Screens/LogInScreen';
 import { ProjectScreen } from './Screens/ProjectScreen'; // Make sure to import ProjectScreen
@@ -14,13 +14,12 @@ import { SessionScreen } from './Screens/SessionScreen';
 import { AppMenu } from './common/components/Btn/AppMenu';
 import { AppComment } from './common/components/Btn/AppComment';
 import { useNavigation } from '@react-navigation/native';
-import { TouchableOpacity, Text } from 'react-native';
 
 export type RootStackParamList = {
     LogIn: undefined;
     Register: undefined;
     Home: undefined;
-    AddProject: undefined;
+    AddEditProject: { state: 'add' | 'edit' ,project_id:number};
     Project: { id: number };
     Session: { rabbi: boolean, session: SessionData, sample_url: string, session_uri: string, sample_uri: string };
     AddRecord: { project: ProjectData, sample_uri: string };
@@ -53,7 +52,7 @@ export const AppNavigation = () => {
                                 <NavigationStack.Screen name="Home" component={HomeScreen} options={{
                                     headerRight: () => <AppMenu />
                                 }} />
-                                <NavigationStack.Screen name="AddProject" component={AddProjectScreen} options={{ title: 'Add Project' }} />
+                                <NavigationStack.Screen name="AddEditProject" component={AddEditProjectScreen} options={{ title: 'Add Project' }} />
                                 <NavigationStack.Screen name="Project" component={ProjectScreen} />
                                 <NavigationStack.Screen name="AddRecord" component={AddRecordingScreen} options={{ title: 'Add Recording' }} />
                                 <NavigationStack.Screen name="Analysis" component={AnalysisScreen} options={{ headerLeft: () => null, headerBackVisible: false }} />

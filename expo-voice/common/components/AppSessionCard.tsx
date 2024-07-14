@@ -51,7 +51,7 @@ const AppSessionCard: React.FC<AppProjectCardProps> = ({ session, onPress, onDel
             <View style={styles.cardContainer}>
                 <UIButton
                     to_tap={true}
-                    title={`${formatDate(session.created_at, false)} - ${session.score}%`}
+                    title={`${formatDate(session.created_at, false)} - ${session.score?.toFixed(0)}%`}
                     onClick={() => onPress(false)}
                     style={styles.card}
                 />
