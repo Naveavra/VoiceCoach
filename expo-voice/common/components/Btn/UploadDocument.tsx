@@ -34,13 +34,12 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
         Alert.alert('Something went wrong', error, [
             {
                 text: 'Okay',
-                onPress: () => console.log('Cancel Pressed'),
+                onPress: () => { },
                 style: 'cancel',
             },
         ]);
     };
 
-  
   
     const openDocumentPicker = async () => {
         let document: any;
@@ -74,13 +73,11 @@ export const UploadDocument: React.FC<uploadDocumentProps> = ({ token, selectedP
                 await axios.post(url, formData, config)
                     .then((response) => {
                         const sampleUrl = response.data.sample_url;
-
                         dispatch(setSampleUrl(sampleUrl));
                         setIsLoading(false);
                         reloadData();
                     })
                     .catch((error) => {
-                        console.error('Failed to upload sample:', error);
                         setIsLoading(false);
                         errorAlert('Failed to upload sample');
                     });

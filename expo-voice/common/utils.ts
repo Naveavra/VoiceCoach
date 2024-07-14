@@ -14,7 +14,6 @@ export const apiErrorHandlerWrapper = (promise: Promise<AxiosResponse>): Promise
             return Promise.resolve(res.data)
         })
         .catch((err) => {
-            console.log("err", err);
             return Promise.reject({
                 message: err.response.data
                 //message: "error in api call"
@@ -72,7 +71,7 @@ export const saveAsync = async (key: string, value: any) => {
     try {
         await AsyncStorage.setItem(key, JSON.stringify(value));
     } catch (error) {
-        console.error("Error saving data:", error);
+        alertError('Failed to upload sample', () => { });
     }
 }
 
@@ -82,6 +81,13 @@ export const getAsync = async (key: string) => {
         return value ? JSON.parse(value) : null;
     } catch (error) {
         console.error("Error getting data:", error);
+    }
+}
+export const removeAsync = async (key: string) => {
+    try {
+        await AsyncStorage.removeItem(key);
+    } catch (error) {
+        console.error("Error removing data:", error);
     }
 }
 

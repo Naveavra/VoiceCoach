@@ -24,9 +24,7 @@ export const LogInScreen = ({ navigation }: LogInScreenProps) => {
     const [password, setPassword] = useState<string>('');
     const { isLoadingUser, error, user, token } = useAuth({});
     const [remember_me, setRememberMe] = useState<boolean>(false);
-    // AsyncStorage.clear().then(() => {
-    //     console.log('cleared')
-    // })
+
     if (isLoadingUser) {
         return <AppLoader />
     }
@@ -58,7 +56,7 @@ export const LogInScreen = ({ navigation }: LogInScreenProps) => {
                             onValueChange={setRememberMe}
                         />
                         <Text style={styles.paragraph}>Remember me</Text>
-                        <TouchableOpacity onPress={() => console.log('[DEBUG] forget password!')}>
+                        <TouchableOpacity onPress={() => {}}>
                             <Text style={styles.forgetPasswordText}>Forget password?</Text>
                         </TouchableOpacity>
                     </View>

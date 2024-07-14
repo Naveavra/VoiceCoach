@@ -27,4 +27,23 @@ export const similarity = new Map([
 
 export const punctuation = new Set(['׀', '׃', '.', ',', '!', '?', ':', ';', '(', ')', '[', ']', '{', '}', '׃', '׀', '׆', '\'ׅ']);
 
+interface Dictionary<T> {
+  [key: string]: T;
+}
 
+export const taam_to_hebrew: Dictionary<string> = {
+  "etnach": "אתנח",
+  "segolta": "סגולתא",
+  "shalshelet": "שלשלת",
+  "zaqef katan": "זקף קטן",
+  "zaqef gadol": "זקף גדול",
+  "maarih tarha": "מאריך טרחא",
+  "sof pasuk": "סוף פסוק",
+  "revia": "רביע",
+  "trei kadmin": "תרי קדמין",
+  "tevir": "תביר",
+  'shene gereshin': 'שני גרשין',
+  'pazer gadol': 'פזר גדול',
+  'zarqa': 'זרקא',
+  'pasek': 'פסק'
+}

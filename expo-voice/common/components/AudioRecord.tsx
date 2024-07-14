@@ -6,7 +6,7 @@ import { FontAwesome5 } from "@expo/vector-icons";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as FileSystem from 'expo-file-system';
 import { API_URL } from "../../common/config";
-import { alertError, calculateDuration, getAsync, millisToTimeString, saveAsync, timeStringToMillis } from "../utils";
+import { alertError, calculateDuration, getAsync, millisToTimeString, removeAsync, saveAsync, timeStringToMillis } from "../utils";
 
 interface AudioRecordProps {
     device_uri: string | null;
@@ -15,12 +15,13 @@ interface AudioRecordProps {
     is_sample: boolean
     startTime: string | null; // Start time in milliseconds
     endTime: string | null;
+    to_download: boolean;
 }
 
 
 const primaryColor = "#0ea5e9";
 
-export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sample, path, startTime, endTime }) => {
+export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sample, path, startTime, endTime, to_download }) => {
     const [playing, setPlaying] = useState<boolean>(false);
     const [speedRate, setSpeedRate] = useState<0.5 | 1.0 | 1.5>(1.0);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -32,7 +33,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
 
     const [voice, setVoice] = useState<Audio.Sound | null>(null);
     const [uri, setUri] = useState<string>(device_uri || '');
-    const [hasAudio, setHasAudio] = useState<boolean>(device_uri && device_uri != '' && device_uri != undefined ? true : false);
+    const [hasAudio, setHasAudio] = useState<boolean>(!to_download ? false : device_uri && device_uri != '' && device_uri != undefined ? true : false);
 
 
     const handleSetUri = (uri: string) => {
@@ -84,20 +85,33 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
         }
     };
     const get_and_create = async () => {
-        //need to download
         setIsLoading(true);
-        const downloadResult = await downloadSampleResumable.downloadAsync();
-        if (downloadResult) {
-            handleSetUri(downloadResult.uri);
-            saveAsync(path, downloadResult.uri);
-            createSound();
+        if (!device_uri || device_uri == '') {
+            getAsync(path).then(async (res) => {
+                if (res) {
+                    setUri(res)
+                    createSound(res)
+                }
+                else {
+                    //need to download
+                    const downloadResult = await downloadSampleResumable.downloadAsync();
+                    if (downloadResult) {
+                        handleSetUri(downloadResult.uri);
+                        saveAsync(path, downloadResult.uri);
+                        createSound(downloadResult.uri)
+                    }
+                }
+            })
+        }
+        else {
+            createSound(device_uri)
         }
     }
 
-    const createSound = async () => {
+    const createSound = async (dev_uri: string) => {
         try {
             // success fetch from async storage
-            const { sound } = await Audio.Sound.createAsync({ uri: uri }, { shouldPlay: false }, onPlaybackStatusUpdate);
+            const { sound } = await Audio.Sound.createAsync({ uri: dev_uri }, { shouldPlay: false }, onPlaybackStatusUpdate);
             if (startTime)
                 await sound.setPositionAsync(timeStringToMillis(startTime));
             setVoice(sound);
@@ -174,9 +188,10 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
         if (voice) {
             await voice.unloadAsync();
             FileSystem.deleteAsync(uri);
+            await removeAsync(path);
             setVoice(null);
-            setHasAudio(false);
             setUri('');
+            setHasAudio(false);
         }
     }
     const handlePlay = async () => {
@@ -185,19 +200,8 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
 
 
     useEffect(() => {
-        if (!device_uri || device_uri == '') {
-            getAsync(path).then((res) => {
-                if (res) {
-                    setUri(res)
-                    createSound();
-                }
-                else {
-                    get_and_create()
-                }
-            })
-        }
-        else {
-            createSound()
+        if (to_download) {
+            get_and_create();
         }
         return () => {
             if (voice) {
@@ -268,7 +272,7 @@ export const AudioRecord: React.FC<AudioRecordProps> = ({ url, device_uri, is_sa
                         :
                         <>
                             <View style={styles.downloadButton}>
-                                <TouchableOpacity onPress={createSound}>
+                                <TouchableOpacity onPress={get_and_create}>
                                     <Ionicons name="cloud-download-outline" size={24} color="black" />
                                 </TouchableOpacity>
                                 <Text>{is_sample ? 'Download sample' : 'Download session'}</Text>
