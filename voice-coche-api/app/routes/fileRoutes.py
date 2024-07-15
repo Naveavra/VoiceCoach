@@ -193,7 +193,7 @@ def similar(a, b):
 
 def fixTeamimWithWords(teamim, words, cleanTxt, dirtyTxt, path, threshold=0.6):
     cleanTxt = re.sub(' +', ' ', cleanTxt.replace('\t', '').replace('\n', '').replace('.', '').replace(',', '').replace('׃', '').replace('-', ' ').replace('ׁ', '').replace('־', ' ').replace('׀', '')).strip()
-    dirtyTxt = re.sub(' +', ' ', dirtyTxt.replace('\t', '').replace('\n', '').replace('׃', '').replace('־', ' ').replace('׀', '')).strip()
+    dirtyTxt = re.sub(' +', ' ', dirtyTxt.replace('\t', '').replace('\n', '').replace('־', ' ').replace('׀', '')).strip()
     
     if path is not None:
         with open(path.split('.')[0] + "_teamim" + ".json", "w", encoding="utf-8") as file:

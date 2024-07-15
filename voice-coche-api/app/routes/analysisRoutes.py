@@ -73,8 +73,9 @@ def init_analysis_routes(app, recordings):
         db.session.add(analysis)
         db.session.commit()
 
+        print(ans_analysis)
         return jsonify({"analysis": ans_analysis, 'created_at': analysis.created_at, "url": session.url, "project_url": project.sample_url,
-         "score": int(score), "words_score": int(get_words_score(analysis)*100), "teamin_stats": taam_stats})
+         "score": int(score), "words_score": int(get_words_score(ans_analysis)*100), "teamin_stats": taam_stats})
                     
 
 def getMatchTeamim(user_teamim, sample_teamim):
@@ -150,6 +151,7 @@ def compare(sample_wav, user_wav, user_json, sample_json):
     matching_elements_session, matching_elements_sample, missing_words, wrong_words = getMatchTeamim(user_json, sample_json)
     analysis, score = process_recordings(sample_wav, user_wav, matching_elements_sample, matching_elements_session)
 
+
     #those jsons are words that were said by the sample but where not found in the user recording
     last_place = 0
     place_not_found = []
@@ -160,6 +162,10 @@ def compare(sample_wav, user_wav, user_json, sample_json):
             row['word_status'] = 3
             row['taam_status'] = 'MISSING'
             row['exp'] = "פיספסת את הטעם בזמן הביצוע שלך"
+            row['final_feedback'] = {
+                "overall_score": 0,
+                "final_feedback": ""
+            }
             row['word_to_say'] = ""
             row['rav_start'] = row['start']
             row['rav_end'] = row['end']
@@ -342,7 +348,7 @@ def give_feedback(pitch_array_teacher, pitch_array_student):
     else:
         final_feedback["final_feedback"] += "ביצוע לא טוב, נסה שוב"
 
-    return json.dumps(feedback + [final_feedback]), overall_score
+    return feedback, final_feedback, overall_score
 
 # OLD CODE HERE:
 # def give_feedback(pitch_array_teacher, pitch_array_student):
@@ -476,18 +482,19 @@ def process_recordings(teacher_audio_data, student_audio_data, teacher_data, stu
     len_teacher = len(teacher_data)
     total_score = 0
 
+    count_with_taam = 0
+
     for i in range(len_teacher):
-        if i >= len(student_data) or teacher_data[i]['text'] != student_data[i]['text']:
-            output.append({'text': teacher_data[i]['text'], 'state': 'MISSING'})
-        else:
+        if student_data[i]['taam'] is not None:
             temp_teacher_audio = crop_audio(teacher_audio_data, teacher_data[i]['start'], teacher_data[i]['end'])
             temp_student_audio = crop_audio(student_audio_data, student_data[i]['start'], student_data[i]['end'])
 
             teacher_pitch_array = extract_pitch_array(temp_teacher_audio)
             student_pitch_array = extract_pitch_array(temp_student_audio)
 
-            feedback, score = give_feedback(teacher_pitch_array, student_pitch_array)
+            feedback, final_feedback, score = give_feedback(teacher_pitch_array, student_pitch_array)
             total_score += score
+            count_with_taam = count_with_taam + 1
             if score > 90:
                 review = "GOOD"
             elif score > 70:
@@ -497,10 +504,21 @@ def process_recordings(teacher_audio_data, student_audio_data, teacher_data, stu
 
             #ans
             student_data[i]['exp'] = feedback
+            student_data[i]['final_feedback'] = final_feedback
             student_data[i]['rav_start'] = teacher_data[i]['start']
             student_data[i]['rav_end'] = teacher_data[i]['end']
             student_data[i]['taam_status'] = review
 
             output.append(student_data[i])
-    average_score = total_score / len(student_data) if len(student_data) > 0 else 0
+        else:
+            student_data[i]['exp'] = ""
+            student_data[i]['final_feedback'] = {
+                "overall_score": 0,
+                "final_feedback": ""
+            }
+            student_data[i]['rav_start'] = teacher_data[i]['start']
+            student_data[i]['rav_end'] = teacher_data[i]['end']
+            student_data[i]['taam_status'] = ''
+            output.append(student_data[i])
+    average_score = total_score / count_with_taam if count_with_taam > 0 else 0
     return output, average_score

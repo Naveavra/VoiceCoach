@@ -25,8 +25,10 @@ def init_project_routes(app):
         shared = Project.query.filter_by(rabbi_email=current_user.email).all()
         ans = []
         for project in projects:
+            #if project.sample_clip is not None:
             ans.append(project.simpleSerialize())
         for project in shared:
+            #if project.sample_clip is not None:
             ans.append(project.simpleSerialize())
         return jsonify(ans)
 
@@ -82,6 +84,7 @@ def init_project_routes(app):
         if not project:
             return jsonify({"message": "Project not found"}), 404
         return jsonify({
+            #'sessions': [session.simpleSerialize() for session in Session.query.filter_by(project_id=project_id).all() if session.recording != None],
             'sessions': [session.simpleSerialize() for session in Session.query.filter_by(project_id=project_id).all()],
             'project': project.simpleSerialize()
         }), 200
