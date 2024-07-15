@@ -142,7 +142,7 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                                             size={70}
                                             progress={result.score / 100}
                                             showsText={true}
-                                            formatText={() => `${result.score.toFixed(0)}%`}
+                                            formatText={() => `${result.score?.toFixed(0)}%`}
                                             style={{ marginBottom: 10 }}
                                         />
                                         <Text>
@@ -173,7 +173,7 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                                     <View style={styles.goodWordsContainer}>
                                         {result.analysis.filter((word) => word.word_status != 2).map((word, index) => {
                                             const status = word.word_status;
-                                            const wordColor = status === 0 ? '#4caf50' : status === 1 ? '#ffc107' : status === 2 ? '#f44336' : '#2196f3';
+                                            const wordColor = status === 0 ? '#4caf50' : status === 1 ? '#ffc107' : '#2196f3';
 
                                             let underlineStyle = {};
                                             switch (word.taam_status) {
@@ -191,6 +191,11 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                                                     break;
                                                 default:
                                                     underlineStyle = {};
+                                            }
+                                            if (!word.taam) {
+                                                return (
+                                                    <Text key={index} style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word.text}`}</Text>
+                                                )
                                             }
                                             return (
                                                 <TouchableOpacity key={index} onPress={() => handleWordClick(index, status)}>
@@ -228,7 +233,7 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                                 <ScrollView contentContainerStyle={styles.teamimScrollContainer}>
                                     <View style={styles.teamimContainer}>
                                         {result.analysis.map((taam, index) => {
-                                            const wordColor = taam.taam_status === "GOOD" ? '#357a38' : taam.taam_status === "MEDIUM" ? '#ffeb3b' : taam.taam_status === 'BAD' ? '#f44336' : '6c757d';
+                                            const wordColor = taam.taam_status === "GOOD" ? '#00e676' : taam.taam_status === "MEDIUM" ? '#ffeb3b' : taam.taam_status === 'BAD' ? '#f44336' : '6c757d';
                                             if (!taam.taam) {
                                                 return null
                                             }
@@ -333,13 +338,31 @@ export const AnalysisScreen = ({ route, navigation }: AnalysisScreenProps) => {
                                                 </>
                                                 : selectedWordStatus === 1 ?
                                                     //word not in the right place
-                                                    <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#ffc107' }}>
-                                                        <Text style={{ marginBottom: 10 }}>You said: {"\"" + result.analysis[selectedIndex].text + "\""} not in the right place</Text>
-                                                        <Text style={{ marginBottom: 10 }}>Should be: {"\"" + result.analysis[selectedIndex].word_to_say + "\""} </Text>
+                                                    <View style={{
+                                                        width: '100%',
+                                                        height: '90%',
+                                                        alignContent: 'center',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        direction: 'rtl',
+                                                    }}>
+                                                        <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#ffc107' }}>
+                                                            <Text style={{ marginBottom: 10 }}>You said: {"\"" + result.analysis[selectedIndex].text + "\""} not in the right place</Text>
+                                                            <Text style={{ marginBottom: 10 }}>Should be: {"\"" + result.analysis[selectedIndex].word_to_say + "\""} </Text>
+                                                        </View>
                                                     </View>
                                                     : selectedWordStatus === 3 ?
-                                                        <View style={{ ...styles.timeContainer, backgroundColor: '#2196f3' }}>
-                                                            <Text style={{ marginBottom: 10 }}>You missed that word: {"\"" + result.analysis[selectedIndex].text + "\""}</Text>
+                                                        <View style={{
+                                                            width: '100%',
+                                                            height: '90%',
+                                                            alignContent: 'center',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            direction: 'rtl',
+                                                        }}>
+                                                            <View style={{ ...styles.timeContainer, backgroundColor: '#2196f3' }}>
+                                                                <Text style={{ marginBottom: 10 }}>You missed that word: {"\"" + result.analysis[selectedIndex].text + "\""}</Text>
+                                                            </View>
                                                         </View>
                                                         : null
 

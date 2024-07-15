@@ -44,12 +44,25 @@ const AppProjectCard: React.FC<AppProjectCardProps> = ({ project, onPress, onDel
             renderRightActions={renderRightActions}
             renderLeftActions={renderLeftActions}
         >
-            <UIButton
-                to_tap={true}
-                title={`${project.parasha} - ${project.aliyah}: ${project.description}`}
-                onClick={onPress}
-                style={styles.card}
-            />
+            <>
+                {
+                    project.description ?
+                        <UIButton
+                            to_tap={true}
+                            title={`${project.parasha} - ${project.aliyah}: ${project.description}`}
+                            onClick={onPress}
+                            style={styles.card}
+                        />
+                        :
+                        <UIButton
+                            to_tap={true}
+                            title={`${project.parasha} - ${project.aliyah}`}
+                            onClick={onPress}
+                            style={styles.card}
+                        />
+                }
+            </>
+
         </Swipeable>
     );
 }

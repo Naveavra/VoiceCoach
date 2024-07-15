@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from "react";
-import { getProjects } from "../redux/projectsReducer";
+import { cleanError, getProjects } from "../redux/projectsReducer";
 import { useUtilities } from "./useUtilities";
 
 interface useProjectsProps {
@@ -14,6 +14,7 @@ export const useProjects = ({ token }: useProjectsProps) => {
     const selectedProject = useAppSelector((state) => state.projects.selectedProject);
     const error = useAppSelector((state) => state.projects.error);
     const msg = useAppSelector((state) => state.projects.msg);
+    
 
     const reloadData = useCallback(() => {
         dispatch(getProjects({ token: token }));
@@ -25,8 +26,5 @@ export const useProjects = ({ token }: useProjectsProps) => {
         }
     }, [dispatch]);
 
-
-
-
-    return { isLoadingProjects, projects, selectedProject, error, msg, reloadData };
+    return { isLoadingProjects, projects, selectedProject, error, msg, reloadData,cleanError };
 }

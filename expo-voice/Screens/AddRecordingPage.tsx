@@ -18,7 +18,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from '
 import Slider from '@react-native-community/slider';
 import { punctuation, similarity } from "../common/data/torah";
 import { Circle } from 'react-native-progress';
-
+import * as stringSimilarity from 'string-similarity';
 LogBox.ignoreLogs([
     'Non-serializable values were found in the navigation state',
 ]);
@@ -51,7 +51,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     const loopRunning = useRef<boolean>(false);
     const [permissionResponse, requestPermission] = Audio.usePermissions();
     const [loopPromise, setLoopPromise] = useState<Promise<void> | null>(null);
-    const [status, setStatus] = useState<string>('');
+    const [state, setState] = useState<string>('');
     const [recordingTime, setRecordingTime] = useState<number>(0);
     const [currentPosition, setCurrentPosition] = useState<number>(0);
     const [timerInterval, setTimerInterval] = useState<NodeJS.Timer | null>(null);
@@ -131,7 +131,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
             const next_next_word = project.clean_text.split(" ")[index + 2];
 
             if (wordColors[index] == 'black') {
-                if (word === word_from_text || similarity.get(word)?.includes(word_from_text)) {
+                if (word === word_from_text || stringSimilarity.compareTwoStrings(word, word_from_text) > 0.4) {
                     setWordColors((prev) => {
                         const newColors = [...prev];
                         newColors[index] = 'green';
@@ -146,7 +146,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         return newColors;
                     });
 
-                } else if (word === next_word || similarity.get(word)?.includes(next_word)) {
+                } else if (word === next_word || stringSimilarity.compareTwoStrings(word, next_word) > 0.4) {
                     setWordColors((prev) => {
                         const newColors = [...prev];
                         newColors[index] = 'red';
@@ -165,7 +165,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                     });
 
                 }
-                else if (word === next_next_word || similarity.get(word)?.includes(next_next_word)) {
+                else if (word === next_next_word || stringSimilarity.compareTwoStrings(word, next_next_word) > 0.4) {
                     setWordColors((prev) => {
                         const newColors = [...prev];
                         newColors[index] = 'red';
@@ -200,8 +200,6 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 }
             }
             word_times.push([word_from_text, send_time]);
-            console.log(word_from_text, send_time);
-            console.log(word_times);
             setCurrentWord((prev) => (prev + 1) % project.clean_text.split(" ").length);
             setCurrentMarkedWord((prev) => (prev + 1) % project.mark_text.split(" ").length);
             marked_index++;
@@ -241,8 +239,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 clearInterval(timerInterval);
             }
             send = false;
-            console.log(start, end, currentPosition, recordingTime)
-            setStatus('paused');
+            setState('paused');
             setCurrentPosition(recordingTime);
         } catch (error) {
             alertError(String(error) ?? "failed to pause recording", () => { });
@@ -251,16 +248,22 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
 
     const resumeRecording = async () => {
         try {
-            console.log(currentPosition, recordingTime)
             if (currentPosition != recordingTime) {
+                let new_word_colors = [...wordColors];
                 wordColors.forEach((color, word_index) => {
-                    if (linePosition && word_index < linePosition) {
-                        wordColors[word_index] = 'black';
+                    if (linePosition && word_index >= linePosition) {
+                        new_word_colors[word_index] = 'black';
                     }
                 });
+                setWordColors(new_word_colors);
                 if (linePosition) {
+                    scrollY.value = withTiming(-1.5 * linePosition, { duration: 1000, easing: Easing.linear });
                     index = linePosition;
                     marked_index = linePosition;
+                    setCurrentWord(linePosition);
+                    setCurrentMarkedWord(linePosition);
+                    // need to change the scroll value up to the line position
+
                 }
                 setLinePosition(null);
                 start = currentPosition;
@@ -292,7 +295,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 record_time++;
             }, 1000);
             setTimerInterval(timer);
-            setStatus('recording');
+            setState('recording');
         } catch (error) {
             alertError(String(error) ?? "Failed to resume recording", () => { });
         }
@@ -340,7 +343,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     };
 
     const handleStartButtonClick = () => {
-        setStatus('countdown');
+        setState('countdown');
         let counter = 3;
         setCountdown(counter);
         const countdownInterval = setInterval(() => {
@@ -351,18 +354,15 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 setLoopPromise(promise);
             }
             if (counter === 0) {
-                setStatus('recording');
+                setState('recording');
                 clearInterval(countdownInterval);
                 setCountdown(0);
             }
         }, 1000);
-        // setStatus('recording');
-        // const promise = loop();
-        // setLoopPromise(promise);
     };
 
     const handleStopButtonClick = async () => {
-        setStatus('stopped');
+        setState('stopped');
         setIsLoading(true);
         stopLoop();
         if (loopPromise) {
@@ -373,7 +373,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
         if (recording) {
             await stopRecording(recording);
             //sendAudioData(recordings[recordings.length - 1].recording, true).then(() => {
-            sendAudioData(recording, true).then(() => {
+            sendAudioData(recording, record_time, true).then(() => {
                 axios.get(`${API_URL}/analysis/${selected_session.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
                     .then((response) => {
                         setIsLoading(false);
@@ -401,7 +401,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
 
     useEffect(() => {
         if (currentWord > 0 && currentWord % 10 === 0) {
-            scrollY.value = withTiming(scrollY.value - 20, { duration: 1000, easing: Easing.linear });
+            scrollY.value = withTiming(scrollY.value - 10, { duration: 1000, easing: Easing.linear });
         }
     }, [currentWord]);
 
@@ -422,18 +422,14 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
     //todo:change the index , maybe create a modal here and onConfirm will change everything
     const handleSliderChange = (value: number) => {
         value = Number(value.toFixed(2));
-        console.log(value)
         setCurrentPosition(value);
-        console.log(word_times)
-        console.log(value)
         for (let i = 0; i < word_times.length; i++) {
             if (word_times[i][1] > value) {
-                console.log('found', i)
                 setLinePosition(i);
+                scrollY.value = withTiming(-1.5 * i, { duration: 1000, easing: Easing.linear });
                 break;
             }
         }
-        start = value;
     }
 
 
@@ -468,7 +464,11 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                                 { color: markedWordsColors[index] },
                                             ]}
                                         >
-                                            {status == 'paused' && index === linePosition && <View style={styles.line}></View>}
+                                            {
+                                                index == linePosition &&
+                                                <View style={styles.line}>
+                                                    <AntDesign name="arrowleft" size={24} color="black" />
+                                                </View>}
                                             {word}{' '}
                                         </Text>
                                     );
@@ -484,7 +484,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                                 ]}
                                             >
                                                 {
-                                                    index == linePosition &&
+                                                    state == 'paused' && index == linePosition &&
                                                     <View style={styles.line}>
                                                         <AntDesign name="arrowleft" size={24} color="black" />
                                                     </View>}
@@ -498,7 +498,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                 </View>
 
                 <View style={styles.mainContainer}>
-                    {status == '' ?
+                    {state == '' ?
                         <>
                             <View style={{
                                 flex: 1,
@@ -518,7 +518,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                         </>
 
                         :
-                        status == 'countdown' ?
+                        state == 'countdown' ?
                             <>
                                 <View style={styles.countdownContainer}>
                                     <Circle
@@ -530,7 +530,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                 </View>
                             </>
                             :
-                            status == 'recording' ?
+                            state == 'recording' ?
                                 <>
                                     <View style={{
                                         flex: 1,
@@ -563,7 +563,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                     </View>
                                 </>
                                 :
-                                status == 'paused' ?
+                                state == 'paused' ?
                                     <>
                                         <View style={{
                                             flex: 1,
@@ -607,7 +607,7 @@ export const AddRecordingScreen = ({ route, navigation }: AddRecordingScreenProp
                                         </View>
                                     </>
                                     :
-                                    status == 'stopped' ?
+                                    state == 'stopped' ?
                                         <>
                                             {isLoading ?
                                                 <View style={styles.itemsContainer}>
@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 15,
-        marginTop: -40
+        marginTop: -20
     },
     mainContainer: {
         justifyContent: 'center',
