@@ -167,7 +167,7 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                         let underlineStyle = {};
                                         switch (word.taam_status) {
                                             case 'GOOD':
-                                                underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#00e676', textDecorationStyle: 'solid', textDecorationThickness: 2 };
+                                                underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#357a38', textDecorationStyle: 'solid', textDecorationThickness: 2 };
                                                 break;
                                             case 'MEDIUM':
                                                 underlineStyle = { textDecorationLine: 'underline', textDecorationColor: '#ffeb3b', textDecorationStyle: 'solid', textDecorationThickness: 2 };
@@ -180,6 +180,11 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                                 break;
                                             default:
                                                 underlineStyle = {};
+                                        }
+                                        if (!word.taam) {
+                                            return (
+                                                <Text key={index} style={[styles.word, { color: wordColor }, underlineStyle]}>{`${word.text}`}</Text>
+                                            )
                                         }
                                         return (
                                             <TouchableOpacity key={index} onPress={() => handleWordClick(index, status)}>
@@ -227,7 +232,7 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                                 onPress={() => handleTaamClick(index)} key={index} >
                                                 <View
                                                     style={{ ...styles.timeContainer, backgroundColor: wordColor }}>
-                                                    <Text style={[styles.word]}>{`${taam.text} , ${taam_to_hebrew[taam.taam]} , ${taam.final_feedback.overall_score.toFixed(0)}%`}</Text>
+                                                    <Text style={[styles.word]}>{`${taam.text} , ${taam_to_hebrew[taam.taam]} , ${taam.final_feedback?.overall_score.toFixed(0)}%`}</Text>
                                                 </View>
 
                                             </TouchableOpacity>
@@ -323,7 +328,6 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
                                                             direction: 'rtl',
-                                                            backgroundColor: 'green'
                                                         }}>
                                                             <View style={{ ...styles.yellowTimeContainer, backgroundColor: '#ffc107' }}>
                                                                 <Text style={{ marginBottom: 10 }}>You said: {"\"" + analysis.analysis[selectedIndex].text + "\""} not in the right place</Text>
@@ -338,7 +342,6 @@ export const SessionScreen = ({ route, navigation }: SessionScreenProps) => {
                                                                 alignItems: 'center',
                                                                 justifyContent: 'center',
                                                                 direction: 'rtl',
-                                                                backgroundColor: 'red'
                                                             }}>
                                                                 <View style={{ ...styles.timeContainer, backgroundColor: '#2196f3' }}>
                                                                     <Text style={{ marginBottom: 10 }}>You missed that word: {"\"" + analysis.analysis[selectedIndex].text + "\""}</Text>

@@ -29,23 +29,11 @@ const AppSessionCard: React.FC<AppProjectCardProps> = ({ session, onPress, onDel
         );
     };
 
-    const renderLeftActions = () => {
-        return (
-            <View style={styles.leftAction}>
-                <UIButton
-                    onClick={onEdit}
-                    title="Edit"
-                    style={styles.editButton}
-                    textStyle={styles.actionText}
-                />
-            </View>
-        );
-    };
+
 
     return (
         <Swipeable
             renderRightActions={renderRightActions}
-            renderLeftActions={renderLeftActions}
             containerStyle={styles.container}
         >
             <View style={styles.cardContainer}>

@@ -123,7 +123,7 @@ export const projectsReducer = createSlice({
         });
         builder.addCase(getProjects.rejected, (state, action) => {
             state.isLoadingProjects = false;
-            state.error = action.payload?.message.error || "An error occurred";
+            state.error = action.payload?.message.error || "An error occurred while getting projects";
         });
 
         // Add Project

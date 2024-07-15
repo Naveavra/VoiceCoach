@@ -23,7 +23,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
     const { user, token } = useAuth({});
     const { dispatch, useAppSelector } = useUtilities();
     const state = useAppSelector((state) => state.global.state);
-    const { isLoadingProjects, projects, error, msg, reloadData } = useProjects({ token: token });
+    const { isLoadingProjects, projects, error, msg, reloadData, cleanError } = useProjects({ token: token });
     const routeNames = useNavigationState(state => state.routeNames);
     const index = useNavigationState(state => state.index);
     const currentRouteName = routeNames[index];
@@ -110,14 +110,17 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
 
     useEffect(() => {
-        if (error)
-            alertError(error, () => cleanError)
+        if (error == 'Token has expired'){
+            dispatch(logout())
+        }
+        else if (error)
+            alertError(error, () => dispatch(cleanError()))
     }, [error]);
 
     return (
         <>
             <View style={styles.container}>
-                <Title title={`hi ${user?.name}`} subtitle="Your Projects" />
+                <Title title={`hi ${user?.name}`} subtitle={state === "MyProjects" ? "Your Projects" : "Projects shared with you"} />
                 <View style={{
                     flexDirection: 'row',
                     justifyContent: 'space-between',
